@@ -6,14 +6,14 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 
 ### Project Setup
 - [x] Initial project structure created
-- [ ] Initialize npm project with package.json
-- [ ] Install dependencies (React, Zustand, Immer, RBush, nanoid)
-- [ ] Install dev dependencies (TypeScript, Vite, Vitest, @vitejs/plugin-react)
-- [ ] Configure TypeScript with strict mode enabled
-- [ ] Configure Vite build tool
-- [ ] Set up Vitest test configuration
-- [ ] Create basic HTML template with canvas container
-- [ ] Set up project directory structure (/src with subdirectories)
+- [x] Initialize npm project with package.json
+- [x] Install dependencies (React, Zustand, Immer, RBush, nanoid)
+- [x] Install dev dependencies (TypeScript, Vite, Vitest, @vitejs/plugin-react)
+- [x] Configure TypeScript with strict mode enabled
+- [x] Configure Vite build tool
+- [x] Set up Vitest test configuration
+- [x] Create basic HTML template with canvas container
+- [x] Set up project directory structure (/src with subdirectories)
 
 ### Math Utilities (`/src/math`)
 - [ ] Implement Vec2.ts

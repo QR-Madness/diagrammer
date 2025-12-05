@@ -8,6 +8,7 @@ A high-performance diagramming and whiteboard application built with TypeScript,
 
 ## Technology Stack
 
+- **Runtime**: Bun (fast JavaScript runtime and package manager)
 - **Language**: TypeScript (strict mode)
 - **UI Framework**: React 18+ (for UI chrome only, not canvas rendering)
 - **State Management**: Zustand with Immer middleware
@@ -18,21 +19,23 @@ A high-performance diagramming and whiteboard application built with TypeScript,
 
 ## Development Commands
 
+**Note**: This project uses Bun as the runtime and package manager for faster installs and builds.
+
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development server
-npm run dev
+bun run dev
 
 # Type checking
-npm run typecheck
+bun run typecheck
 
 # Run tests
-npm run test
+bun run test
 
 # Build for production
-npm run build
+bun run build
 ```
 
 ## Architecture Layers
@@ -130,6 +133,9 @@ Phase 1 (Core Foundation) is in progress:
 See Specification.Readme.md for detailed implementation phases and complete API specifications.
 
 ## Key Architectural Decisions
+
+### Why Bun instead of Node.js?
+Bun provides significantly faster package installs, faster TypeScript execution, and better developer experience while maintaining full compatibility with npm packages and Node.js tooling.
 
 ### Why Canvas API directly?
 Performance and control. Abstraction libraries add overhead for 10K+ shapes.

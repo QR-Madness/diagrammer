@@ -729,19 +729,19 @@ function CanvasContainer() {
 
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Development server
-npm run dev
+bun run dev
 
 # Type checking
-npm run typecheck
+bun run typecheck
 
 # Run tests
-npm run test
+bun run test
 
 # Build for production
-npm run build
+bun run build
 ```
 
 ---
