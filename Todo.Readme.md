@@ -51,7 +51,7 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Implement getTransformMatrix for renderer
 - [x] Add zoom constraints (clamp to [0.1, 10])
 - [x] Add smooth zoom interpolation
-- [x] Unit tests for coordinate transforms (53 tests)
+- [x] Unit tests for coordinate transforms (58 tests)
 
 ### Input Handler (`/src/engine/InputHandler.ts`)
 - [x] Define NormalizedPointerEvent interface
@@ -67,17 +67,18 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Handle right-click context menu
 - [x] Implement destroy method for cleanup
 - [x] Convert screen coordinates to world coordinates
-- [x] Unit tests for InputHandler (39 tests)
+- [x] Unit tests for InputHandler (41 tests)
 
 ### Basic Renderer (`/src/engine/Renderer.ts`)
-- [ ] Implement Renderer class constructor
-- [ ] Implement requestRender method with requestAnimationFrame
-- [ ] Implement basic render loop
-- [ ] Clear canvas each frame
-- [ ] Apply camera transform to canvas context
-- [ ] Implement drawGrid method (optional background grid)
-- [ ] Handle canvas restoration after transforms
-- [ ] Add basic performance monitoring (FPS counter)
+- [x] Implement Renderer class constructor
+- [x] Implement requestRender method with requestAnimationFrame
+- [x] Implement basic render loop
+- [x] Clear canvas each frame
+- [x] Apply camera transform to canvas context
+- [x] Implement drawGrid method (optional background grid)
+- [x] Handle canvas restoration after transforms
+- [x] Add basic performance monitoring (FPS counter)
+- [x] Unit tests for Renderer (33 tests)
 
 ### React Integration (`/src/ui/CanvasContainer.tsx`)
 - [ ] Create CanvasContainer component
