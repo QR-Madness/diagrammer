@@ -2,6 +2,10 @@
 
 This document tracks the implementation tasks for building the Whiteboard Foundation prototype. Tasks are organized by implementation phase as defined in Specification.Readme.md.
 
+## Notes
+
+- **TODO**: Create a "stock-diagram" test scene with various shapes for visual inspection of new features. This should be loadable on startup for development/testing purposes.
+
 ## Phase 1: Core Foundation
 
 ### Project Setup
@@ -100,14 +104,15 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 ## Phase 2: Shape System
 
 ### Base Shape Types (`/src/shapes`)
-- [ ] Define BaseShape interface in Shape.ts
-- [ ] Define RectangleShape interface
-- [ ] Define EllipseShape interface
-- [ ] Define LineShape interface
-- [ ] Define TextShape interface
-- [ ] Create Shape union type
-- [ ] Define Handle interface for resize handles
-- [ ] Create shape type utilities (type guards)
+- [x] Define BaseShape interface in Shape.ts
+- [x] Define RectangleShape interface
+- [x] Define EllipseShape interface
+- [x] Define LineShape interface
+- [x] Define TextShape interface
+- [x] Create Shape union type
+- [x] Define Handle interface for resize handles
+- [x] Create shape type utilities (type guards)
+- [x] Add default shape style constants
 
 ### Shape Registry (`/src/shapes/ShapeRegistry.ts`)
 - [ ] Define ShapeHandler interface
