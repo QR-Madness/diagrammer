@@ -581,4 +581,60 @@ describe('Camera', () => {
       expect(camera.zoom).toBe(MAX_ZOOM);
     });
   });
+
+  describe('edge cases', () => {
+    it('handles viewport not set (zero dimensions)', () => {
+      const camera = new Camera();
+      // Don't call setViewport
+
+      // screenToWorld should work (screen center is 0,0)
+      const world = camera.screenToWorld(new Vec2(0, 0));
+      expect(world.x).toBe(0);
+      expect(world.y).toBe(0);
+
+      // getVisibleBounds returns zero-size box at camera position
+      const bounds = camera.getVisibleBounds();
+      expect(bounds.width).toBe(0);
+      expect(bounds.height).toBe(0);
+      expect(bounds.center.x).toBe(0);
+      expect(bounds.center.y).toBe(0);
+    });
+
+    it('pan works without viewport set', () => {
+      const camera = new Camera();
+      camera.pan(new Vec2(100, 50));
+      expect(camera.x).toBe(-100);
+      expect(camera.y).toBe(-50);
+    });
+
+    it('handles very small zoom values', () => {
+      const camera = new Camera({ zoom: MIN_ZOOM });
+      camera.setViewport(800, 600);
+
+      // Should not cause division issues
+      const world = camera.screenToWorld(new Vec2(400, 300));
+      expect(Number.isFinite(world.x)).toBe(true);
+      expect(Number.isFinite(world.y)).toBe(true);
+    });
+
+    it('handles large coordinate values', () => {
+      const camera = new Camera({ x: 1e10, y: -1e10 });
+      camera.setViewport(800, 600);
+
+      const screen = camera.worldToScreen(new Vec2(1e10, -1e10));
+      expect(screen.x).toBeCloseTo(400);
+      expect(screen.y).toBeCloseTo(300);
+    });
+
+    it('zoomAt with factor of 1 does not change anything', () => {
+      const camera = new Camera({ x: 100, y: 50, zoom: 2 });
+      camera.setViewport(800, 600);
+
+      camera.zoomAt(new Vec2(200, 150), 1);
+
+      expect(camera.x).toBeCloseTo(100);
+      expect(camera.y).toBeCloseTo(50);
+      expect(camera.zoom).toBe(2);
+    });
+  });
 });

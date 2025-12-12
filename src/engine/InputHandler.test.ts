@@ -425,6 +425,23 @@ describe('InputHandler', () => {
         const normalized = getFirstCallArg<NormalizedPointerEvent>(pointerCallback);
         expect(normalized.button).toBe('none');
       });
+
+      it('left button takes priority when multiple buttons pressed on move', () => {
+        // Left (1) + Right (2) = 3
+        const event = createPointerEvent('pointermove', { buttons: 3 });
+        canvas._dispatch('pointermove', event);
+
+        const normalized = getFirstCallArg<NormalizedPointerEvent>(pointerCallback);
+        expect(normalized.button).toBe('left');
+      });
+
+      it('right button detected on move when only right is pressed', () => {
+        const event = createPointerEvent('pointermove', { buttons: 2 });
+        canvas._dispatch('pointermove', event);
+
+        const normalized = getFirstCallArg<NormalizedPointerEvent>(pointerCallback);
+        expect(normalized.button).toBe('right');
+      });
     });
 
     describe('modifier keys', () => {

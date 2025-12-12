@@ -312,6 +312,9 @@ export class InputHandler {
   /**
    * Normalize wheel event delta across browsers.
    * Firefox reports delta in lines or pages, not pixels.
+   *
+   * Returns a proxy object that wraps the original event with normalized delta values.
+   * The original event is accessible and all methods/properties are preserved.
    */
   private normalizeWheelEvent(e: WheelEvent): WheelEvent {
     // If already in pixels, return as-is
@@ -320,29 +323,33 @@ export class InputHandler {
     }
 
     // Calculate pixel delta
-    let deltaX = e.deltaX;
-    let deltaY = e.deltaY;
+    let normalizedDeltaX = e.deltaX;
+    let normalizedDeltaY = e.deltaY;
 
     if (e.deltaMode === DOM_DELTA_LINE) {
-      deltaX *= PIXELS_PER_LINE;
-      deltaY *= PIXELS_PER_LINE;
+      normalizedDeltaX *= PIXELS_PER_LINE;
+      normalizedDeltaY *= PIXELS_PER_LINE;
     } else if (e.deltaMode === DOM_DELTA_PAGE) {
-      deltaX *= PIXELS_PER_PAGE;
-      deltaY *= PIXELS_PER_PAGE;
+      normalizedDeltaX *= PIXELS_PER_PAGE;
+      normalizedDeltaY *= PIXELS_PER_PAGE;
     }
 
-    // Create a new WheelEvent with normalized values
-    // We can't modify the original event, so we create a proxy-like object
-    return {
-      ...e,
-      deltaX,
-      deltaY,
-      deltaMode: DOM_DELTA_PIXEL,
-      // Preserve event methods
-      preventDefault: () => e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-      stopImmediatePropagation: () => e.stopImmediatePropagation(),
-    } as WheelEvent;
+    // Use a Proxy to intercept property access while preserving the original event
+    // This ensures all original event properties and methods work correctly
+    return new Proxy(e, {
+      get(target, prop) {
+        if (prop === 'deltaX') return normalizedDeltaX;
+        if (prop === 'deltaY') return normalizedDeltaY;
+        if (prop === 'deltaMode') return DOM_DELTA_PIXEL;
+
+        const value = Reflect.get(target, prop);
+        // Bind methods to the original event
+        if (typeof value === 'function') {
+          return value.bind(target);
+        }
+        return value;
+      },
+    });
   }
 
   /**
