@@ -131,14 +131,16 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests for rectangle operations (21 tests)
 
 ### Shape Utilities (`/src/shapes/utils`)
-- [ ] Implement bounds.ts
-  - [ ] calculateBounds for different shape types
-  - [ ] transformBounds for rotated shapes
-- [ ] Implement transforms.ts
-  - [ ] translateShape function
-  - [ ] rotateShape function
-  - [ ] resizeShape function
-  - [ ] Unit tests for transformations
+- [x] Implement bounds.ts
+  - [x] calculateBounds for different shape types
+  - [x] transformBounds for rotated shapes
+  - [x] calculateCombinedBounds, expandBounds, findShapeAtPoint, findShapesInRect
+- [x] Implement transforms.ts
+  - [x] translateShape function
+  - [x] rotateShape function
+  - [x] resizeShape function
+  - [x] setShapeSize, setShapePosition, cloneShape utilities
+  - [x] Unit tests for transformations (55 tests)
 
 ### Document Store (`/src/store/documentStore.ts`)
 - [ ] Define DocumentState interface
