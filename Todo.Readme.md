@@ -16,28 +16,28 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Set up project directory structure (/src with subdirectories)
 
 ### Math Utilities (`/src/math`)
-- [ ] Implement Vec2.ts
-  - [ ] Constructor and basic properties (x, y)
-  - [ ] Static methods: add, subtract, multiply, divide, dot, cross
-  - [ ] Instance methods: length, normalize, rotate, lerp
-  - [ ] Unit tests for all vector operations
-- [ ] Implement Mat3.ts
-  - [ ] Constructor for 3x3 matrix (2D affine transforms)
-  - [ ] Static methods: identity, translation, rotation, scale
-  - [ ] Matrix multiplication
-  - [ ] transformPoint method for applying to Vec2
-  - [ ] Unit tests for matrix operations
-- [ ] Implement Box.ts
-  - [ ] Constructor (minX, minY, maxX, maxY)
-  - [ ] Static methods: fromPoints, fromCenter
-  - [ ] containsPoint, intersects, union, intersection methods
-  - [ ] Unit tests for AABB operations
-- [ ] Implement geometry.ts
-  - [ ] pointInRect function
-  - [ ] pointInCircle function
-  - [ ] lineIntersection function
-  - [ ] distanceToLine function
-  - [ ] Unit tests for geometry functions
+- [x] Implement Vec2.ts
+  - [x] Constructor and basic properties (x, y)
+  - [x] Static methods: add, subtract, multiply, divide, dot, cross
+  - [x] Instance methods: length, normalize, rotate, lerp
+  - [x] Unit tests for all vector operations (43 tests)
+- [x] Implement Mat3.ts
+  - [x] Constructor for 3x3 matrix (2D affine transforms)
+  - [x] Static methods: identity, translation, rotation, scale
+  - [x] Matrix multiplication
+  - [x] transformPoint method for applying to Vec2
+  - [x] Unit tests for matrix operations (44 tests)
+- [x] Implement Box.ts
+  - [x] Constructor (minX, minY, maxX, maxY)
+  - [x] Static methods: fromPoints, fromCenter
+  - [x] containsPoint, intersects, union, intersection methods
+  - [x] Unit tests for AABB operations (57 tests)
+- [x] Implement geometry.ts
+  - [x] pointInRect function
+  - [x] pointInCircle function
+  - [x] lineIntersection function
+  - [x] distanceToLine function
+  - [x] Unit tests for geometry functions (60 tests)
 
 ### Camera System (`/src/engine/Camera.ts`)
 - [ ] Define CameraState interface (x, y, zoom)
