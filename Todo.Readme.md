@@ -40,18 +40,18 @@ This document tracks the implementation tasks for building the Whiteboard Founda
   - [x] Unit tests for geometry functions (60 tests)
 
 ### Camera System (`/src/engine/Camera.ts`)
-- [ ] Define CameraState interface (x, y, zoom)
-- [ ] Implement Camera class constructor
-- [ ] Implement screenToWorld transform
-- [ ] Implement worldToScreen transform
-- [ ] Implement getVisibleBounds method
-- [ ] Implement pan method
-- [ ] Implement zoomAt method (zoom centered on point)
-- [ ] Implement setViewport method
-- [ ] Implement getTransformMatrix for renderer
-- [ ] Add zoom constraints (clamp to [0.1, 10])
-- [ ] Add smooth zoom interpolation
-- [ ] Unit tests for coordinate transforms
+- [x] Define CameraState interface (x, y, zoom)
+- [x] Implement Camera class constructor
+- [x] Implement screenToWorld transform
+- [x] Implement worldToScreen transform
+- [x] Implement getVisibleBounds method
+- [x] Implement pan method
+- [x] Implement zoomAt method (zoom centered on point)
+- [x] Implement setViewport method
+- [x] Implement getTransformMatrix for renderer
+- [x] Add zoom constraints (clamp to [0.1, 10])
+- [x] Add smooth zoom interpolation
+- [x] Unit tests for coordinate transforms (53 tests)
 
 ### Input Handler (`/src/engine/InputHandler.ts`)
 - [ ] Define NormalizedPointerEvent interface
