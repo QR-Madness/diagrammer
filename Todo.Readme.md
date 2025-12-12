@@ -122,13 +122,13 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Add error handling for unknown shape types
 
 ### Rectangle Shape Implementation (`/src/shapes/Rectangle.ts`)
-- [ ] Implement render handler
-- [ ] Implement hitTest handler (point in rotated rect)
-- [ ] Implement getBounds handler
-- [ ] Implement getHandles handler (8 resize handles)
-- [ ] Implement create factory function
-- [ ] Register rectangle handler with ShapeRegistry
-- [ ] Unit tests for rectangle operations
+- [x] Implement render handler
+- [x] Implement hitTest handler (point in rotated rect)
+- [x] Implement getBounds handler
+- [x] Implement getHandles handler (8 resize handles)
+- [x] Implement create factory function
+- [x] Register rectangle handler with ShapeRegistry
+- [x] Unit tests for rectangle operations (21 tests)
 
 ### Shape Utilities (`/src/shapes/utils`)
 - [ ] Implement bounds.ts
