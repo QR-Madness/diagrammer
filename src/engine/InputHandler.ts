@@ -1,0 +1,455 @@
+import { Vec2 } from '../math/Vec2';
+import { Camera } from './Camera';
+
+/**
+ * Modifier keys state during an input event.
+ */
+export interface Modifiers {
+  shift: boolean;
+  ctrl: boolean;
+  alt: boolean;
+  meta: boolean;
+}
+
+/**
+ * Mouse/pointer button type.
+ */
+export type PointerButton = 'left' | 'middle' | 'right' | 'none';
+
+/**
+ * Normalized pointer event type.
+ */
+export type PointerEventType = 'down' | 'move' | 'up';
+
+/**
+ * Normalized pointer event that unifies mouse, touch, and pen input.
+ * All coordinates are provided in both screen and world space.
+ */
+export interface NormalizedPointerEvent {
+  /** Event type */
+  type: PointerEventType;
+  /** Point in screen space (canvas pixels from top-left) */
+  screenPoint: Vec2;
+  /** Point in world space (converted via camera) */
+  worldPoint: Vec2;
+  /** Which button triggered the event */
+  button: PointerButton;
+  /** Modifier keys state */
+  modifiers: Modifiers;
+  /** Pen pressure (0-1), defaults to 0.5 for mouse */
+  pressure: number;
+  /** Pointer ID for multi-touch support */
+  pointerId: number;
+  /** Whether this is the primary pointer */
+  isPrimary: boolean;
+  /** Event timestamp in milliseconds */
+  timestamp: number;
+  /** The original DOM event */
+  originalEvent: PointerEvent;
+}
+
+/**
+ * Callback type for pointer events.
+ */
+export type PointerEventCallback = (event: NormalizedPointerEvent) => void;
+
+/**
+ * Callback type for keyboard events.
+ */
+export type KeyEventCallback = (event: KeyboardEvent) => void;
+
+/**
+ * Callback type for wheel events.
+ */
+export type WheelEventCallback = (event: WheelEvent, worldPoint: Vec2) => void;
+
+/**
+ * Firefox wheel delta mode constants.
+ * Firefox reports wheel delta in lines (DOM_DELTA_LINE) or pages (DOM_DELTA_PAGE)
+ * instead of pixels (DOM_DELTA_PIXEL).
+ */
+const DOM_DELTA_PIXEL = 0;
+const DOM_DELTA_LINE = 1;
+const DOM_DELTA_PAGE = 2;
+
+/** Approximate pixels per line for Firefox line-based wheel events */
+const PIXELS_PER_LINE = 20;
+
+/** Approximate pixels per page for Firefox page-based wheel events */
+const PIXELS_PER_PAGE = 800;
+
+/**
+ * InputHandler normalizes all input events (pointer, keyboard, wheel) into
+ * a consistent format for the engine to consume.
+ *
+ * Features:
+ * - Unifies mouse, touch, and pen events via PointerEvent API
+ * - Converts screen coordinates to world coordinates via Camera
+ * - Captures pointer on down, releases on up
+ * - Normalizes wheel delta across browsers (Firefox uses different units)
+ * - Prevents default on wheel to stop page scroll
+ * - Handles right-click context menu
+ *
+ * Usage:
+ * ```typescript
+ * const handler = new InputHandler(
+ *   canvas,
+ *   camera,
+ *   (event) => toolManager.handlePointerEvent(event),
+ *   (event) => toolManager.handleKeyEvent(event),
+ *   (event, worldPoint) => camera.zoomAt(worldPoint, ...)
+ * );
+ *
+ * // On component unmount
+ * handler.destroy();
+ * ```
+ */
+export class InputHandler {
+  private canvas: HTMLCanvasElement;
+  private camera: Camera;
+  private onPointerEvent: PointerEventCallback;
+  private onKeyEvent: KeyEventCallback;
+  private onWheelEvent: WheelEventCallback;
+
+  // Bound event handlers (for removal on destroy)
+  private boundPointerDown: (e: PointerEvent) => void;
+  private boundPointerMove: (e: PointerEvent) => void;
+  private boundPointerUp: (e: PointerEvent) => void;
+  private boundPointerCancel: (e: PointerEvent) => void;
+  private boundWheel: (e: WheelEvent) => void;
+  private boundKeyDown: (e: KeyboardEvent) => void;
+  private boundKeyUp: (e: KeyboardEvent) => void;
+  private boundContextMenu: (e: MouseEvent) => void;
+
+  // Track captured pointers
+  private capturedPointers: Set<number> = new Set();
+
+  // Track if destroyed
+  private destroyed = false;
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    camera: Camera,
+    onPointerEvent: PointerEventCallback,
+    onKeyEvent: KeyEventCallback,
+    onWheelEvent: WheelEventCallback
+  ) {
+    this.canvas = canvas;
+    this.camera = camera;
+    this.onPointerEvent = onPointerEvent;
+    this.onKeyEvent = onKeyEvent;
+    this.onWheelEvent = onWheelEvent;
+
+    // Bind event handlers
+    this.boundPointerDown = this.handlePointerDown.bind(this);
+    this.boundPointerMove = this.handlePointerMove.bind(this);
+    this.boundPointerUp = this.handlePointerUp.bind(this);
+    this.boundPointerCancel = this.handlePointerCancel.bind(this);
+    this.boundWheel = this.handleWheel.bind(this);
+    this.boundKeyDown = this.handleKeyDown.bind(this);
+    this.boundKeyUp = this.handleKeyUp.bind(this);
+    this.boundContextMenu = this.handleContextMenu.bind(this);
+
+    // Attach event listeners
+    this.attachListeners();
+  }
+
+  /**
+   * Clean up all event listeners.
+   * Call this when the component unmounts.
+   */
+  destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+
+    // Release any captured pointers
+    for (const pointerId of this.capturedPointers) {
+      try {
+        this.canvas.releasePointerCapture(pointerId);
+      } catch {
+        // Pointer may already be released
+      }
+    }
+    this.capturedPointers.clear();
+
+    // Remove event listeners
+    this.detachListeners();
+  }
+
+  /**
+   * Update the camera reference.
+   * Useful if the camera instance changes.
+   */
+  setCamera(camera: Camera): void {
+    this.camera = camera;
+  }
+
+  /**
+   * Attach all event listeners.
+   */
+  private attachListeners(): void {
+    // Pointer events on canvas
+    this.canvas.addEventListener('pointerdown', this.boundPointerDown);
+    this.canvas.addEventListener('pointermove', this.boundPointerMove);
+    this.canvas.addEventListener('pointerup', this.boundPointerUp);
+    this.canvas.addEventListener('pointercancel', this.boundPointerCancel);
+
+    // Wheel events on canvas
+    this.canvas.addEventListener('wheel', this.boundWheel, { passive: false });
+
+    // Context menu on canvas
+    this.canvas.addEventListener('contextmenu', this.boundContextMenu);
+
+    // Keyboard events on canvas (requires tabIndex for focus)
+    this.canvas.addEventListener('keydown', this.boundKeyDown);
+    this.canvas.addEventListener('keyup', this.boundKeyUp);
+  }
+
+  /**
+   * Detach all event listeners.
+   */
+  private detachListeners(): void {
+    this.canvas.removeEventListener('pointerdown', this.boundPointerDown);
+    this.canvas.removeEventListener('pointermove', this.boundPointerMove);
+    this.canvas.removeEventListener('pointerup', this.boundPointerUp);
+    this.canvas.removeEventListener('pointercancel', this.boundPointerCancel);
+    this.canvas.removeEventListener('wheel', this.boundWheel);
+    this.canvas.removeEventListener('contextmenu', this.boundContextMenu);
+    this.canvas.removeEventListener('keydown', this.boundKeyDown);
+    this.canvas.removeEventListener('keyup', this.boundKeyUp);
+  }
+
+  /**
+   * Handle pointer down event.
+   */
+  private handlePointerDown(e: PointerEvent): void {
+    if (this.destroyed) return;
+
+    // Capture pointer for drag tracking
+    try {
+      this.canvas.setPointerCapture(e.pointerId);
+      this.capturedPointers.add(e.pointerId);
+    } catch {
+      // Some browsers may not support pointer capture
+    }
+
+    // Focus canvas for keyboard events
+    this.canvas.focus();
+
+    const normalized = this.normalizePointerEvent(e, 'down');
+    this.onPointerEvent(normalized);
+  }
+
+  /**
+   * Handle pointer move event.
+   */
+  private handlePointerMove(e: PointerEvent): void {
+    if (this.destroyed) return;
+
+    const normalized = this.normalizePointerEvent(e, 'move');
+    this.onPointerEvent(normalized);
+  }
+
+  /**
+   * Handle pointer up event.
+   */
+  private handlePointerUp(e: PointerEvent): void {
+    if (this.destroyed) return;
+
+    // Release pointer capture
+    this.releasePointer(e.pointerId);
+
+    const normalized = this.normalizePointerEvent(e, 'up');
+    this.onPointerEvent(normalized);
+  }
+
+  /**
+   * Handle pointer cancel event (e.g., touch interrupted by system).
+   */
+  private handlePointerCancel(e: PointerEvent): void {
+    if (this.destroyed) return;
+
+    // Release pointer capture
+    this.releasePointer(e.pointerId);
+
+    // Treat cancel as up
+    const normalized = this.normalizePointerEvent(e, 'up');
+    this.onPointerEvent(normalized);
+  }
+
+  /**
+   * Release a captured pointer.
+   */
+  private releasePointer(pointerId: number): void {
+    if (this.capturedPointers.has(pointerId)) {
+      try {
+        this.canvas.releasePointerCapture(pointerId);
+      } catch {
+        // Pointer may already be released
+      }
+      this.capturedPointers.delete(pointerId);
+    }
+  }
+
+  /**
+   * Handle wheel event for zoom.
+   */
+  private handleWheel(e: WheelEvent): void {
+    if (this.destroyed) return;
+
+    // Prevent page scroll
+    e.preventDefault();
+
+    const screenPoint = this.getScreenPoint(e);
+    const worldPoint = this.camera.screenToWorld(screenPoint);
+
+    // Normalize the wheel event for cross-browser consistency
+    const normalizedEvent = this.normalizeWheelEvent(e);
+
+    this.onWheelEvent(normalizedEvent, worldPoint);
+  }
+
+  /**
+   * Normalize wheel event delta across browsers.
+   * Firefox reports delta in lines or pages, not pixels.
+   */
+  private normalizeWheelEvent(e: WheelEvent): WheelEvent {
+    // If already in pixels, return as-is
+    if (e.deltaMode === DOM_DELTA_PIXEL) {
+      return e;
+    }
+
+    // Calculate pixel delta
+    let deltaX = e.deltaX;
+    let deltaY = e.deltaY;
+
+    if (e.deltaMode === DOM_DELTA_LINE) {
+      deltaX *= PIXELS_PER_LINE;
+      deltaY *= PIXELS_PER_LINE;
+    } else if (e.deltaMode === DOM_DELTA_PAGE) {
+      deltaX *= PIXELS_PER_PAGE;
+      deltaY *= PIXELS_PER_PAGE;
+    }
+
+    // Create a new WheelEvent with normalized values
+    // We can't modify the original event, so we create a proxy-like object
+    return {
+      ...e,
+      deltaX,
+      deltaY,
+      deltaMode: DOM_DELTA_PIXEL,
+      // Preserve event methods
+      preventDefault: () => e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+      stopImmediatePropagation: () => e.stopImmediatePropagation(),
+    } as WheelEvent;
+  }
+
+  /**
+   * Handle key down event.
+   */
+  private handleKeyDown(e: KeyboardEvent): void {
+    if (this.destroyed) return;
+    this.onKeyEvent(e);
+  }
+
+  /**
+   * Handle key up event.
+   */
+  private handleKeyUp(e: KeyboardEvent): void {
+    if (this.destroyed) return;
+    this.onKeyEvent(e);
+  }
+
+  /**
+   * Handle context menu (right-click).
+   * Prevent default to allow custom right-click behavior.
+   */
+  private handleContextMenu(e: MouseEvent): void {
+    if (this.destroyed) return;
+    e.preventDefault();
+  }
+
+  /**
+   * Normalize a pointer event into our standard format.
+   */
+  private normalizePointerEvent(
+    e: PointerEvent,
+    type: PointerEventType
+  ): NormalizedPointerEvent {
+    const screenPoint = this.getScreenPoint(e);
+    const worldPoint = this.camera.screenToWorld(screenPoint);
+
+    return {
+      type,
+      screenPoint,
+      worldPoint,
+      button: this.getButton(e),
+      modifiers: this.getModifiers(e),
+      pressure: this.getPressure(e),
+      pointerId: e.pointerId,
+      isPrimary: e.isPrimary,
+      timestamp: e.timeStamp,
+      originalEvent: e,
+    };
+  }
+
+  /**
+   * Get screen point from mouse/pointer event.
+   * Uses canvas bounding rect to get coordinates relative to canvas.
+   */
+  private getScreenPoint(e: MouseEvent | PointerEvent | WheelEvent): Vec2 {
+    const rect = this.canvas.getBoundingClientRect();
+    return new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+  }
+
+  /**
+   * Get button type from pointer event.
+   */
+  private getButton(e: PointerEvent): PointerButton {
+    // For move events, check buttons bitmask
+    if (e.type === 'pointermove') {
+      if (e.buttons & 1) return 'left';
+      if (e.buttons & 4) return 'middle';
+      if (e.buttons & 2) return 'right';
+      return 'none';
+    }
+
+    // For down/up events, check button property
+    switch (e.button) {
+      case 0:
+        return 'left';
+      case 1:
+        return 'middle';
+      case 2:
+        return 'right';
+      default:
+        return 'none';
+    }
+  }
+
+  /**
+   * Get modifier keys state from event.
+   */
+  private getModifiers(e: PointerEvent | KeyboardEvent): Modifiers {
+    return {
+      shift: e.shiftKey,
+      ctrl: e.ctrlKey,
+      alt: e.altKey,
+      meta: e.metaKey,
+    };
+  }
+
+  /**
+   * Get pressure from pointer event.
+   * Returns 0.5 for mouse events (no pressure data).
+   */
+  private getPressure(e: PointerEvent): number {
+    // Pressure is 0-1 for pen/touch, but 0 for mouse
+    // Use 0.5 as default for mouse to indicate "pressed"
+    if (e.pressure === 0 && e.pointerType === 'mouse') {
+      return e.buttons > 0 ? 0.5 : 0;
+    }
+    return e.pressure;
+  }
+}

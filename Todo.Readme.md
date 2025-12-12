@@ -54,19 +54,20 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests for coordinate transforms (53 tests)
 
 ### Input Handler (`/src/engine/InputHandler.ts`)
-- [ ] Define NormalizedPointerEvent interface
-- [ ] Implement InputHandler class constructor
-- [ ] Normalize pointer down events (mouse, touch, pen)
-- [ ] Normalize pointer move events
-- [ ] Normalize pointer up events
-- [ ] Implement pointer capture on down
-- [ ] Implement pointer release on up
-- [ ] Normalize wheel events (handle Firefox delta units)
-- [ ] Add keyboard event handling
-- [ ] Prevent default on wheel to stop page scroll
-- [ ] Handle right-click context menu
-- [ ] Implement destroy method for cleanup
-- [ ] Convert screen coordinates to world coordinates
+- [x] Define NormalizedPointerEvent interface
+- [x] Implement InputHandler class constructor
+- [x] Normalize pointer down events (mouse, touch, pen)
+- [x] Normalize pointer move events
+- [x] Normalize pointer up events
+- [x] Implement pointer capture on down
+- [x] Implement pointer release on up
+- [x] Normalize wheel events (handle Firefox delta units)
+- [x] Add keyboard event handling
+- [x] Prevent default on wheel to stop page scroll
+- [x] Handle right-click context menu
+- [x] Implement destroy method for cleanup
+- [x] Convert screen coordinates to world coordinates
+- [x] Unit tests for InputHandler (39 tests)
 
 ### Basic Renderer (`/src/engine/Renderer.ts`)
 - [ ] Implement Renderer class constructor
