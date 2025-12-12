@@ -101,11 +101,8 @@ export function CanvasContainer({
       // The camera works in logical coordinates
       camera.setViewport(width, height);
 
-      // Scale context to account for DPI
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
-      }
+      // Update renderer DPI (renderer handles the transform internally)
+      renderer.setDpi(dpi);
 
       // Request re-render
       renderer.requestRender();

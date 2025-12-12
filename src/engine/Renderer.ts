@@ -92,6 +92,9 @@ export class Renderer {
   private needsRender: boolean = false;
   private destroyed: boolean = false;
 
+  // DPI scaling factor
+  private dpi: number = 1;
+
   // Tool overlay callback
   private toolOverlayCallback: ToolOverlayCallback | null = null;
 
@@ -195,6 +198,14 @@ export class Renderer {
   }
 
   /**
+   * Set the DPI scaling factor for high-DPI displays.
+   * This should match window.devicePixelRatio.
+   */
+  setDpi(dpi: number): void {
+    this.dpi = dpi;
+  }
+
+  /**
    * Check if a render is pending.
    */
   get isPending(): boolean {
@@ -236,13 +247,32 @@ export class Renderer {
     // Update performance metrics
     this.updateMetrics(timestamp);
 
-    const { ctx, canvas, options } = this;
-    const { width, height } = canvas;
+    const { ctx, canvas, camera, options, dpi } = this;
+
+    // Use CSS dimensions from camera viewport
+    // Fall back to canvas buffer dimensions / DPI if viewport not set yet
+    let width = camera.screenWidth;
+    let height = camera.screenHeight;
+
+    if (width === 0 || height === 0) {
+      // Fallback to canvas dimensions (buffer pixels / DPI = CSS pixels)
+      width = canvas.width / dpi;
+      height = canvas.height / dpi;
+
+      // Update camera viewport to match
+      if (width > 0 && height > 0) {
+        camera.setViewport(width, height);
+      }
+    }
 
     // Skip rendering if canvas has no size
     if (width === 0 || height === 0) return;
 
-    // 1. Clear canvas with background color
+    // Reset transform and apply DPI scaling at start of each frame
+    // This ensures all drawing is properly scaled for high-DPI displays
+    ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
+
+    // 1. Clear canvas with background color (in CSS pixels)
     ctx.fillStyle = options.backgroundColor;
     ctx.fillRect(0, 0, width, height);
 
@@ -258,7 +288,7 @@ export class Renderer {
     // 4. (Future) Draw shapes in z-order - will be implemented in Phase 2
     // This is where shape rendering will be added
 
-    // 5. Restore transform for screen-space drawing
+    // 5. Restore transform for screen-space drawing (back to DPI-scaled screen space)
     ctx.restore();
 
     // 6. (Future) Draw selection overlay - will be implemented in Phase 2
@@ -278,11 +308,13 @@ export class Renderer {
 
   /**
    * Apply the camera transformation to the canvas context.
+   * Uses applyToContext (ctx.transform) to multiply with existing DPI transform,
+   * rather than setOnContext (ctx.setTransform) which would replace it.
    */
   private applyCameraTransform(): void {
     const matrix = this.camera.getTransformMatrix();
-    // Mat3 provides setOnContext method to apply transform directly
-    matrix.setOnContext(this.ctx);
+    // Use applyToContext to multiply with existing DPI transform
+    matrix.applyToContext(this.ctx);
   }
 
   /**

@@ -18,6 +18,7 @@ function createMockCanvas(width = 800, height = 600): HTMLCanvasElement {
     save: vi.fn(),
     restore: vi.fn(),
     setTransform: vi.fn(),
+    transform: vi.fn(),
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
@@ -55,6 +56,7 @@ function getMockContext(canvas: HTMLCanvasElement) {
     save: ReturnType<typeof vi.fn>;
     restore: ReturnType<typeof vi.fn>;
     setTransform: ReturnType<typeof vi.fn>;
+    transform: ReturnType<typeof vi.fn>;
     beginPath: ReturnType<typeof vi.fn>;
     moveTo: ReturnType<typeof vi.fn>;
     lineTo: ReturnType<typeof vi.fn>;
@@ -552,9 +554,9 @@ describe('Renderer', () => {
 
       renderer.renderNow();
 
-      // setTransform should be called with scaled values
-      expect(ctx.setTransform).toHaveBeenCalled();
-      const call = ctx.setTransform.mock.calls[0] as number[] | undefined;
+      // transform (not setTransform) is used for camera to multiply with DPI
+      expect(ctx.transform).toHaveBeenCalled();
+      const call = ctx.transform.mock.calls[0] as number[] | undefined;
       expect(call).toBeDefined();
       // a (horizontal scale) should be 2
       expect(call![0]).toBe(2);
@@ -571,9 +573,9 @@ describe('Renderer', () => {
 
       renderer.renderNow();
 
-      // setTransform should be called with translated values
-      expect(ctx.setTransform).toHaveBeenCalled();
-      const call = ctx.setTransform.mock.calls[0] as number[] | undefined;
+      // transform (not setTransform) is used for camera to multiply with DPI
+      expect(ctx.transform).toHaveBeenCalled();
+      const call = ctx.transform.mock.calls[0] as number[] | undefined;
       expect(call).toBeDefined();
       // e (horizontal translation) = centerX + (-camX) * zoom = 400 - 100 = 300
       expect(call![4]).toBe(300);
