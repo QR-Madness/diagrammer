@@ -115,11 +115,11 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Add default shape style constants
 
 ### Shape Registry (`/src/shapes/ShapeRegistry.ts`)
-- [ ] Define ShapeHandler interface
-- [ ] Implement ShapeRegistry class
-- [ ] Implement register method
-- [ ] Implement getHandler method
-- [ ] Add error handling for unknown shape types
+- [x] Define ShapeHandler interface
+- [x] Implement ShapeRegistry class
+- [x] Implement register method
+- [x] Implement getHandler method
+- [x] Add error handling for unknown shape types
 
 ### Rectangle Shape Implementation (`/src/shapes/Rectangle.ts`)
 - [ ] Implement render handler
