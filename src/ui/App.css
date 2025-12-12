@@ -32,9 +32,5 @@
 .canvas-area {
   flex: 1;
   background-color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  font-size: 1.125rem;
+  position: relative;
 }

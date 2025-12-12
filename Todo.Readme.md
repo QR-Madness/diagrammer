@@ -81,21 +81,21 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests for Renderer (33 tests)
 
 ### React Integration (`/src/ui/CanvasContainer.tsx`)
-- [ ] Create CanvasContainer component
-- [ ] Set up canvas ref
-- [ ] Implement resize observer for canvas
-- [ ] Handle DPI scaling (devicePixelRatio)
-- [ ] Initialize engine on mount
-- [ ] Clean up engine on unmount
-- [ ] Handle canvas focus for keyboard events
-- [ ] Forward resize events to engine
+- [x] Create CanvasContainer component
+- [x] Set up canvas ref
+- [x] Implement resize observer for canvas
+- [x] Handle DPI scaling (devicePixelRatio)
+- [x] Initialize engine on mount
+- [x] Clean up engine on unmount
+- [x] Handle canvas focus for keyboard events
+- [x] Forward resize events to engine
 
 ### App Structure (`/src/ui/App.tsx`)
-- [ ] Create basic App component
-- [ ] Set up layout structure (toolbar, canvas, panels)
-- [ ] Add CanvasContainer to layout
-- [ ] Set up basic CSS/styling
-- [ ] Create main.tsx entry point
+- [x] Create basic App component
+- [x] Set up layout structure (toolbar, canvas, panels)
+- [x] Add CanvasContainer to layout
+- [x] Set up basic CSS/styling
+- [x] Create main.tsx entry point
 
 ## Phase 2: Shape System
 
