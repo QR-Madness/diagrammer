@@ -143,20 +143,21 @@ This document tracks the implementation tasks for building the Whiteboard Founda
   - [x] Unit tests for transformations (55 tests)
 
 ### Document Store (`/src/store/documentStore.ts`)
-- [ ] Define DocumentState interface
-- [ ] Define DocumentActions interface
-- [ ] Create Zustand store with Immer middleware
-- [ ] Implement addShape action
-- [ ] Implement updateShape action
-- [ ] Implement deleteShape action
-- [ ] Implement deleteShapes batch action
-- [ ] Implement updateShapes batch action
-- [ ] Implement bringToFront z-order action
-- [ ] Implement sendToBack z-order action
-- [ ] Implement bringForward z-order action
-- [ ] Implement sendBackward z-order action
-- [ ] Implement getSnapshot for serialization
-- [ ] Implement loadSnapshot for deserialization
+- [x] Define DocumentState interface
+- [x] Define DocumentActions interface
+- [x] Create Zustand store with Immer middleware
+- [x] Implement addShape action
+- [x] Implement updateShape action
+- [x] Implement deleteShape action
+- [x] Implement deleteShapes batch action
+- [x] Implement updateShapes batch action
+- [x] Implement bringToFront z-order action
+- [x] Implement sendToBack z-order action
+- [x] Implement bringForward z-order action
+- [x] Implement sendBackward z-order action
+- [x] Implement getSnapshot for serialization
+- [x] Implement loadSnapshot for deserialization
+- [x] Unit tests (37 tests)
 
 ### Session Store (`/src/store/sessionStore.ts`)
 - [ ] Define SessionState interface
