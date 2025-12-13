@@ -184,12 +184,13 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests (24 tests)
 
 ### Hit Tester (`/src/engine/HitTester.ts`)
-- [ ] Implement HitTester class
-- [ ] Implement hitTestPoint (respects z-order)
-- [ ] Implement hitTestRect for marquee selection
-- [ ] Implement hitTestHandles for resize handles
-- [ ] Use SpatialIndex for candidate filtering
-- [ ] Use ShapeRegistry for precise hit tests
+- [x] Implement HitTester class
+- [x] Implement hitTestPoint (respects z-order)
+- [x] Implement hitTestRect for marquee selection
+- [x] Implement hitTestHandles for resize handles
+- [x] Use SpatialIndex for candidate filtering
+- [x] Use ShapeRegistry for precise hit tests
+- [x] Unit tests (24 tests)
 
 ### Renderer Integration
 - [ ] Update Renderer to render shapes from DocumentStore
