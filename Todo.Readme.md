@@ -160,17 +160,18 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests (37 tests)
 
 ### Session Store (`/src/store/sessionStore.ts`)
-- [ ] Define SessionState interface
-- [ ] Define SessionActions interface
-- [ ] Create Zustand store
-- [ ] Implement select action
-- [ ] Implement addToSelection action
-- [ ] Implement removeFromSelection action
-- [ ] Implement clearSelection action
-- [ ] Implement selectAll action
-- [ ] Implement setCamera action
-- [ ] Implement setActiveTool action
-- [ ] Implement setCursor action
+- [x] Define SessionState interface
+- [x] Define SessionActions interface
+- [x] Create Zustand store
+- [x] Implement select action
+- [x] Implement addToSelection action
+- [x] Implement removeFromSelection action
+- [x] Implement clearSelection action
+- [x] Implement selectAll action
+- [x] Implement setCamera action
+- [x] Implement setActiveTool action
+- [x] Implement setCursor action
+- [x] Unit tests (37 tests)
 
 ### Spatial Index (`/src/engine/SpatialIndex.ts`)
 - [ ] Install and configure RBush
