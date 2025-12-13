@@ -174,14 +174,14 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests (37 tests)
 
 ### Spatial Index (`/src/engine/SpatialIndex.ts`)
-- [ ] Install and configure RBush
-- [ ] Implement SpatialIndex class wrapper
-- [ ] Implement rebuild method
-- [ ] Implement update method
-- [ ] Implement remove method
-- [ ] Implement queryPoint method
-- [ ] Implement queryRect method
-- [ ] Integrate with DocumentStore changes
+- [x] Install and configure RBush
+- [x] Implement SpatialIndex class wrapper
+- [x] Implement rebuild method
+- [x] Implement update method
+- [x] Implement remove method
+- [x] Implement queryPoint method
+- [x] Implement queryRect method
+- [x] Unit tests (24 tests)
 
 ### Hit Tester (`/src/engine/HitTester.ts`)
 - [ ] Implement HitTester class
