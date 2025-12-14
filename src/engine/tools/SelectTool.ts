@@ -2,8 +2,9 @@ import { BaseTool, ToolContext } from './Tool';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
-import { ToolType } from '../../store/sessionStore';
+import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine } from '../../shapes/Shape';
 
 /**
  * State machine states for the SelectTool.
@@ -12,7 +13,9 @@ type SelectState =
   | 'idle'
   | 'pending' // Pointer down, waiting to see if drag or click
   | 'translating' // Dragging selected shapes
-  | 'marquee'; // Dragging a marquee selection box
+  | 'marquee' // Dragging a marquee selection box
+  | 'resizing' // Dragging a resize handle
+  | 'rotating'; // Dragging the rotation handle
 
 /**
  * Threshold in pixels before a click becomes a drag.
@@ -54,6 +57,19 @@ export class SelectTool extends BaseTool {
   private marqueeStart: Vec2 | null = null;
   private marqueeEnd: Vec2 | null = null;
 
+  // For resizing shapes
+  private activeHandle: Handle | null = null;
+  private resizeShapeId: string | null = null;
+  private resizeOriginalShape: Shape | null = null;
+  private resizeAnchorPoint: Vec2 | null = null;
+  private isShiftHeld = false;
+
+  // For rotating shapes
+  private rotateShapeId: string | null = null;
+  private rotateOriginalRotation: number = 0;
+  private rotateStartAngle: number = 0;
+  private rotateShapeCenter: Vec2 | null = null;
+
   // Middle-click pan support
   private panHandler = new MiddleClickPanHandler();
 
@@ -77,6 +93,52 @@ export class SelectTool extends BaseTool {
 
     this.pointerDownPoint = event.screenPoint;
     this.pointerDownWorldPoint = event.worldPoint;
+    this.isShiftHeld = event.modifiers.shift;
+
+    // First, check if we clicked on a resize handle of a selected shape
+    const selectedShapes = ctx.getSelectedShapes();
+    if (selectedShapes.length === 1) {
+      // Only show handles for single selection
+      const handleSize = 10 / ctx.camera.zoom; // Handle size in world units
+      const handleResult = ctx.hitTester.hitTestHandles(
+        event.worldPoint,
+        selectedShapes,
+        handleSize
+      );
+
+      if (handleResult.handle && handleResult.shape) {
+        if (handleResult.handle.type === 'rotation') {
+          // Clicked on rotation handle - start rotating
+          this.rotateShapeId = handleResult.shapeId;
+          this.rotateOriginalRotation = handleResult.shape.rotation;
+          this.rotateShapeCenter = new Vec2(handleResult.shape.x, handleResult.shape.y);
+
+          // Calculate starting angle from shape center to click point
+          const dx = event.worldPoint.x - handleResult.shape.x;
+          const dy = event.worldPoint.y - handleResult.shape.y;
+          this.rotateStartAngle = Math.atan2(dy, dx);
+
+          this.state = 'rotating';
+          ctx.setCursor('grabbing');
+          ctx.setIsInteracting(true);
+          ctx.pushHistory('Rotate shape');
+          ctx.requestRender();
+          return;
+        }
+
+        // Clicked on a resize handle - start resizing
+        this.activeHandle = handleResult.handle;
+        this.resizeShapeId = handleResult.shapeId;
+        this.resizeOriginalShape = { ...handleResult.shape };
+        this.resizeAnchorPoint = this.getAnchorPoint(handleResult.shape, handleResult.handle.type);
+        this.state = 'resizing';
+        ctx.setCursor(handleResult.handle.cursor as CursorStyle);
+        ctx.setIsInteracting(true);
+        ctx.pushHistory('Resize shape');
+        ctx.requestRender();
+        return;
+      }
+    }
 
     // Hit test to see what we clicked on
     const hitResult = ctx.hitTester.hitTestPoint(
@@ -117,6 +179,8 @@ export class SelectTool extends BaseTool {
       return;
     }
 
+    this.isShiftHeld = event.modifiers.shift;
+
     switch (this.state) {
       case 'idle':
         this.handleIdleMove(event, ctx);
@@ -132,6 +196,14 @@ export class SelectTool extends BaseTool {
 
       case 'marquee':
         this.handleMarqueeMove(event, ctx);
+        break;
+
+      case 'resizing':
+        this.handleResizingMove(event, ctx);
+        break;
+
+      case 'rotating':
+        this.handleRotatingMove(event, ctx);
         break;
     }
   }
@@ -157,6 +229,14 @@ export class SelectTool extends BaseTool {
       case 'marquee':
         this.finishMarquee(ctx);
         break;
+
+      case 'resizing':
+        this.finishResize(ctx);
+        break;
+
+      case 'rotating':
+        this.finishRotate(ctx);
+        break;
     }
 
     this.resetState();
@@ -166,10 +246,20 @@ export class SelectTool extends BaseTool {
   }
 
   onKeyDown(event: KeyboardEvent, ctx: ToolContext): boolean {
+    // Track Shift key for aspect ratio constraint during resize
+    if (event.key === 'Shift') {
+      this.isShiftHeld = true;
+      if (this.state === 'resizing') {
+        ctx.requestRender();
+      }
+      return false; // Let other handlers see this
+    }
+
     // Delete or Backspace to delete selected shapes
     if (event.key === 'Delete' || event.key === 'Backspace') {
       const selectedIds = ctx.getSelectedIds();
       if (selectedIds.length > 0) {
+        ctx.pushHistory('Delete shapes');
         ctx.deleteShapes(selectedIds);
         ctx.clearSelection();
         ctx.requestRender();
@@ -208,6 +298,16 @@ export class SelectTool extends BaseTool {
     return false;
   }
 
+  onKeyUp(event: KeyboardEvent, ctx: ToolContext): boolean {
+    if (event.key === 'Shift') {
+      this.isShiftHeld = false;
+      if (this.state === 'resizing') {
+        ctx.requestRender();
+      }
+    }
+    return false;
+  }
+
   renderOverlay(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
     // Draw marquee selection box
     if (this.state === 'marquee' && this.marqueeStart && this.marqueeEnd) {
@@ -242,7 +342,23 @@ export class SelectTool extends BaseTool {
   // State handlers
 
   private handleIdleMove(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    // Update hover state and cursor
+    // First check for handle hover on selected shapes
+    const selectedShapes = ctx.getSelectedShapes();
+    if (selectedShapes.length === 1) {
+      const handleSize = 10 / ctx.camera.zoom;
+      const handleResult = ctx.hitTester.hitTestHandles(
+        event.worldPoint,
+        selectedShapes,
+        handleSize
+      );
+
+      if (handleResult.handle) {
+        ctx.setCursor(handleResult.handle.cursor as CursorStyle);
+        return;
+      }
+    }
+
+    // Update hover state and cursor for shapes
     const hitResult = ctx.hitTester.hitTestPoint(
       event.worldPoint,
       ctx.getShapes(),
@@ -325,6 +441,9 @@ export class SelectTool extends BaseTool {
     this.state = 'translating';
     ctx.setCursor('move');
 
+    // Push history before moving shapes
+    ctx.pushHistory('Move shapes');
+
     // Store starting positions of all selected shapes
     this.dragStartPositions.clear();
     const shapes = ctx.getShapes();
@@ -394,6 +513,404 @@ export class SelectTool extends BaseTool {
     this.dragStartPositions.clear();
     this.marqueeStart = null;
     this.marqueeEnd = null;
+    this.activeHandle = null;
+    this.resizeShapeId = null;
+    this.resizeOriginalShape = null;
+    this.resizeAnchorPoint = null;
+    this.isShiftHeld = false;
+    this.rotateShapeId = null;
+    this.rotateOriginalRotation = 0;
+    this.rotateStartAngle = 0;
+    this.rotateShapeCenter = null;
     this.panHandler.reset();
+  }
+
+  /**
+   * Handle mouse move during rotation operation.
+   */
+  private handleRotatingMove(event: NormalizedPointerEvent, ctx: ToolContext): void {
+    if (!this.rotateShapeId || !this.rotateShapeCenter) {
+      return;
+    }
+
+    // Calculate current angle from shape center to mouse
+    const dx = event.worldPoint.x - this.rotateShapeCenter.x;
+    const dy = event.worldPoint.y - this.rotateShapeCenter.y;
+    const currentAngle = Math.atan2(dy, dx);
+
+    // Calculate rotation delta
+    let deltaAngle = currentAngle - this.rotateStartAngle;
+
+    // Snap to 15-degree increments if Shift is held
+    if (this.isShiftHeld) {
+      const snapAngle = Math.PI / 12; // 15 degrees
+      const newRotation = this.rotateOriginalRotation + deltaAngle;
+      const snappedRotation = Math.round(newRotation / snapAngle) * snapAngle;
+      deltaAngle = snappedRotation - this.rotateOriginalRotation;
+    }
+
+    const newRotation = this.rotateOriginalRotation + deltaAngle;
+
+    ctx.updateShape(this.rotateShapeId, { rotation: newRotation });
+    ctx.requestRender();
+  }
+
+  /**
+   * Finish rotation operation and update spatial index.
+   */
+  private finishRotate(ctx: ToolContext): void {
+    if (this.rotateShapeId) {
+      const shape = ctx.getShapes()[this.rotateShapeId];
+      if (shape) {
+        ctx.spatialIndex.update(shape);
+      }
+    }
+  }
+
+  /**
+   * Handle mouse move during resize operation.
+   */
+  private handleResizingMove(event: NormalizedPointerEvent, ctx: ToolContext): void {
+    if (!this.activeHandle || !this.resizeShapeId || !this.resizeOriginalShape || !this.resizeAnchorPoint) {
+      return;
+    }
+
+    const original = this.resizeOriginalShape;
+    const handleType = this.activeHandle.type;
+    const currentPoint = event.worldPoint;
+
+    // Calculate new shape properties based on handle type and original shape
+    const updates = this.calculateResize(
+      original,
+      handleType,
+      currentPoint,
+      this.resizeAnchorPoint,
+      this.isShiftHeld
+    );
+
+    if (updates) {
+      ctx.updateShape(this.resizeShapeId, updates);
+      ctx.requestRender();
+    }
+  }
+
+  /**
+   * Finish resize operation and update spatial index.
+   */
+  private finishResize(ctx: ToolContext): void {
+    if (this.resizeShapeId) {
+      const shape = ctx.getShapes()[this.resizeShapeId];
+      if (shape) {
+        ctx.spatialIndex.update(shape);
+      }
+    }
+  }
+
+  /**
+   * Get the anchor point (opposite corner/edge) for a resize handle.
+   */
+  private getAnchorPoint(shape: Shape, handleType: HandleType): Vec2 {
+    if (isRectangle(shape)) {
+      const halfWidth = shape.width / 2;
+      const halfHeight = shape.height / 2;
+
+      // Get the opposite corner/edge point
+      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+        'top-left': { x: halfWidth, y: halfHeight },
+        'top': { x: 0, y: halfHeight },
+        'top-right': { x: -halfWidth, y: halfHeight },
+        'right': { x: -halfWidth, y: 0 },
+        'bottom-right': { x: -halfWidth, y: -halfHeight },
+        'bottom': { x: 0, y: -halfHeight },
+        'bottom-left': { x: halfWidth, y: -halfHeight },
+        'left': { x: halfWidth, y: 0 },
+        'rotation': { x: 0, y: 0 },
+      };
+
+      const offset = anchorOffsets[handleType];
+      // Apply rotation to the offset
+      const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
+      return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
+    }
+
+    if (isEllipse(shape)) {
+      // For ellipse, use the opposite point on the ellipse
+      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+        'top-left': { x: shape.radiusX, y: shape.radiusY },
+        'top': { x: 0, y: shape.radiusY },
+        'top-right': { x: -shape.radiusX, y: shape.radiusY },
+        'right': { x: -shape.radiusX, y: 0 },
+        'bottom-right': { x: -shape.radiusX, y: -shape.radiusY },
+        'bottom': { x: 0, y: -shape.radiusY },
+        'bottom-left': { x: shape.radiusX, y: -shape.radiusY },
+        'left': { x: shape.radiusX, y: 0 },
+        'rotation': { x: 0, y: 0 },
+      };
+
+      const offset = anchorOffsets[handleType];
+      const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
+      return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
+    }
+
+    if (isLine(shape)) {
+      // For lines, anchor is the other endpoint
+      if (handleType === 'top-left' || handleType === 'left' || handleType === 'bottom-left') {
+        return new Vec2(shape.x2, shape.y2);
+      } else {
+        return new Vec2(shape.x, shape.y);
+      }
+    }
+
+    // Default fallback
+    return new Vec2(shape.x, shape.y);
+  }
+
+  /**
+   * Calculate new shape properties based on resize operation.
+   */
+  private calculateResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2,
+    anchor: Vec2,
+    maintainAspectRatio: boolean
+  ): Partial<Shape> | null {
+    if (isRectangle(original)) {
+      return this.calculateRectangleResize(original, handleType, currentPoint, anchor, maintainAspectRatio);
+    }
+
+    if (isEllipse(original)) {
+      return this.calculateEllipseResize(original, handleType, currentPoint, anchor, maintainAspectRatio);
+    }
+
+    if (isLine(original)) {
+      return this.calculateLineResize(original, handleType, currentPoint);
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate rectangle resize.
+   */
+  private calculateRectangleResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2,
+    anchor: Vec2,
+    maintainAspectRatio: boolean
+  ): Partial<Shape> {
+    if (!isRectangle(original)) return {};
+
+    // Transform current point to local space (un-rotate around original center)
+    const toLocal = (p: Vec2): Vec2 => {
+      const translated = Vec2.subtract(p, new Vec2(original.x, original.y));
+      return translated.rotate(-original.rotation);
+    };
+
+    const localAnchor = toLocal(anchor);
+    const localCurrent = toLocal(currentPoint);
+
+    // Calculate new dimensions based on handle type
+    let newWidth = original.width;
+    let newHeight = original.height;
+    let newCenterX = 0;
+    let newCenterY = 0;
+
+    const isCorner = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(handleType);
+    const isHorizontal = ['left', 'right'].includes(handleType);
+    const isVertical = ['top', 'bottom'].includes(handleType);
+
+    if (isCorner) {
+      // Corner resize: both dimensions change
+      newWidth = Math.abs(localCurrent.x - localAnchor.x);
+      newHeight = Math.abs(localCurrent.y - localAnchor.y);
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.width > 0 && original.height > 0) {
+        const aspectRatio = original.width / original.height;
+        const currentRatio = newWidth / newHeight;
+
+        if (currentRatio > aspectRatio) {
+          newWidth = newHeight * aspectRatio;
+        } else {
+          newHeight = newWidth / aspectRatio;
+        }
+
+        // Adjust center based on which corner
+        if (handleType === 'top-left') {
+          newCenterX = localAnchor.x - newWidth / 2;
+          newCenterY = localAnchor.y - newHeight / 2;
+        } else if (handleType === 'top-right') {
+          newCenterX = localAnchor.x + newWidth / 2;
+          newCenterY = localAnchor.y - newHeight / 2;
+        } else if (handleType === 'bottom-left') {
+          newCenterX = localAnchor.x - newWidth / 2;
+          newCenterY = localAnchor.y + newHeight / 2;
+        } else {
+          newCenterX = localAnchor.x + newWidth / 2;
+          newCenterY = localAnchor.y + newHeight / 2;
+        }
+      }
+    } else if (isHorizontal) {
+      // Horizontal resize: only width changes
+      newWidth = Math.abs(localCurrent.x - localAnchor.x);
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = 0;
+
+      if (maintainAspectRatio && original.width > 0) {
+        const aspectRatio = original.width / original.height;
+        newHeight = newWidth / aspectRatio;
+      }
+    } else if (isVertical) {
+      // Vertical resize: only height changes
+      newHeight = Math.abs(localCurrent.y - localAnchor.y);
+      newCenterX = 0;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.height > 0) {
+        const aspectRatio = original.width / original.height;
+        newWidth = newHeight * aspectRatio;
+      }
+    }
+
+    // Enforce minimum size
+    const minSize = 5;
+    newWidth = Math.max(newWidth, minSize);
+    newHeight = Math.max(newHeight, minSize);
+
+    // Transform new center back to world space
+    const worldCenter = new Vec2(newCenterX, newCenterY).rotate(original.rotation);
+
+    return {
+      x: original.x + worldCenter.x,
+      y: original.y + worldCenter.y,
+      width: newWidth,
+      height: newHeight,
+    };
+  }
+
+  /**
+   * Calculate ellipse resize.
+   */
+  private calculateEllipseResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2,
+    anchor: Vec2,
+    maintainAspectRatio: boolean
+  ): Partial<Shape> {
+    if (!isEllipse(original)) return {};
+
+    // Transform current point to local space
+    const toLocal = (p: Vec2): Vec2 => {
+      const translated = Vec2.subtract(p, new Vec2(original.x, original.y));
+      return translated.rotate(-original.rotation);
+    };
+
+    const localAnchor = toLocal(anchor);
+    const localCurrent = toLocal(currentPoint);
+
+    let newRadiusX = original.radiusX;
+    let newRadiusY = original.radiusY;
+    let newCenterX = 0;
+    let newCenterY = 0;
+
+    const isCorner = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(handleType);
+    const isHorizontal = ['left', 'right'].includes(handleType);
+    const isVertical = ['top', 'bottom'].includes(handleType);
+
+    if (isCorner) {
+      // Corner resize: both radii change
+      newRadiusX = Math.abs(localCurrent.x - localAnchor.x) / 2;
+      newRadiusY = Math.abs(localCurrent.y - localAnchor.y) / 2;
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.radiusX > 0 && original.radiusY > 0) {
+        const aspectRatio = original.radiusX / original.radiusY;
+        const currentRatio = newRadiusX / newRadiusY;
+
+        if (currentRatio > aspectRatio) {
+          newRadiusX = newRadiusY * aspectRatio;
+        } else {
+          newRadiusY = newRadiusX / aspectRatio;
+        }
+
+        // Adjust center based on which corner
+        if (handleType === 'top-left') {
+          newCenterX = localAnchor.x - newRadiusX;
+          newCenterY = localAnchor.y - newRadiusY;
+        } else if (handleType === 'top-right') {
+          newCenterX = localAnchor.x + newRadiusX;
+          newCenterY = localAnchor.y - newRadiusY;
+        } else if (handleType === 'bottom-left') {
+          newCenterX = localAnchor.x - newRadiusX;
+          newCenterY = localAnchor.y + newRadiusY;
+        } else {
+          newCenterX = localAnchor.x + newRadiusX;
+          newCenterY = localAnchor.y + newRadiusY;
+        }
+      }
+    } else if (isHorizontal) {
+      newRadiusX = Math.abs(localCurrent.x - localAnchor.x) / 2;
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = 0;
+
+      if (maintainAspectRatio && original.radiusX > 0) {
+        const aspectRatio = original.radiusX / original.radiusY;
+        newRadiusY = newRadiusX / aspectRatio;
+      }
+    } else if (isVertical) {
+      newRadiusY = Math.abs(localCurrent.y - localAnchor.y) / 2;
+      newCenterX = 0;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.radiusY > 0) {
+        const aspectRatio = original.radiusX / original.radiusY;
+        newRadiusX = newRadiusY * aspectRatio;
+      }
+    }
+
+    // Enforce minimum size
+    const minRadius = 5;
+    newRadiusX = Math.max(newRadiusX, minRadius);
+    newRadiusY = Math.max(newRadiusY, minRadius);
+
+    // Transform new center back to world space
+    const worldCenter = new Vec2(newCenterX, newCenterY).rotate(original.rotation);
+
+    return {
+      x: original.x + worldCenter.x,
+      y: original.y + worldCenter.y,
+      radiusX: newRadiusX,
+      radiusY: newRadiusY,
+    };
+  }
+
+  /**
+   * Calculate line resize (moving endpoints).
+   */
+  private calculateLineResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2
+  ): Partial<Shape> {
+    if (!isLine(original)) return {};
+
+    // For lines, we move the endpoint that corresponds to the handle
+    // Left-side handles move the start point, right-side handles move the end point
+    if (handleType === 'top-left' || handleType === 'left' || handleType === 'bottom-left') {
+      return {
+        x: currentPoint.x,
+        y: currentPoint.y,
+      };
+    } else {
+      return {
+        x2: currentPoint.x,
+        y2: currentPoint.y,
+      };
+    }
   }
 }

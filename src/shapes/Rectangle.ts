@@ -158,12 +158,15 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
   },
 
   /**
-   * Get the resize handles for the rectangle.
-   * Returns 8 handles: 4 corners + 4 edge midpoints.
+   * Get the resize and rotation handles for the rectangle.
+   * Returns 8 resize handles (4 corners + 4 edge midpoints) + 1 rotation handle.
    */
   getHandles(shape: RectangleShape): Handle[] {
     const halfWidth = shape.width / 2;
     const halfHeight = shape.height / 2;
+
+    // Rotation handle distance above the shape
+    const rotationHandleOffset = 30;
 
     // Handle positions in local space
     const localHandles: Array<{ type: HandleType; x: number; y: number; cursor: string }> = [
@@ -175,6 +178,7 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       { type: 'bottom', x: 0, y: halfHeight, cursor: 'ns-resize' },
       { type: 'bottom-left', x: -halfWidth, y: halfHeight, cursor: 'nesw-resize' },
       { type: 'left', x: -halfWidth, y: 0, cursor: 'ew-resize' },
+      { type: 'rotation', x: 0, y: -halfHeight - rotationHandleOffset, cursor: 'grab' },
     ];
 
     // Transform to world space

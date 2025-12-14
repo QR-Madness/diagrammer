@@ -533,12 +533,23 @@ export class Renderer {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Draw resize handles
+        // Draw handles
         const handles = handler.getHandles(shape);
-        for (const handle of handles) {
-          // Skip rotation handle for now
-          if (handle.type === 'rotation') continue;
+        let topHandle: { x: number; y: number } | null = null;
+        let rotationHandle: { x: number; y: number } | null = null;
 
+        for (const handle of handles) {
+          if (handle.type === 'rotation') {
+            rotationHandle = { x: handle.x, y: handle.y };
+            continue;
+          }
+
+          // Track the top handle for connecting line to rotation handle
+          if (handle.type === 'top') {
+            topHandle = { x: handle.x, y: handle.y };
+          }
+
+          // Draw resize handles as squares
           ctx.beginPath();
           ctx.fillStyle = options.handleFillColor;
           ctx.strokeStyle = options.handleStrokeColor;
@@ -549,6 +560,28 @@ export class Renderer {
             handleSize,
             handleSize
           );
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Draw rotation handle if present
+        if (rotationHandle) {
+          // Draw connecting line from top handle to rotation handle
+          if (topHandle) {
+            ctx.beginPath();
+            ctx.strokeStyle = options.handleStrokeColor;
+            ctx.lineWidth = strokeWidth;
+            ctx.moveTo(topHandle.x, topHandle.y);
+            ctx.lineTo(rotationHandle.x, rotationHandle.y);
+            ctx.stroke();
+          }
+
+          // Draw rotation handle as a circle
+          ctx.beginPath();
+          ctx.fillStyle = options.handleFillColor;
+          ctx.strokeStyle = options.handleStrokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.arc(rotationHandle.x, rotationHandle.y, halfHandle, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
         }

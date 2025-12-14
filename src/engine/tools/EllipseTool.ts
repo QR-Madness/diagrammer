@@ -2,36 +2,36 @@ import { BaseTool, ToolContext } from './Tool';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { ToolType } from '../../store/sessionStore';
-import { RectangleShape, DEFAULT_RECTANGLE } from '../../shapes/Shape';
+import { EllipseShape, DEFAULT_ELLIPSE } from '../../shapes/Shape';
 import { nanoid } from 'nanoid';
 
 /**
- * State machine states for the RectangleTool.
+ * State machine states for the EllipseTool.
  */
-type RectangleState = 'idle' | 'drawing';
+type EllipseState = 'idle' | 'drawing';
 
 /**
- * Minimum size in world units to create a shape.
+ * Minimum radius in world units to create a shape.
  * Prevents creating invisible shapes from accidental clicks.
  */
-const MIN_SIZE = 5;
+const MIN_RADIUS = 5;
 
 /**
- * Rectangle tool for creating rectangle shapes.
+ * Ellipse tool for creating ellipse shapes.
  *
  * Features:
- * - Click and drag to create a rectangle
- * - Preview rectangle while drawing
- * - Hold Shift to constrain to square
+ * - Click and drag to create an ellipse
+ * - Preview ellipse while drawing
+ * - Hold Shift to constrain to circle
  * - Escape to cancel creation
  * - Automatically selects created shape and switches to Select tool
  */
-export class RectangleTool extends BaseTool {
-  readonly type: ToolType = 'rectangle';
-  readonly name = 'Rectangle';
-  readonly shortcut = 'r';
+export class EllipseTool extends BaseTool {
+  readonly type: ToolType = 'ellipse';
+  readonly name = 'Ellipse';
+  readonly shortcut = 'o';
 
-  private state: RectangleState = 'idle';
+  private state: EllipseState = 'idle';
   private startPoint: Vec2 | null = null;
   private currentPoint: Vec2 | null = null;
   private isShiftHeld = false;
@@ -74,29 +74,28 @@ export class RectangleTool extends BaseTool {
     this.currentPoint = event.worldPoint;
     this.isShiftHeld = event.modifiers.shift;
 
-    // Calculate rectangle dimensions
-    const rect = this.calculateRectangle();
+    // Calculate ellipse dimensions
+    const ellipse = this.calculateEllipse();
 
-    if (rect && rect.width >= MIN_SIZE && rect.height >= MIN_SIZE) {
+    if (ellipse && ellipse.radiusX >= MIN_RADIUS && ellipse.radiusY >= MIN_RADIUS) {
       // Push history before creating shape
-      ctx.pushHistory('Create rectangle');
+      ctx.pushHistory('Create ellipse');
 
       // Create the shape
       const id = nanoid();
-      const shape: RectangleShape = {
+      const shape: EllipseShape = {
         id,
-        type: 'rectangle',
-        x: rect.centerX,
-        y: rect.centerY,
-        width: rect.width,
-        height: rect.height,
-        rotation: DEFAULT_RECTANGLE.rotation,
-        opacity: DEFAULT_RECTANGLE.opacity,
-        locked: DEFAULT_RECTANGLE.locked,
-        fill: DEFAULT_RECTANGLE.fill,
-        stroke: DEFAULT_RECTANGLE.stroke,
-        strokeWidth: DEFAULT_RECTANGLE.strokeWidth,
-        cornerRadius: DEFAULT_RECTANGLE.cornerRadius,
+        type: 'ellipse',
+        x: ellipse.centerX,
+        y: ellipse.centerY,
+        radiusX: ellipse.radiusX,
+        radiusY: ellipse.radiusY,
+        rotation: DEFAULT_ELLIPSE.rotation,
+        opacity: DEFAULT_ELLIPSE.opacity,
+        locked: DEFAULT_ELLIPSE.locked,
+        fill: DEFAULT_ELLIPSE.fill,
+        stroke: DEFAULT_ELLIPSE.stroke,
+        strokeWidth: DEFAULT_ELLIPSE.strokeWidth,
       };
 
       // Add to document
@@ -151,61 +150,63 @@ export class RectangleTool extends BaseTool {
   renderOverlay(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
     if (this.state !== 'drawing') return;
 
-    const rect = this.calculateRectangle();
-    if (!rect) return;
+    const ellipse = this.calculateEllipse();
+    if (!ellipse) return;
 
     const camera = toolCtx.camera;
 
-    // Convert world points to screen points
-    const topLeft = camera.worldToScreen(
-      new Vec2(rect.centerX - rect.width / 2, rect.centerY - rect.height / 2)
-    );
-    const bottomRight = camera.worldToScreen(
-      new Vec2(rect.centerX + rect.width / 2, rect.centerY + rect.height / 2)
-    );
+    // Convert world center to screen
+    const center = camera.worldToScreen(new Vec2(ellipse.centerX, ellipse.centerY));
 
-    const x = topLeft.x;
-    const y = topLeft.y;
-    const width = bottomRight.x - topLeft.x;
-    const height = bottomRight.y - topLeft.y;
+    // Scale radii by zoom
+    const zoom = camera.zoom;
+    const screenRadiusX = ellipse.radiusX * zoom;
+    const screenRadiusY = ellipse.radiusY * zoom;
 
     ctx2d.save();
 
-    // Draw preview rectangle
+    // Draw preview ellipse
+    ctx2d.beginPath();
+    ctx2d.ellipse(center.x, center.y, screenRadiusX, screenRadiusY, 0, 0, Math.PI * 2);
+    ctx2d.closePath();
+
     ctx2d.fillStyle = 'rgba(74, 144, 217, 0.3)'; // Semi-transparent blue
-    ctx2d.fillRect(x, y, width, height);
+    ctx2d.fill();
 
     ctx2d.strokeStyle = '#4a90d9';
     ctx2d.lineWidth = 2;
     ctx2d.setLineDash([]);
-    ctx2d.strokeRect(x, y, width, height);
+    ctx2d.stroke();
 
     ctx2d.restore();
   }
 
   /**
-   * Calculate the rectangle from start and current points.
+   * Calculate the ellipse from start and current points.
    * Applies shift constraint if needed.
    */
-  private calculateRectangle(): {
+  private calculateEllipse(): {
     centerX: number;
     centerY: number;
-    width: number;
-    height: number;
+    radiusX: number;
+    radiusY: number;
   } | null {
     if (!this.startPoint || !this.currentPoint) return null;
 
-    let width = Math.abs(this.currentPoint.x - this.startPoint.x);
-    let height = Math.abs(this.currentPoint.y - this.startPoint.y);
+    let radiusX = Math.abs(this.currentPoint.x - this.startPoint.x) / 2;
+    let radiusY = Math.abs(this.currentPoint.y - this.startPoint.y) / 2;
 
-    // Constrain to square if shift is held
+    // Constrain to circle if shift is held
     if (this.isShiftHeld) {
-      const size = Math.max(width, height);
-      width = size;
-      height = size;
+      const radius = Math.max(radiusX, radiusY);
+      radiusX = radius;
+      radiusY = radius;
     }
 
-    // Calculate corner positions based on drag direction
+    // Calculate center based on drag direction
+    const width = radiusX * 2;
+    const height = radiusY * 2;
+
     const left = this.currentPoint.x >= this.startPoint.x
       ? this.startPoint.x
       : this.startPoint.x - width;
@@ -214,10 +215,10 @@ export class RectangleTool extends BaseTool {
       : this.startPoint.y - height;
 
     return {
-      centerX: left + width / 2,
-      centerY: top + height / 2,
-      width,
-      height,
+      centerX: left + radiusX,
+      centerY: top + radiusY,
+      radiusX,
+      radiusY,
     };
   }
 

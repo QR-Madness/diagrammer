@@ -312,39 +312,39 @@ This will provide:
 ## Phase 5: Extended Features (Post-Prototype)
 
 ### Additional Shape Types
-- [ ] Implement Ellipse shape (render, hitTest, bounds, handles)
-- [ ] Implement Line/Arrow shape
-- [ ] Implement basic Text shape (no inline editing)
-- [ ] Register all shape types
+- [x] Implement Ellipse shape (render, hitTest, bounds, handles) - 25 tests
+- [x] Implement Line/Arrow shape - 23 tests
+- [x] Implement basic Text shape (no inline editing)
+- [x] Register all shape types (Rectangle, Ellipse, Line, Text registered)
 
 ### Selection Enhancements
-- [ ] Implement multi-selection
-- [ ] Implement resize handles in SelectTool
-- [ ] Implement rotation handles
-- [ ] Implement handle dragging state
-- [ ] Update shapes during resize
-- [ ] Maintain aspect ratio with Shift key
+- [x] Implement multi-selection (marquee selection works)
+- [x] Implement resize handles in SelectTool
+- [x] Implement rotation handles (with Shift for 15-degree snap)
+- [x] Implement handle dragging state
+- [x] Update shapes during resize
+- [x] Maintain aspect ratio with Shift key
 
 ### History System (`/src/store/historyStore.ts`)
-- [ ] Define HistoryEntry interface
-- [ ] Define HistoryState interface
-- [ ] Create HistoryStore
-- [ ] Implement push action
-- [ ] Implement undo action
-- [ ] Implement redo action
-- [ ] Implement clear action
-- [ ] Integrate with DocumentStore mutations
-- [ ] Add debouncing for rapid changes
+- [x] Define HistoryEntry interface
+- [x] Define HistoryState interface
+- [x] Create HistoryStore - 14 tests
+- [x] Implement push action
+- [x] Implement undo action
+- [x] Implement redo action
+- [x] Implement clear action
+- [x] Integrate with DocumentStore mutations
+- [x] Add debouncing for rapid changes
 
 ### Keyboard Shortcuts
-- [ ] Implement Ctrl+Z for undo
-- [ ] Implement Ctrl+Shift+Z for redo
-- [ ] Implement Delete for deleting selected shapes
-- [ ] Implement Ctrl+A for select all
-- [ ] Implement Escape for deselect
-- [ ] Implement Ctrl+C for copy
-- [ ] Implement Ctrl+V for paste
-- [ ] Tool shortcuts (V=select, H=pan, R=rectangle, etc.)
+- [x] Implement Ctrl+Z for undo
+- [x] Implement Ctrl+Shift+Z / Ctrl+Y for redo
+- [x] Implement Delete for deleting selected shapes
+- [x] Implement Ctrl+A for select all
+- [x] Implement Escape for deselect/cancel
+- [x] Implement Ctrl+C for copy
+- [x] Implement Ctrl+V for paste
+- [x] Tool shortcuts (V=select, H=pan, R=rectangle, O=ellipse, L=line, T=text)
 
 ### Property Panel (`/src/ui/PropertyPanel.tsx`)
 - [ ] Create PropertyPanel component
@@ -356,13 +356,13 @@ This will provide:
 - [ ] Handle multi-selection (show common properties)
 
 ### Additional Tools
-- [ ] Implement EllipseTool
-- [ ] Implement LineTool
-- [ ] Implement TextTool (basic)
+- [x] Implement EllipseTool (with shift for circle constraint)
+- [x] Implement LineTool (with shift for 45-degree angle constraint)
+- [x] Implement TextTool (basic click-to-create)
 
 ## Phase 6: Polish & Advanced (Future)
 
-- [ ] Copy/paste implementation
+- [x] Copy/paste implementation (Ctrl+C/V with offset for cascading pastes)
 - [ ] Layer panel with z-order management
 - [ ] Text inline editing
 - [ ] Connectors (shapes that attach to other shapes)
@@ -375,6 +375,22 @@ This will provide:
 - [ ] Real-time collaboration (CRDT integration)
 - [ ] Offline-first with persistence
 - [ ] Playwright e2e tests
+
+## Phase 7: Documentation Features (Future)
+
+### RTF Document Editor (similar to Eraser.io)
+- [ ] Implement rich text document editor alongside diagrams
+- [ ] Support for headings (H1-H6)
+- [ ] Support for paragraphs, bold, italic, underline, strikethrough
+- [ ] Support for bullet lists and numbered lists
+- [ ] Support for code blocks with syntax highlighting
+- [ ] Support for tables
+- [ ] Support for embedded images
+- [ ] Support for embedded diagrams (link canvas content into documents)
+- [ ] Support for markdown import/export
+- [ ] Document outline/table of contents generation
+- [ ] Document versioning and history
+- [ ] Multi-document workspace
 
 ## Notes
 

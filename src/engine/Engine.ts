@@ -8,13 +8,24 @@ import { ToolContext } from './tools/Tool';
 import { PanTool } from './tools/PanTool';
 import { SelectTool } from './tools/SelectTool';
 import { RectangleTool } from './tools/RectangleTool';
+import { EllipseTool } from './tools/EllipseTool';
+import { LineTool } from './tools/LineTool';
+import { TextTool } from './tools/TextTool';
 import { Vec2 } from '../math/Vec2';
 import { Shape } from '../shapes/Shape';
 import { useDocumentStore } from '../store/documentStore';
-import { useSessionStore, ToolType } from '../store/sessionStore';
+import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
+import { useHistoryStore, pushHistory } from '../store/historyStore';
+import { nanoid } from 'nanoid';
 
-// Import Rectangle handler to register it
+// Import shape handlers to register them
 import '../shapes/Rectangle';
+import '../shapes/Ellipse';
+import '../shapes/Line';
+import '../shapes/Text';
+
+// Clipboard for copy/paste (module-level to persist across operations)
+let clipboard: Shape[] = [];
 
 /**
  * Configuration options for the Engine.
@@ -239,6 +250,9 @@ export class Engine {
 
       // Rendering
       requestRender: () => this.renderer.requestRender(),
+
+      // History
+      pushHistory: (description) => pushHistory(description),
     };
   }
 
@@ -249,6 +263,9 @@ export class Engine {
     this.toolManager.register(new SelectTool());
     this.toolManager.register(new PanTool());
     this.toolManager.register(new RectangleTool());
+    this.toolManager.register(new EllipseTool());
+    this.toolManager.register(new LineTool());
+    this.toolManager.register(new TextTool());
   }
 
   /**
@@ -321,7 +338,110 @@ export class Engine {
     const handled = this.toolManager.handleKeyDown(event);
 
     if (!handled) {
-      // Handle global shortcuts here if needed
+      // Handle global shortcuts
+      this.handleGlobalShortcuts(event);
+    }
+  }
+
+  /**
+   * Handle global keyboard shortcuts.
+   */
+  private handleGlobalShortcuts(event: KeyboardEvent): void {
+    const isCtrl = event.ctrlKey || event.metaKey;
+    const isShift = event.shiftKey;
+
+    // Ctrl+Z / Cmd+Z: Undo
+    if (isCtrl && !isShift && event.key === 'z') {
+      event.preventDefault();
+      if (useHistoryStore.getState().canUndo()) {
+        useHistoryStore.getState().undo();
+        this.renderer.requestRender();
+      }
+      return;
+    }
+
+    // Ctrl+Shift+Z / Cmd+Shift+Z or Ctrl+Y / Cmd+Y: Redo
+    if ((isCtrl && isShift && event.key === 'z') || (isCtrl && event.key === 'y')) {
+      event.preventDefault();
+      if (useHistoryStore.getState().canRedo()) {
+        useHistoryStore.getState().redo();
+        this.renderer.requestRender();
+      }
+      return;
+    }
+
+    // Ctrl+A / Cmd+A: Select All
+    if (isCtrl && event.key === 'a') {
+      event.preventDefault();
+      useSessionStore.getState().selectAll();
+      this.renderer.requestRender();
+      return;
+    }
+
+    // Delete / Backspace: Delete selected shapes
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      const selectedIds = useSessionStore.getState().getSelectedIds();
+      if (selectedIds.length > 0) {
+        event.preventDefault();
+        pushHistory('Delete shapes');
+        deleteSelected();
+        this.renderer.requestRender();
+      }
+      return;
+    }
+
+    // Escape: Clear selection
+    if (event.key === 'Escape') {
+      if (useSessionStore.getState().hasSelection()) {
+        event.preventDefault();
+        useSessionStore.getState().clearSelection();
+        this.renderer.requestRender();
+      }
+      return;
+    }
+
+    // Ctrl+C / Cmd+C: Copy selected shapes
+    if (isCtrl && event.key === 'c') {
+      const selectedIds = useSessionStore.getState().getSelectedIds();
+      if (selectedIds.length > 0) {
+        event.preventDefault();
+        const shapes = useDocumentStore.getState().shapes;
+        clipboard = selectedIds.map((id) => ({ ...shapes[id]! }));
+      }
+      return;
+    }
+
+    // Ctrl+V / Cmd+V: Paste shapes
+    if (isCtrl && event.key === 'v') {
+      if (clipboard.length > 0) {
+        event.preventDefault();
+        pushHistory('Paste shapes');
+
+        const newIds: string[] = [];
+        const offset = 20; // Offset pasted shapes slightly
+
+        for (const shape of clipboard) {
+          const newId = nanoid();
+          const newShape: Shape = {
+            ...shape,
+            id: newId,
+            x: shape.x + offset,
+            y: shape.y + offset,
+          };
+          useDocumentStore.getState().addShape(newShape);
+          this.spatialIndex.insert(newShape);
+          newIds.push(newId);
+        }
+
+        // Select pasted shapes
+        useSessionStore.getState().select(newIds);
+
+        // Update clipboard with new positions for subsequent pastes
+        clipboard = clipboard.map((s) => ({ ...s, x: s.x + offset, y: s.y + offset }));
+
+        this.renderer.requestRender();
+      }
+      return;
     }
   }
 

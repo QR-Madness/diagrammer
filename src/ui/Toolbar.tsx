@@ -18,6 +18,9 @@ const TOOLS: ToolDef[] = [
   { type: 'select', name: 'Select', icon: '⬚', shortcut: 'V' },
   { type: 'pan', name: 'Pan', icon: '✋', shortcut: 'H' },
   { type: 'rectangle', name: 'Rectangle', icon: '▭', shortcut: 'R' },
+  { type: 'ellipse', name: 'Ellipse', icon: '◯', shortcut: 'O' },
+  { type: 'line', name: 'Line', icon: '╱', shortcut: 'L' },
+  { type: 'text', name: 'Text', icon: 'T', shortcut: 'T' },
 ];
 
 /**

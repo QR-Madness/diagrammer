@@ -62,6 +62,10 @@ export interface ToolContext {
   // Rendering
   /** Request a render on the next animation frame */
   requestRender: () => void;
+
+  // History
+  /** Push current state to history stack (call before making changes) */
+  pushHistory: (description?: string) => void;
 }
 
 /**

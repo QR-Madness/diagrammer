@@ -133,11 +133,11 @@ describe('Rectangle Handler', () => {
   });
 
   describe('getHandles', () => {
-    it('returns 8 handles for unrotated rectangle', () => {
+    it('returns 9 handles for unrotated rectangle (8 resize + 1 rotation)', () => {
       const rect = createTestRect();
       const handles = rectangleHandler.getHandles(rect);
 
-      expect(handles).toHaveLength(8);
+      expect(handles).toHaveLength(9);
     });
 
     it('returns handles at correct positions', () => {

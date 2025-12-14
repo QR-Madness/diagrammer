@@ -230,8 +230,8 @@ describe('HitTester', () => {
       const shapesArray = [shapes.rect1!, shapes.rect2!];
       const handles = hitTester.getHandlesForShapes(shapesArray);
 
-      // Each rectangle has 8 handles
-      expect(handles.length).toBe(16);
+      // Each rectangle has 9 handles (8 resize + 1 rotation)
+      expect(handles.length).toBe(18);
     });
 
     it('includes shapeId with each handle', () => {
