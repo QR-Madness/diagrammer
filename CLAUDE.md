@@ -31,8 +31,17 @@ bun run dev
 # Type checking
 bun run typecheck
 
-# Run tests
+# Run all tests (watch mode)
 bun run test
+
+# Run all tests once
+bun run test --run
+
+# Run a single test file
+bun run test src/engine/Camera.test.ts
+
+# Run tests with UI
+bun run test:ui
 
 # Build for production
 bun run build
@@ -126,11 +135,22 @@ Shapes are plain data objects. Behavior is implemented via the **ShapeRegistry p
 
 ## Implementation Status
 
-Phase 1 (Core Foundation) is in progress:
-- Project setup complete
-- Remaining: Math utilities, Camera, Renderer, InputHandler, CanvasContainer
+Phase 1 (Core Foundation) complete:
+- Math utilities (Vec2, Mat3, Box, geometry)
+- Camera system with coordinate transforms
+- Renderer with DPI scaling and grid
+- InputHandler with normalized events
+- CanvasContainer React bridge
 
-See Specification.Readme.md for detailed implementation phases and complete API specifications.
+Phase 2 (Shape System) in progress:
+- Shape types and ShapeRegistry pattern complete
+- Rectangle shape handler complete
+- Shape utilities (bounds, transforms) complete
+- DocumentStore and SessionStore complete
+- SpatialIndex and HitTester complete
+- Remaining: Renderer integration with stores
+
+See Todo.Readme.md for detailed task tracking.
 
 ## Key Architectural Decisions
 

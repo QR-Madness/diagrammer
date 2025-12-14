@@ -1,5 +1,7 @@
 import { Camera } from './Camera';
 import { Box } from '../math/Box';
+import { Shape } from '../shapes/Shape';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
 
 /**
  * Configuration options for the Renderer.
@@ -19,6 +21,14 @@ export interface RendererOptions {
   backgroundColor?: string;
   /** Whether to show FPS counter. Default: false */
   showFps?: boolean;
+  /** Selection box stroke color. Default: '#2196f3' */
+  selectionColor?: string;
+  /** Handle fill color. Default: '#ffffff' */
+  handleFillColor?: string;
+  /** Handle stroke color. Default: '#2196f3' */
+  handleStrokeColor?: string;
+  /** Handle size in screen pixels. Default: 8 */
+  handleSize?: number;
 }
 
 /**
@@ -47,6 +57,10 @@ const DEFAULT_OPTIONS: Required<RendererOptions> = {
   majorGridColor: '#c0c0c0',
   backgroundColor: '#ffffff',
   showFps: false,
+  selectionColor: '#2196f3',
+  handleFillColor: '#ffffff',
+  handleStrokeColor: '#2196f3',
+  handleSize: 8,
 };
 
 /**
@@ -97,6 +111,11 @@ export class Renderer {
 
   // Tool overlay callback
   private toolOverlayCallback: ToolOverlayCallback | null = null;
+
+  // Shape data for rendering
+  private shapes: Record<string, Shape> = {};
+  private shapeOrder: string[] = [];
+  private selectedIds: Set<string> = new Set();
 
   // Performance metrics
   private lastFrameTime: number = 0;
@@ -206,6 +225,24 @@ export class Renderer {
   }
 
   /**
+   * Set the shapes to render.
+   * @param shapes - Map of shape ID to shape data
+   * @param shapeOrder - Array of shape IDs in z-order (first = bottom)
+   */
+  setShapes(shapes: Record<string, Shape>, shapeOrder: string[]): void {
+    this.shapes = shapes;
+    this.shapeOrder = shapeOrder;
+  }
+
+  /**
+   * Set the selected shape IDs for rendering selection overlays.
+   * @param selectedIds - Set of selected shape IDs
+   */
+  setSelection(selectedIds: Set<string>): void {
+    this.selectedIds = selectedIds;
+  }
+
+  /**
    * Check if a render is pending.
    */
   get isPending(): boolean {
@@ -285,13 +322,14 @@ export class Renderer {
       this.drawGrid();
     }
 
-    // 4. (Future) Draw shapes in z-order - will be implemented in Phase 2
-    // This is where shape rendering will be added
+    // 4. Draw shapes in z-order with viewport culling
+    this.drawShapes();
 
     // 5. Restore transform for screen-space drawing (back to DPI-scaled screen space)
     ctx.restore();
 
-    // 6. (Future) Draw selection overlay - will be implemented in Phase 2
+    // 6. Draw selection overlay (in world space, applied manually)
+    this.drawSelectionOverlay();
 
     // 7. Let active tool draw its overlay (screen space)
     if (this.toolOverlayCallback) {
@@ -411,6 +449,115 @@ export class Renderer {
       ctx.lineTo(gridBounds.maxX, 0);
       ctx.stroke();
     }
+  }
+
+  /**
+   * Draw all shapes in z-order with viewport culling.
+   * Shapes outside the visible bounds are skipped for performance.
+   */
+  private drawShapes(): void {
+    const { ctx, shapes, shapeOrder, camera } = this;
+
+    if (shapeOrder.length === 0) return;
+
+    // Get visible bounds for culling
+    const visibleBounds = camera.getVisibleBounds();
+
+    // Track rendering stats
+    let rendered = 0;
+    let culled = 0;
+
+    // Render shapes in z-order (bottom to top)
+    for (const id of shapeOrder) {
+      const shape = shapes[id];
+      if (!shape) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(shape.type);
+        const bounds = handler.getBounds(shape);
+
+        // Viewport culling - skip shapes outside visible bounds
+        if (!visibleBounds.intersects(bounds)) {
+          culled++;
+          continue;
+        }
+
+        // Render the shape
+        ctx.save();
+        handler.render(ctx, shape);
+        ctx.restore();
+        rendered++;
+      } catch {
+        // Shape type not registered - skip silently
+      }
+    }
+
+    // Could expose these stats via getMetrics() if needed
+    void rendered;
+    void culled;
+  }
+
+  /**
+   * Draw selection overlay for selected shapes.
+   * Draws bounding boxes and handles in world space.
+   */
+  private drawSelectionOverlay(): void {
+    const { ctx, shapes, selectedIds, options, camera } = this;
+
+    if (selectedIds.size === 0) return;
+
+    // Apply camera transform for world-space drawing
+    ctx.save();
+    this.applyCameraTransform();
+
+    const zoom = camera.zoom;
+    // Handle size in world units (constant screen size)
+    const handleSize = options.handleSize / zoom;
+    const halfHandle = handleSize / 2;
+    const strokeWidth = 1 / zoom;
+
+    for (const id of selectedIds) {
+      const shape = shapes[id];
+      if (!shape) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(shape.type);
+        const bounds = handler.getBounds(shape);
+
+        // Draw bounding box
+        ctx.beginPath();
+        ctx.strokeStyle = options.selectionColor;
+        ctx.lineWidth = strokeWidth;
+        ctx.setLineDash([4 / zoom, 4 / zoom]);
+        ctx.rect(bounds.minX, bounds.minY, bounds.width, bounds.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw resize handles
+        const handles = handler.getHandles(shape);
+        for (const handle of handles) {
+          // Skip rotation handle for now
+          if (handle.type === 'rotation') continue;
+
+          ctx.beginPath();
+          ctx.fillStyle = options.handleFillColor;
+          ctx.strokeStyle = options.handleStrokeColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.rect(
+            handle.x - halfHandle,
+            handle.y - halfHandle,
+            handleSize,
+            handleSize
+          );
+          ctx.fill();
+          ctx.stroke();
+        }
+      } catch {
+        // Shape type not registered - skip silently
+      }
+    }
+
+    ctx.restore();
   }
 
   /**

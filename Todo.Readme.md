@@ -193,12 +193,12 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Unit tests (24 tests)
 
 ### Renderer Integration
-- [ ] Update Renderer to render shapes from DocumentStore
-- [ ] Implement renderShape method using ShapeRegistry
-- [ ] Add viewport culling (skip off-screen shapes)
-- [ ] Subscribe to DocumentStore changes
-- [ ] Subscribe to SessionStore changes
-- [ ] Implement selection overlay rendering
+- [x] Update Renderer to render shapes from DocumentStore
+- [x] Implement renderShape method using ShapeRegistry
+- [x] Add viewport culling (skip off-screen shapes)
+- [x] Subscribe to DocumentStore changes (via setShapes method)
+- [x] Subscribe to SessionStore changes (via setSelection method)
+- [x] Implement selection overlay rendering
 
 ## Phase 3: Tools
 
