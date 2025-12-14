@@ -58,6 +58,8 @@ export interface ToolContext {
   setIsInteracting: (isInteracting: boolean) => void;
   /** Switch to a different tool */
   setActiveTool: (tool: ToolType) => void;
+  /** Start inline text editing for a text shape */
+  startTextEdit: (id: string) => void;
 
   // Rendering
   /** Request a render on the next animation frame */

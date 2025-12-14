@@ -20,13 +20,69 @@ function worldToLocal(world: Vec2, shape: TextShape): Vec2 {
 }
 
 /**
- * Calculate the height of the text block based on content.
+ * Wrap text to fit within a given width.
+ * Returns an array of lines.
+ */
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+  fontFamily: string
+): string[] {
+  // Set up font for measurement
+  ctx.font = `${fontSize}px ${fontFamily}`;
+
+  const paragraphs = text.split('\n');
+  const lines: string[] = [];
+
+  for (const paragraph of paragraphs) {
+    if (paragraph === '') {
+      lines.push('');
+      continue;
+    }
+
+    const words = paragraph.split(' ');
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+  }
+
+  return lines.length > 0 ? lines : [''];
+}
+
+/**
+ * Calculate the height of the text block based on content and wrapping.
+ * Uses a temporary canvas for text measurement.
  */
 function calculateTextHeight(shape: TextShape): number {
-  // Estimate height based on number of lines and font size
-  const lines = shape.text.split('\n');
-  const lineHeight = shape.fontSize * 1.2;
-  return Math.max(lines.length * lineHeight, shape.fontSize * 1.2);
+  // Create a temporary canvas for measurement
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    // Fallback: estimate based on explicit newlines only
+    const lines = shape.text.split('\n');
+    const lineHeight = shape.fontSize * 1.4;
+    return Math.max(lines.length * lineHeight, shape.fontSize * 1.4);
+  }
+
+  const lines = wrapText(ctx, shape.text, shape.width, shape.fontSize, shape.fontFamily);
+  const lineHeight = shape.fontSize * 1.4;
+  return Math.max(lines.length * lineHeight, shape.fontSize * 1.4);
 }
 
 /**
@@ -59,14 +115,14 @@ export const textHandler: ShapeHandler<TextShape> = {
       textX = width;
     }
 
-    // Draw text (simple line-by-line rendering)
-    const lines = text.split('\n');
-    const lineHeight = fontSize * 1.2;
+    // Wrap text to fit width
+    const lines = wrapText(ctx, text, width, fontSize, fontFamily);
+    const lineHeight = fontSize * 1.4;
 
     if (fill) {
       ctx.fillStyle = fill;
       lines.forEach((line, index) => {
-        ctx.fillText(line, textX, index * lineHeight, width);
+        ctx.fillText(line, textX, index * lineHeight);
       });
     }
 

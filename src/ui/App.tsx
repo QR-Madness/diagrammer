@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './App.css';
 import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
@@ -101,12 +101,18 @@ function createExampleShapes(): RectangleShape[] {
 
 function App() {
   const addShapes = useDocumentStore((state) => state.addShapes);
+  const shapeCount = useDocumentStore((state) => state.shapeOrder.length);
+  const initializedRef = useRef(false);
 
-  // Add example shapes on first render
+  // Add example shapes on first render only
   useEffect(() => {
+    // Only add shapes if not already initialized and no shapes exist
+    if (initializedRef.current || shapeCount > 0) return;
+    initializedRef.current = true;
+
     const shapes = createExampleShapes();
     addShapes(shapes);
-  }, [addShapes]);
+  }, [addShapes, shapeCount]);
 
   return (
     <div className="app">

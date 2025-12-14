@@ -2,7 +2,7 @@ import { BaseTool, ToolContext } from './Tool';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
-import { ToolType, CursorStyle, useSessionStore } from '../../store/sessionStore';
+import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
 import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText } from '../../shapes/Shape';
 
@@ -25,12 +25,12 @@ const DRAG_THRESHOLD = 3;
 /**
  * Maximum time between clicks for a double-click (ms).
  */
-const DOUBLE_CLICK_THRESHOLD = 300;
+const DOUBLE_CLICK_THRESHOLD = 500;
 
 /**
  * Maximum distance between clicks for a double-click (pixels).
  */
-const DOUBLE_CLICK_DISTANCE = 5;
+const DOUBLE_CLICK_DISTANCE = 10;
 
 /**
  * Select tool for selecting and moving shapes.
@@ -441,13 +441,16 @@ export class SelectTool extends BaseTool {
     // Check for double-click on text shape
     if (this.hitShapeId) {
       const shape = ctx.getShapes()[this.hitShapeId];
-      if (
+
+      // Check if this is a double-click on the same text shape
+      const isDoubleClick =
         shape &&
         isText(shape) &&
         this.lastClickShapeId === this.hitShapeId &&
-        this.lastClickPoint &&
-        now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD
-      ) {
+        this.lastClickPoint !== null &&
+        now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD;
+
+      if (isDoubleClick && this.lastClickPoint) {
         // Calculate distance between clicks
         const dx = event.screenPoint.x - this.lastClickPoint.x;
         const dy = event.screenPoint.y - this.lastClickPoint.y;
@@ -455,15 +458,17 @@ export class SelectTool extends BaseTool {
 
         if (distance < DOUBLE_CLICK_DISTANCE) {
           // Double-click on text shape - start editing
-          useSessionStore.getState().startTextEdit(this.hitShapeId);
+          ctx.startTextEdit(this.hitShapeId);
           this.resetClickTracking();
+          ctx.requestRender();
           return;
         }
       }
 
       // Track this click for double-click detection
+      // Clone the point to avoid reference issues
       this.lastClickTime = now;
-      this.lastClickPoint = event.screenPoint;
+      this.lastClickPoint = new Vec2(event.screenPoint.x, event.screenPoint.y);
       this.lastClickShapeId = this.hitShapeId;
 
       // Clicked on a shape
@@ -712,8 +717,33 @@ export class SelectTool extends BaseTool {
       }
     }
 
-    // Default fallback
-    return new Vec2(shape.x, shape.y);
+    if (isText(shape)) {
+      // For text, estimate height based on content (simplified)
+      const lineHeight = shape.fontSize * 1.4;
+      const lines = shape.text.split('\n').length;
+      const height = Math.max(lines * lineHeight, lineHeight);
+      const halfWidth = shape.width / 2;
+      const halfHeight = height / 2;
+
+      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+        'top-left': { x: halfWidth, y: halfHeight },
+        'top': { x: 0, y: halfHeight },
+        'top-right': { x: -halfWidth, y: halfHeight },
+        'right': { x: -halfWidth, y: 0 },
+        'bottom-right': { x: -halfWidth, y: -halfHeight },
+        'bottom': { x: 0, y: -halfHeight },
+        'bottom-left': { x: halfWidth, y: -halfHeight },
+        'left': { x: halfWidth, y: 0 },
+        'rotation': { x: 0, y: 0 },
+      };
+
+      const offset = anchorOffsets[handleType];
+      const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
+      return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
+    }
+
+    // Default fallback for any other shape types
+    return new Vec2((shape as { x: number }).x, (shape as { y: number }).y);
   }
 
   /**
@@ -736,6 +766,10 @@ export class SelectTool extends BaseTool {
 
     if (isLine(original)) {
       return this.calculateLineResize(original, handleType, currentPoint);
+    }
+
+    if (isText(original)) {
+      return this.calculateTextResize(original, handleType, currentPoint, anchor);
     }
 
     return null;
@@ -963,5 +997,50 @@ export class SelectTool extends BaseTool {
         y2: currentPoint.y,
       };
     }
+  }
+
+  /**
+   * Calculate text resize (adjust width, font size scales with vertical resize).
+   */
+  private calculateTextResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2,
+    anchor: Vec2
+  ): Partial<Shape> {
+    if (!isText(original)) return {};
+
+    // Transform current point to local space
+    const toLocal = (p: Vec2): Vec2 => {
+      const translated = Vec2.subtract(p, new Vec2(original.x, original.y));
+      return translated.rotate(-original.rotation);
+    };
+
+    const localAnchor = toLocal(anchor);
+    const localCurrent = toLocal(currentPoint);
+
+    // Calculate new width based on horizontal handles
+    let newWidth = original.width;
+    let newCenterX = 0;
+
+    const isHorizontal = ['left', 'right'].includes(handleType);
+    const isCorner = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(handleType);
+
+    if (isHorizontal || isCorner) {
+      newWidth = Math.abs(localCurrent.x - localAnchor.x);
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+    }
+
+    // Enforce minimum width
+    const minWidth = 20;
+    newWidth = Math.max(newWidth, minWidth);
+
+    // Transform new center back to world space
+    const worldCenter = new Vec2(newCenterX, 0).rotate(original.rotation);
+
+    return {
+      x: original.x + worldCenter.x,
+      width: newWidth,
+    };
   }
 }

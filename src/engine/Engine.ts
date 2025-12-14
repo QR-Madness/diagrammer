@@ -247,6 +247,9 @@ export class Engine {
         this.toolManager.setActiveTool(tool);
         sessionStore.getState().setActiveTool(tool);
       },
+      startTextEdit: (id) => {
+        sessionStore.getState().startTextEdit(id);
+      },
 
       // Rendering
       requestRender: () => this.renderer.requestRender(),
@@ -450,8 +453,21 @@ export class Engine {
     const handled = this.toolManager.handleWheel(event, worldPoint);
 
     if (!handled) {
-      // Default wheel behavior: zoom
-      const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1;
+      // Default wheel behavior: zoom with linear acceleration
+      // Use smaller base factor for smoother zooming
+      const baseZoomStep = 0.02; // 2% per unit of delta
+      const maxZoomStep = 0.15; // Cap maximum zoom change per event
+
+      // Normalize deltaY (different browsers/devices have different scales)
+      // Typical values: ~100 for mouse wheel, ~1-4 for trackpad
+      const normalizedDelta = Math.abs(event.deltaY) / 100;
+
+      // Linear acceleration: larger scroll = larger zoom change
+      const zoomStep = Math.min(baseZoomStep * normalizedDelta, maxZoomStep);
+
+      // Calculate zoom factor (zoom in for negative delta, out for positive)
+      const zoomFactor = event.deltaY > 0 ? 1 - zoomStep : 1 + zoomStep;
+
       this.camera.zoomAt(worldPoint, zoomFactor);
       this.renderer.requestRender();
     }
