@@ -2,9 +2,9 @@ import { BaseTool, ToolContext } from './Tool';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
-import { ToolType, CursorStyle } from '../../store/sessionStore';
+import { ToolType, CursorStyle, useSessionStore } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
-import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine } from '../../shapes/Shape';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText } from '../../shapes/Shape';
 
 /**
  * State machine states for the SelectTool.
@@ -21,6 +21,16 @@ type SelectState =
  * Threshold in pixels before a click becomes a drag.
  */
 const DRAG_THRESHOLD = 3;
+
+/**
+ * Maximum time between clicks for a double-click (ms).
+ */
+const DOUBLE_CLICK_THRESHOLD = 300;
+
+/**
+ * Maximum distance between clicks for a double-click (pixels).
+ */
+const DOUBLE_CLICK_DISTANCE = 5;
 
 /**
  * Select tool for selecting and moving shapes.
@@ -72,6 +82,11 @@ export class SelectTool extends BaseTool {
 
   // Middle-click pan support
   private panHandler = new MiddleClickPanHandler();
+
+  // Double-click detection
+  private lastClickTime: number = 0;
+  private lastClickPoint: Vec2 | null = null;
+  private lastClickShapeId: string | null = null;
 
   onActivate(ctx: ToolContext): void {
     ctx.setCursor('default');
@@ -421,8 +436,36 @@ export class SelectTool extends BaseTool {
   }
 
   private handleClick(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    // This was a click (not a drag)
+    const now = Date.now();
+
+    // Check for double-click on text shape
     if (this.hitShapeId) {
+      const shape = ctx.getShapes()[this.hitShapeId];
+      if (
+        shape &&
+        isText(shape) &&
+        this.lastClickShapeId === this.hitShapeId &&
+        this.lastClickPoint &&
+        now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD
+      ) {
+        // Calculate distance between clicks
+        const dx = event.screenPoint.x - this.lastClickPoint.x;
+        const dy = event.screenPoint.y - this.lastClickPoint.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < DOUBLE_CLICK_DISTANCE) {
+          // Double-click on text shape - start editing
+          useSessionStore.getState().startTextEdit(this.hitShapeId);
+          this.resetClickTracking();
+          return;
+        }
+      }
+
+      // Track this click for double-click detection
+      this.lastClickTime = now;
+      this.lastClickPoint = event.screenPoint;
+      this.lastClickShapeId = this.hitShapeId;
+
       // Clicked on a shape
       if (!event.modifiers.shift) {
         // Without shift, select only this shape (might already be selected)
@@ -431,10 +474,17 @@ export class SelectTool extends BaseTool {
       // With shift, toggle already happened in onPointerDown
     } else {
       // Clicked on empty space
+      this.resetClickTracking();
       if (!event.modifiers.shift) {
         ctx.clearSelection();
       }
     }
+  }
+
+  private resetClickTracking(): void {
+    this.lastClickTime = 0;
+    this.lastClickPoint = null;
+    this.lastClickShapeId = null;
   }
 
   private startTranslate(ctx: ToolContext): void {
@@ -523,6 +573,7 @@ export class SelectTool extends BaseTool {
     this.rotateStartAngle = 0;
     this.rotateShapeCenter = null;
     this.panHandler.reset();
+    // Note: Don't reset click tracking here, it persists across interactions
   }
 
   /**

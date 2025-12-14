@@ -347,13 +347,13 @@ This will provide:
 - [x] Tool shortcuts (V=select, H=pan, R=rectangle, O=ellipse, L=line, T=text)
 
 ### Property Panel (`/src/ui/PropertyPanel.tsx`)
-- [ ] Create PropertyPanel component
-- [ ] Show properties for selected shapes
-- [ ] Add fill color picker
-- [ ] Add stroke color picker
-- [ ] Add stroke width slider
-- [ ] Connect to documentStore.updateShape
-- [ ] Handle multi-selection (show common properties)
+- [x] Create PropertyPanel component
+- [x] Show properties for selected shapes
+- [x] Add fill color picker
+- [x] Add stroke color picker
+- [x] Add stroke width slider
+- [x] Connect to documentStore.updateShape
+- [x] Handle multi-selection (show common properties)
 
 ### Additional Tools
 - [x] Implement EllipseTool (with shift for circle constraint)
@@ -364,7 +364,7 @@ This will provide:
 
 - [x] Copy/paste implementation (Ctrl+C/V with offset for cascading pastes)
 - [ ] Layer panel with z-order management
-- [ ] Text inline editing
+- [x] Text inline editing (double-click to edit)
 - [ ] Connectors (shapes that attach to other shapes)
 - [ ] Grouping/ungrouping
 - [ ] Alignment tools

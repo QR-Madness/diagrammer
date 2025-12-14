@@ -52,6 +52,8 @@ export interface SessionState {
   isInteracting: boolean;
   /** ID of shape being hovered over (for highlighting) */
   hoveredId: string | null;
+  /** ID of text shape currently being edited (null if not editing) */
+  editingTextId: string | null;
 }
 
 /**
@@ -82,6 +84,11 @@ export interface SessionActions {
   // Hover
   setHoveredId: (id: string | null) => void;
 
+  // Text editing
+  startTextEdit: (id: string) => void;
+  stopTextEdit: () => void;
+  isEditingText: () => boolean;
+
   // Utilities
   isSelected: (id: string) => boolean;
   getSelectedIds: () => string[];
@@ -108,6 +115,7 @@ const initialState: SessionState = {
   cursor: 'default',
   isInteracting: false,
   hoveredId: null,
+  editingTextId: null,
 };
 
 /**
@@ -209,6 +217,19 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   // Hover
   setHoveredId: (id: string | null) => {
     set({ hoveredId: id });
+  },
+
+  // Text editing
+  startTextEdit: (id: string) => {
+    set({ editingTextId: id });
+  },
+
+  stopTextEdit: () => {
+    set({ editingTextId: null });
+  },
+
+  isEditingText: (): boolean => {
+    return get().editingTextId !== null;
   },
 
   // Utilities

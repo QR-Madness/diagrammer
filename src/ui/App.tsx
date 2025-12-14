@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import './App.css';
 import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
+import { PropertyPanel } from './PropertyPanel';
 import { useDocumentStore } from '../store/documentStore';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
@@ -120,6 +121,7 @@ function App() {
           showGrid={true}
           showFps={true}
         />
+        <PropertyPanel />
       </main>
     </div>
   );

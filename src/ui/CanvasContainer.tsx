@@ -1,5 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { Engine } from '../engine/Engine';
+import { Camera } from '../engine/Camera';
+import { TextEditor } from './TextEditor';
 
 /**
  * Props for the CanvasContainer component.
@@ -41,6 +43,9 @@ export function CanvasContainer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Engine | null>(null);
 
+  // State for camera reference (for TextEditor positioning)
+  const [camera, setCamera] = useState<Camera | null>(null);
+
   /**
    * Update canvas size to match container, accounting for DPI.
    */
@@ -75,6 +80,7 @@ export function CanvasContainer({
       initialTool: 'select',
     });
     engineRef.current = engine;
+    setCamera(engine.camera);
 
     // Set initial canvas size
     updateCanvasSize();
@@ -156,6 +162,7 @@ export function CanvasContainer({
           touchAction: 'none', // Prevent browser touch gestures
         }}
       />
+      <TextEditor camera={camera} />
     </div>
   );
 }
