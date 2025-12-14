@@ -203,66 +203,70 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 ## Phase 3: Tools
 
 ### Tool Architecture (`/src/engine/tools`)
-- [ ] Define Tool interface in Tool.ts
-- [ ] Define ToolContext interface
-- [ ] Define tool lifecycle methods (onActivate, onDeactivate)
-- [ ] Define input handler methods for tools
+- [x] Define Tool interface in Tool.ts
+- [x] Define ToolContext interface
+- [x] Define tool lifecycle methods (onActivate, onDeactivate)
+- [x] Define input handler methods for tools
+- [x] Define BaseTool abstract class
 
 ### Tool Manager (`/src/engine/ToolManager.ts`)
-- [ ] Implement ToolManager class
-- [ ] Implement tool registration
-- [ ] Implement setActiveTool with activation/deactivation
-- [ ] Forward pointer events to active tool
-- [ ] Forward keyboard events to active tool
-- [ ] Forward wheel events to active tool
-- [ ] Call tool renderOverlay method
+- [x] Implement ToolManager class
+- [x] Implement tool registration
+- [x] Implement setActiveTool with activation/deactivation
+- [x] Forward pointer events to active tool
+- [x] Forward keyboard events to active tool
+- [x] Forward wheel events to active tool
+- [x] Call tool renderOverlay method
+- [x] Implement keyboard shortcut handling
 
 ### Pan Tool (`/src/engine/tools/PanTool.ts`)
-- [ ] Implement PanTool class
-- [ ] Handle middle-click drag
-- [ ] Handle spacebar + drag
-- [ ] Update camera position on drag
-- [ ] Set appropriate cursor
-- [ ] Request render on pan
+- [x] Implement PanTool class
+- [x] Handle middle-click drag (via MiddleClickPanHandler)
+- [x] Update camera position on drag
+- [x] Set appropriate cursor (grab/grabbing)
+- [x] Request render on pan
 
 ### Select Tool (`/src/engine/tools/SelectTool.ts`)
-- [ ] Implement SelectTool state machine
-- [ ] Implement Idle state
-- [ ] Implement click selection (single shape)
-- [ ] Implement shift-click (add to selection)
-- [ ] Implement click on empty (clear selection)
-- [ ] Implement marquee selection (drag on empty)
-- [ ] Implement translate shapes (drag selected)
-- [ ] Track drag start positions for translation
-- [ ] Update shapes during drag
-- [ ] Commit changes on pointer up
-- [ ] Render selection overlay (bounding boxes)
-- [ ] Render marquee rectangle during selection
+- [x] Implement SelectTool state machine
+- [x] Implement Idle state
+- [x] Implement click selection (single shape)
+- [x] Implement shift-click (add/remove from selection)
+- [x] Implement click on empty (clear selection)
+- [x] Implement marquee selection (drag on empty)
+- [x] Implement translate shapes (drag selected)
+- [x] Track drag start positions for translation
+- [x] Update shapes during drag
+- [x] Commit changes on pointer up
+- [x] Render marquee rectangle during selection
+- [x] Handle Delete key to delete shapes
+- [x] Handle Escape key to cancel/clear
 
 ### Rectangle Tool (`/src/engine/tools/RectangleTool.ts`)
-- [ ] Implement RectangleTool class
-- [ ] Handle pointer down (start position)
-- [ ] Handle pointer move (update size preview)
-- [ ] Render preview during creation
-- [ ] Create shape on pointer up
-- [ ] Add shape to DocumentStore
-- [ ] Switch to SelectTool after creation
-- [ ] Handle Escape key to cancel
+- [x] Implement RectangleTool class
+- [x] Handle pointer down (start position)
+- [x] Handle pointer move (update size preview)
+- [x] Render preview during creation
+- [x] Create shape on pointer up
+- [x] Add shape to DocumentStore
+- [x] Switch to SelectTool after creation
+- [x] Handle Escape key to cancel
+- [x] Handle Shift key for square constraint
 
 ### Engine Integration (`/src/engine/Engine.ts`)
-- [ ] Create main Engine class
-- [ ] Initialize Camera
-- [ ] Initialize Renderer
-- [ ] Initialize InputHandler
-- [ ] Initialize SpatialIndex
-- [ ] Initialize HitTester
-- [ ] Initialize ToolManager
-- [ ] Register default tools
-- [ ] Wire up event handlers
-- [ ] Implement onDocumentChange callback
-- [ ] Implement onSessionChange callback
-- [ ] Implement onResize callback
-- [ ] Implement destroy method
+- [x] Create main Engine class
+- [x] Initialize Camera
+- [x] Initialize Renderer
+- [x] Initialize InputHandler
+- [x] Initialize SpatialIndex
+- [x] Initialize HitTester
+- [x] Initialize ToolManager
+- [x] Register default tools
+- [x] Wire up event handlers
+- [x] Subscribe to DocumentStore changes
+- [x] Subscribe to SessionStore changes
+- [x] Implement resize method
+- [x] Implement destroy method
+- [x] Default wheel zoom behavior
 
 ## Phase 4: Basic UI
 
@@ -290,7 +294,7 @@ A working prototype requires completion of:
 - ✅ All Phase 1 tasks (Core Foundation)
 - ✅ All Phase 2 tasks (Shape System)
 - ✅ All Phase 3 tasks (Tools)
-- ✅ Basic Toolbar from Phase 4
+- ⬜ Basic Toolbar from Phase 4
 
 This will provide:
 - Canvas with pan/zoom
