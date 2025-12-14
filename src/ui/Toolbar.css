@@ -1,0 +1,79 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.toolbar-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0.25rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-button:hover {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+}
+
+.toolbar-button.active {
+  background-color: #e7f1ff;
+  border-color: #2196f3;
+  color: #1976d2;
+}
+
+.toolbar-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.toolbar-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.toolbar-shortcut {
+  font-size: 0.625rem;
+  font-weight: 500;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 32px;
+  background-color: #dee2e6;
+}
+
+.toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.toolbar-label {
+  font-weight: 500;
+}
+
+.toolbar-value {
+  text-transform: capitalize;
+  color: #495057;
+}

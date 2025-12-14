@@ -271,22 +271,29 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 ## Phase 4: Basic UI
 
 ### Toolbar (`/src/ui/Toolbar.tsx`)
-- [ ] Create Toolbar component
-- [ ] Add tool buttons (Select, Pan, Rectangle)
-- [ ] Connect to sessionStore.setActiveTool
-- [ ] Show active tool state
-- [ ] Add keyboard shortcuts display
+- [x] Create Toolbar component
+- [x] Add tool buttons (Select, Pan, Rectangle)
+- [x] Connect to sessionStore.setActiveTool
+- [x] Show active tool state
+- [x] Add keyboard shortcuts display
+
+### CanvasContainer Updates
+- [x] Update CanvasContainer to use Engine class
+- [x] Simplify component to delegate to Engine
+
+### Example Content
+- [x] Add example shapes on startup for demonstration
+- [x] Include variety of colors and rotations
 
 ### Utilities (`/src/utils`)
-- [ ] Implement id.ts with nanoid
+- [ ] Implement id.ts with nanoid (using nanoid directly)
 - [ ] Implement color.ts (color parsing/conversion)
 - [ ] Implement debounce.ts
 
 ### Store Types (`/src/store/types.ts`)
-- [ ] Define common store types
-- [ ] Define ToolType enum
-- [ ] Define CameraState type
-- [ ] Export shared types
+- [x] Define common store types (in sessionStore.ts)
+- [x] Define ToolType enum (in sessionStore.ts)
+- [x] Define CameraState type (in sessionStore.ts)
 
 ## Minimal Functional Prototype Checklist
 
@@ -294,7 +301,7 @@ A working prototype requires completion of:
 - ✅ All Phase 1 tasks (Core Foundation)
 - ✅ All Phase 2 tasks (Shape System)
 - ✅ All Phase 3 tasks (Tools)
-- ⬜ Basic Toolbar from Phase 4
+- ✅ Basic Toolbar from Phase 4
 
 This will provide:
 - Canvas with pan/zoom
