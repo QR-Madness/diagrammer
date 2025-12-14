@@ -268,7 +268,17 @@ export class Engine {
     });
 
     // Subscribe to session store
+    let previousTool = useSessionStore.getState().activeTool;
     this.unsubscribeSession = useSessionStore.subscribe((state) => {
+      // Sync tool changes from sessionStore to toolManager
+      if (state.activeTool !== previousTool) {
+        previousTool = state.activeTool;
+        // Only update if different from current tool manager state
+        if (this.toolManager.getActiveToolType() !== state.activeTool) {
+          this.toolManager.setActiveTool(state.activeTool);
+        }
+      }
+
       // Update renderer with selection
       this.renderer.setSelection(state.selectedIds);
 

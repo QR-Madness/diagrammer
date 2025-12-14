@@ -286,9 +286,9 @@ This document tracks the implementation tasks for building the Whiteboard Founda
 - [x] Include variety of colors and rotations
 
 ### Utilities (`/src/utils`)
-- [ ] Implement id.ts with nanoid (using nanoid directly)
-- [ ] Implement color.ts (color parsing/conversion)
-- [ ] Implement debounce.ts
+- [x] Implement id.ts with nanoid wrapper
+- [x] Implement color.ts (hex/rgb/hsl parsing and conversion)
+- [x] Implement debounce.ts (debounce, throttle utilities)
 
 ### Store Types (`/src/store/types.ts`)
 - [x] Define common store types (in sessionStore.ts)
