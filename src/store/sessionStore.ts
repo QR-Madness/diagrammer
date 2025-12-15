@@ -4,7 +4,7 @@ import { useDocumentStore } from './documentStore';
 /**
  * Available tool types.
  */
-export type ToolType = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'line' | 'text';
+export type ToolType = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector';
 
 /**
  * Camera state representing the viewport.

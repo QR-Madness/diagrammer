@@ -5,6 +5,8 @@ import {
   RectangleShape,
   Handle,
   HandleType,
+  Anchor,
+  AnchorPosition,
   DEFAULT_RECTANGLE,
 } from './Shape';
 
@@ -54,7 +56,7 @@ function getWorldCorners(shape: RectangleShape): Vec2[] {
 export const rectangleHandler: ShapeHandler<RectangleShape> = {
   /**
    * Render a rectangle to the canvas context.
-   * Handles rotation, fill, stroke, and rounded corners.
+   * Handles rotation, fill, stroke, rounded corners, and label.
    */
   render(ctx: CanvasRenderingContext2D, shape: RectangleShape): void {
     const { x, y, width, height, rotation, fill, stroke, strokeWidth, opacity, cornerRadius } =
@@ -105,6 +107,18 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
+    }
+
+    // Draw label if present
+    if (shape.label) {
+      const fontSize = shape.labelFontSize || 14;
+      const labelColor = shape.labelColor || stroke || '#000000';
+
+      ctx.fillStyle = labelColor;
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(shape.label, 0, 0);
     }
 
     ctx.restore();
@@ -212,6 +226,33 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       height: DEFAULT_RECTANGLE.height,
       cornerRadius: DEFAULT_RECTANGLE.cornerRadius,
     };
+  },
+
+  /**
+   * Get the connector anchor points for the rectangle.
+   * Returns 5 anchors: center and 4 edge midpoints.
+   */
+  getAnchors(shape: RectangleShape): Anchor[] {
+    const { width, height } = shape;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    const localAnchors: Array<{ position: AnchorPosition; x: number; y: number }> = [
+      { position: 'center', x: 0, y: 0 },
+      { position: 'top', x: 0, y: -halfHeight },
+      { position: 'right', x: halfWidth, y: 0 },
+      { position: 'bottom', x: 0, y: halfHeight },
+      { position: 'left', x: -halfWidth, y: 0 },
+    ];
+
+    return localAnchors.map((a) => {
+      const world = localToWorld(new Vec2(a.x, a.y), shape);
+      return {
+        position: a.position,
+        x: world.x,
+        y: world.y,
+      };
+    });
   },
 };
 

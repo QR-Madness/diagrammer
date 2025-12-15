@@ -4,6 +4,7 @@ import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
 import { PropertyPanel } from './PropertyPanel';
 import { useDocumentStore } from '../store/documentStore';
+import { useThemeStore } from '../store/themeStore';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 
@@ -104,6 +105,10 @@ function App() {
   const shapeCount = useDocumentStore((state) => state.shapeOrder.length);
   const initializedRef = useRef(false);
 
+  // Theme state
+  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
+  const toggleTheme = useThemeStore((state) => state.toggle);
+
   // Add example shapes on first render only
   useEffect(() => {
     // Only add shapes if not already initialized and no shapes exist
@@ -117,8 +122,20 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Diagrammer</h1>
-        <p>Whiteboard Foundation - Interactive Demo</p>
+        <div className="app-header-title">
+          <h1>Diagrammer</h1>
+          <p>Whiteboard Foundation - Interactive Demo</p>
+        </div>
+        <div className="app-header-actions">
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
+            aria-label={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {resolvedTheme === 'light' ? '\u263E' : '\u2600'}
+          </button>
+        </div>
       </header>
       <Toolbar />
       <main className="app-main">

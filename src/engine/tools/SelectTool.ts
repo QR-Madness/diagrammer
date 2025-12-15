@@ -438,14 +438,17 @@ export class SelectTool extends BaseTool {
   private handleClick(event: NormalizedPointerEvent, ctx: ToolContext): void {
     const now = Date.now();
 
-    // Check for double-click on text shape
+    // Check for double-click on editable shape (Text, Rectangle, Ellipse)
     if (this.hitShapeId) {
       const shape = ctx.getShapes()[this.hitShapeId];
 
-      // Check if this is a double-click on the same text shape
+      // Check if this shape supports label editing
+      const supportsLabelEditing =
+        shape && (isText(shape) || isRectangle(shape) || isEllipse(shape));
+
+      // Check if this is a double-click on the same shape
       const isDoubleClick =
-        shape &&
-        isText(shape) &&
+        supportsLabelEditing &&
         this.lastClickShapeId === this.hitShapeId &&
         this.lastClickPoint !== null &&
         now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD;
@@ -457,7 +460,7 @@ export class SelectTool extends BaseTool {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < DOUBLE_CLICK_DISTANCE) {
-          // Double-click on text shape - start editing
+          // Double-click - start text/label editing
           ctx.startTextEdit(this.hitShapeId);
           this.resetClickTracking();
           ctx.requestRender();

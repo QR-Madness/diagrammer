@@ -3,8 +3,8 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem 1rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .toolbar-group {
@@ -23,19 +23,20 @@
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .toolbar-button:hover {
-  background-color: #e9ecef;
-  border-color: #ced4da;
+  background-color: var(--bg-hover);
+  border-color: var(--border-color-input);
 }
 
 .toolbar-button.active {
-  background-color: #e7f1ff;
-  border-color: #2196f3;
-  color: #1976d2;
+  background-color: var(--bg-active);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .toolbar-button:focus {
@@ -58,7 +59,7 @@
 .toolbar-divider {
   width: 1px;
   height: 32px;
-  background-color: #dee2e6;
+  background-color: var(--border-color);
 }
 
 .toolbar-status {
@@ -66,7 +67,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 .toolbar-label {
@@ -75,5 +76,5 @@
 
 .toolbar-value {
   text-transform: capitalize;
-  color: #495057;
+  color: var(--text-primary);
 }

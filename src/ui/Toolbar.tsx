@@ -20,6 +20,7 @@ const TOOLS: ToolDef[] = [
   { type: 'rectangle', name: 'Rectangle', icon: '▭', shortcut: 'R' },
   { type: 'ellipse', name: 'Ellipse', icon: '◯', shortcut: 'O' },
   { type: 'line', name: 'Line', icon: '╱', shortcut: 'L' },
+  { type: 'connector', name: 'Connector', icon: '⟷', shortcut: 'C' },
   { type: 'text', name: 'Text', icon: 'T', shortcut: 'T' },
 ];
 

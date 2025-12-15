@@ -1,6 +1,6 @@
 import { Vec2 } from '../math/Vec2';
 import { Box } from '../math/Box';
-import { Shape, Handle } from './Shape';
+import { Shape, Handle, Anchor } from './Shape';
 
 /**
  * Handler interface for shape operations.
@@ -57,6 +57,15 @@ export interface ShapeHandler<T extends Shape = Shape> {
    * @returns A new shape instance
    */
   create(position: Vec2, id: string): T;
+
+  /**
+   * Get the connector anchor points for this shape.
+   * Optional - only shapes that support connectors need to implement this.
+   *
+   * @param shape - The shape to get anchors for
+   * @returns Array of anchor points with positions and identifiers
+   */
+  getAnchors?(shape: T): Anchor[];
 }
 
 /**

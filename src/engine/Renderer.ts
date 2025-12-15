@@ -17,6 +17,8 @@ export interface RendererOptions {
   gridColor?: string;
   /** Major grid line color. Default: '#c0c0c0' */
   majorGridColor?: string;
+  /** Origin axis color. Default: '#808080' */
+  originColor?: string;
   /** Background color. Default: '#ffffff' */
   backgroundColor?: string;
   /** Whether to show FPS counter. Default: false */
@@ -55,6 +57,7 @@ const DEFAULT_OPTIONS: Required<RendererOptions> = {
   majorGridInterval: 5,
   gridColor: '#e0e0e0',
   majorGridColor: '#c0c0c0',
+  originColor: '#808080',
   backgroundColor: '#ffffff',
   showFps: false,
   selectionColor: '#2196f3',
@@ -434,7 +437,7 @@ export class Renderer {
     // Draw origin crosshair (thicker line at x=0 and y=0)
     if (gridBounds.minX <= 0 && gridBounds.maxX >= 0) {
       ctx.beginPath();
-      ctx.strokeStyle = '#808080';
+      ctx.strokeStyle = options.originColor;
       ctx.lineWidth = baseLineWidth * 2;
       ctx.moveTo(0, gridBounds.minY);
       ctx.lineTo(0, gridBounds.maxY);
@@ -443,7 +446,7 @@ export class Renderer {
 
     if (gridBounds.minY <= 0 && gridBounds.maxY >= 0) {
       ctx.beginPath();
-      ctx.strokeStyle = '#808080';
+      ctx.strokeStyle = options.originColor;
       ctx.lineWidth = baseLineWidth * 2;
       ctx.moveTo(gridBounds.minX, 0);
       ctx.lineTo(gridBounds.maxX, 0);

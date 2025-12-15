@@ -36,7 +36,24 @@ export interface Handle {
 /**
  * Shape type discriminator.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'text';
+export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector';
+
+/**
+ * Anchor position on a shape for connectors.
+ */
+export type AnchorPosition = 'top' | 'right' | 'bottom' | 'left' | 'center';
+
+/**
+ * Anchor point on a shape.
+ */
+export interface Anchor {
+  /** Position identifier */
+  position: AnchorPosition;
+  /** World X coordinate */
+  x: number;
+  /** World Y coordinate */
+  y: number;
+}
 
 /**
  * Base interface for all shapes.
@@ -78,6 +95,12 @@ export interface RectangleShape extends BaseShape {
   height: number;
   /** Corner radius for rounded rectangles (0 for sharp corners) */
   cornerRadius: number;
+  /** Optional inline text label */
+  label?: string;
+  /** Label font size in world units (default: 14) */
+  labelFontSize?: number;
+  /** Label text color (default: inherits from stroke or '#000000') */
+  labelColor?: string;
 }
 
 /**
@@ -89,6 +112,12 @@ export interface EllipseShape extends BaseShape {
   radiusX: number;
   /** Vertical radius in world units */
   radiusY: number;
+  /** Optional inline text label */
+  label?: string;
+  /** Label font size in world units (default: 14) */
+  labelFontSize?: number;
+  /** Label text color (default: inherits from stroke or '#000000') */
+  labelColor?: string;
 }
 
 /**
@@ -99,6 +128,29 @@ export interface LineShape extends BaseShape {
   /** End point X coordinate in world units */
   x2: number;
   /** End point Y coordinate in world units */
+  y2: number;
+  /** Whether to draw an arrow at the start point */
+  startArrow: boolean;
+  /** Whether to draw an arrow at the end point */
+  endArrow: boolean;
+}
+
+/**
+ * Connector shape that connects two shapes.
+ */
+export interface ConnectorShape extends BaseShape {
+  type: 'connector';
+  /** ID of the shape at the start, or null for floating endpoint */
+  startShapeId: string | null;
+  /** Anchor position on the start shape */
+  startAnchor: AnchorPosition;
+  /** ID of the shape at the end, or null for floating endpoint */
+  endShapeId: string | null;
+  /** Anchor position on the end shape */
+  endAnchor: AnchorPosition;
+  /** End point X coordinate (used when endShapeId is null, or cached position) */
+  x2: number;
+  /** End point Y coordinate (used when endShapeId is null, or cached position) */
   y2: number;
   /** Whether to draw an arrow at the start point */
   startArrow: boolean;
@@ -131,7 +183,7 @@ export interface TextShape extends BaseShape {
 /**
  * Union type of all shape types.
  */
-export type Shape = RectangleShape | EllipseShape | LineShape | TextShape;
+export type Shape = RectangleShape | EllipseShape | LineShape | TextShape | ConnectorShape;
 
 // ============ Type Guards ============
 
@@ -161,6 +213,13 @@ export function isLine(shape: Shape): shape is LineShape {
  */
 export function isText(shape: Shape): shape is TextShape {
   return shape.type === 'text';
+}
+
+/**
+ * Check if a shape is a connector.
+ */
+export function isConnector(shape: Shape): shape is ConnectorShape {
+  return shape.type === 'connector';
 }
 
 // ============ Factory Defaults ============
@@ -220,4 +279,20 @@ export const DEFAULT_TEXT = {
   fontFamily: 'sans-serif',
   textAlign: 'left' as TextAlign,
   width: 200,
+} as const;
+
+/**
+ * Default values for connector shapes.
+ */
+export const DEFAULT_CONNECTOR = {
+  ...DEFAULT_SHAPE_STYLE,
+  fill: null,
+  stroke: '#2c5282',
+  strokeWidth: 2,
+  startShapeId: null,
+  startAnchor: 'center' as AnchorPosition,
+  endShapeId: null,
+  endAnchor: 'center' as AnchorPosition,
+  startArrow: false,
+  endArrow: true,
 } as const;

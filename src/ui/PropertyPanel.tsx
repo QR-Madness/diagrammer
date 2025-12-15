@@ -84,6 +84,25 @@ export function PropertyPanel() {
     });
   };
 
+  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    selectedShapes.forEach((s) => {
+      if (isRectangle(s) || isEllipse(s)) {
+        // Use empty string check instead of undefined for TypeScript compatibility
+        updateShape(s.id, value ? { label: value } : { label: '' });
+      }
+    });
+  };
+
+  const handleLabelFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value) || 14;
+    selectedShapes.forEach((s) => {
+      if (isRectangle(s) || isEllipse(s)) {
+        updateShape(s.id, { labelFontSize: value });
+      }
+    });
+  };
+
   return (
     <div className="property-panel">
       <div className="property-panel-header">
@@ -186,6 +205,36 @@ export function PropertyPanel() {
               step={1}
             />
           </div>
+        )}
+
+        {/* Label properties for Rectangle and Ellipse */}
+        {(isRectangle(shape) || isEllipse(shape)) && (
+          <>
+            <div className="property-section">Label</div>
+            <div className="property-row">
+              <label className="property-label">Text</label>
+              <input
+                type="text"
+                value={shape.label || ''}
+                onChange={handleLabelChange}
+                className="property-text"
+                placeholder="Enter label..."
+                style={{ flex: 1 }}
+              />
+            </div>
+            <div className="property-row">
+              <label className="property-label">Font Size</label>
+              <input
+                type="number"
+                value={shape.labelFontSize || 14}
+                onChange={handleLabelFontSizeChange}
+                className="property-number"
+                min={8}
+                max={100}
+                step={1}
+              />
+            </div>
+          </>
         )}
 
         {/* Text-specific properties */}

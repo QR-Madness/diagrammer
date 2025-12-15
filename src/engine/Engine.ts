@@ -11,8 +11,10 @@ import { RectangleTool } from './tools/RectangleTool';
 import { EllipseTool } from './tools/EllipseTool';
 import { LineTool } from './tools/LineTool';
 import { TextTool } from './tools/TextTool';
+import { ConnectorTool } from './tools/ConnectorTool';
 import { Vec2 } from '../math/Vec2';
-import { Shape } from '../shapes/Shape';
+import { Shape, isConnector } from '../shapes/Shape';
+import { updateConnectorEndpoints } from '../shapes/Connector';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
 import { useHistoryStore, pushHistory } from '../store/historyStore';
@@ -23,6 +25,7 @@ import '../shapes/Rectangle';
 import '../shapes/Ellipse';
 import '../shapes/Line';
 import '../shapes/Text';
+import '../shapes/Connector';
 
 // Clipboard for copy/paste (module-level to persist across operations)
 let clipboard: Shape[] = [];
@@ -44,6 +47,15 @@ const DEFAULT_OPTIONS: Required<EngineOptions> = {
   showFps: false,
   initialTool: 'select',
 };
+
+/** Pan speed in world units per frame */
+const PAN_SPEED = 10;
+
+/** Keys that trigger panning */
+const PAN_KEYS = new Set([
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+  'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
+]);
 
 /**
  * Main engine class that coordinates all components.
@@ -90,6 +102,10 @@ export class Engine {
   private unsubscribeDocument: (() => void) | null = null;
   private unsubscribeSession: (() => void) | null = null;
 
+  // Keyboard panning state
+  private activePanKeys: Set<string> = new Set();
+  private panAnimationId: number | null = null;
+
   constructor(canvas: HTMLCanvasElement, options?: EngineOptions) {
     this.canvas = canvas;
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -121,7 +137,7 @@ export class Engine {
       canvas,
       this.camera,
       (event) => this.handlePointerEvent(event),
-      (event) => this.handleKeyDown(event),
+      (event) => this.handleKeyEvent(event),
       (event, worldPoint) => this.handleWheel(event, worldPoint)
     );
 
@@ -187,6 +203,13 @@ export class Engine {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+
+    // Stop keyboard pan animation
+    if (this.panAnimationId !== null) {
+      cancelAnimationFrame(this.panAnimationId);
+      this.panAnimationId = null;
+    }
+    this.activePanKeys.clear();
 
     // Unsubscribe from stores
     this.unsubscribeDocument?.();
@@ -269,6 +292,7 @@ export class Engine {
     this.toolManager.register(new EllipseTool());
     this.toolManager.register(new LineTool());
     this.toolManager.register(new TextTool());
+    this.toolManager.register(new ConnectorTool());
   }
 
   /**
@@ -277,6 +301,9 @@ export class Engine {
   private subscribeToStores(): void {
     // Subscribe to document store
     this.unsubscribeDocument = useDocumentStore.subscribe((state) => {
+      // Update connector endpoints when shapes move
+      this.updateConnectors(state.shapes);
+
       // Update renderer with new shape data
       this.renderer.setShapes(state.shapes, state.shapeOrder);
 
@@ -330,13 +357,65 @@ export class Engine {
     );
   }
 
+  /**
+   * Update connector endpoints based on connected shapes.
+   * Called when shapes change to keep connectors attached.
+   */
+  private updateConnectors(shapes: Record<string, Shape>): void {
+    const updates: Array<{ id: string; updates: Partial<Shape> }> = [];
+
+    for (const shape of Object.values(shapes)) {
+      if (isConnector(shape)) {
+        // Check if this connector has any connected shapes
+        if (shape.startShapeId || shape.endShapeId) {
+          const endpointUpdates = updateConnectorEndpoints(shape, shapes);
+
+          // Only include updates where positions actually changed
+          const hasRealChanges =
+            (endpointUpdates.x !== undefined && Math.abs(endpointUpdates.x - shape.x) > 0.001) ||
+            (endpointUpdates.y !== undefined && Math.abs(endpointUpdates.y - shape.y) > 0.001) ||
+            (endpointUpdates.x2 !== undefined && Math.abs(endpointUpdates.x2 - shape.x2) > 0.001) ||
+            (endpointUpdates.y2 !== undefined && Math.abs(endpointUpdates.y2 - shape.y2) > 0.001);
+
+          if (hasRealChanges) {
+            updates.push({ id: shape.id, updates: endpointUpdates });
+          }
+        }
+      }
+    }
+
+    // Apply updates if any
+    if (updates.length > 0) {
+      const updateShape = useDocumentStore.getState().updateShape;
+      for (const { id, updates: shapeUpdates } of updates) {
+        updateShape(id, shapeUpdates);
+      }
+    }
+  }
+
   // Event handlers
 
   private handlePointerEvent(event: NormalizedPointerEvent): void {
     this.toolManager.handlePointerEvent(event);
   }
 
+  /**
+   * Handle keyboard events (both keydown and keyup).
+   */
+  private handleKeyEvent(event: KeyboardEvent): void {
+    if (event.type === 'keydown') {
+      this.handleKeyDown(event);
+    } else if (event.type === 'keyup') {
+      this.handleKeyUp(event);
+    }
+  }
+
   private handleKeyDown(event: KeyboardEvent): void {
+    // Handle keyboard panning
+    if (this.handleKeyboardPanDown(event)) {
+      return;
+    }
+
     // Let tool manager handle first
     const handled = this.toolManager.handleKeyDown(event);
 
@@ -344,6 +423,115 @@ export class Engine {
       // Handle global shortcuts
       this.handleGlobalShortcuts(event);
     }
+  }
+
+  private handleKeyUp(event: KeyboardEvent): void {
+    // Handle keyboard panning
+    this.handleKeyboardPanUp(event);
+
+    // Let tool manager handle
+    this.toolManager.handleKeyUp(event);
+  }
+
+  /**
+   * Handle keydown for keyboard panning.
+   * Returns true if the event was handled.
+   */
+  private handleKeyboardPanDown(event: KeyboardEvent): boolean {
+    // Don't handle if modifiers are pressed (allow shortcuts)
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      return false;
+    }
+
+    // Check if this is a pan key
+    if (!PAN_KEYS.has(event.key)) {
+      return false;
+    }
+
+    // Don't handle if we're editing text
+    if (useSessionStore.getState().isEditingText()) {
+      return false;
+    }
+
+    // Prevent page scrolling
+    event.preventDefault();
+
+    // Add key to active set
+    this.activePanKeys.add(event.key);
+
+    // Start pan animation if not already running
+    if (this.panAnimationId === null) {
+      this.startPanAnimation();
+    }
+
+    return true;
+  }
+
+  /**
+   * Handle keyup for keyboard panning.
+   */
+  private handleKeyboardPanUp(event: KeyboardEvent): void {
+    // Remove key from active set
+    this.activePanKeys.delete(event.key);
+
+    // Stop animation if no keys are pressed
+    if (this.activePanKeys.size === 0 && this.panAnimationId !== null) {
+      cancelAnimationFrame(this.panAnimationId);
+      this.panAnimationId = null;
+    }
+  }
+
+  /**
+   * Start the keyboard pan animation loop.
+   */
+  private startPanAnimation(): void {
+    const animate = () => {
+      if (this.destroyed || this.activePanKeys.size === 0) {
+        this.panAnimationId = null;
+        return;
+      }
+
+      // Calculate pan direction from active keys
+      let dx = 0;
+      let dy = 0;
+
+      for (const key of this.activePanKeys) {
+        switch (key) {
+          case 'ArrowUp':
+          case 'w':
+          case 'W':
+            dy -= 1;
+            break;
+          case 'ArrowDown':
+          case 's':
+          case 'S':
+            dy += 1;
+            break;
+          case 'ArrowLeft':
+          case 'a':
+          case 'A':
+            dx -= 1;
+            break;
+          case 'ArrowRight':
+          case 'd':
+          case 'D':
+            dx += 1;
+            break;
+        }
+      }
+
+      // Apply pan (adjust for zoom to maintain consistent screen speed)
+      if (dx !== 0 || dy !== 0) {
+        const panAmount = PAN_SPEED / this.camera.zoom;
+        this.camera.pan(new Vec2(dx * panAmount, dy * panAmount));
+        this.renderer.requestRender();
+      }
+
+      // Continue animation
+      this.panAnimationId = requestAnimationFrame(animate);
+    };
+
+    this.panAnimationId = requestAnimationFrame(animate);
   }
 
   /**

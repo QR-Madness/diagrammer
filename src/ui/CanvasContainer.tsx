@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { Engine } from '../engine/Engine';
 import { Camera } from '../engine/Camera';
 import { TextEditor } from './TextEditor';
+import { useThemeStore } from '../store/themeStore';
 
 /**
  * Props for the CanvasContainer component.
@@ -102,6 +103,39 @@ export function CanvasContainer({
     engine.renderer.setOptions({ showGrid, showFps });
     engine.requestRender();
   }, [showGrid, showFps]);
+
+  /**
+   * Subscribe to theme changes and update renderer colors.
+   */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    // Update renderer with theme colors
+    const updateThemeColors = () => {
+      const { colors } = useThemeStore.getState();
+      engine.renderer.setOptions({
+        backgroundColor: colors.backgroundColor,
+        gridColor: colors.gridColor,
+        majorGridColor: colors.majorGridColor,
+        originColor: colors.originColor,
+        selectionColor: colors.selectionColor,
+        handleFillColor: colors.handleFillColor,
+        handleStrokeColor: colors.handleStrokeColor,
+      });
+      engine.requestRender();
+    };
+
+    // Initial update
+    updateThemeColors();
+
+    // Subscribe to theme changes
+    const unsubscribe = useThemeStore.subscribe(updateThemeColors);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   /**
    * Set up ResizeObserver to handle container resize.

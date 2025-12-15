@@ -5,6 +5,8 @@ import {
   EllipseShape,
   Handle,
   HandleType,
+  Anchor,
+  AnchorPosition,
   DEFAULT_ELLIPSE,
 } from './Shape';
 
@@ -49,7 +51,7 @@ function getEllipseBoundaryPoints(shape: EllipseShape, numSamples = 32): Vec2[] 
 export const ellipseHandler: ShapeHandler<EllipseShape> = {
   /**
    * Render an ellipse to the canvas context.
-   * Handles rotation, fill, stroke.
+   * Handles rotation, fill, stroke, and label.
    */
   render(ctx: CanvasRenderingContext2D, shape: EllipseShape): void {
     const { x, y, radiusX, radiusY, rotation, fill, stroke, strokeWidth, opacity } = shape;
@@ -79,6 +81,18 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
+    }
+
+    // Draw label if present
+    if (shape.label) {
+      const fontSize = shape.labelFontSize || 14;
+      const labelColor = shape.labelColor || stroke || '#000000';
+
+      ctx.fillStyle = labelColor;
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(shape.label, 0, 0);
     }
 
     ctx.restore();
@@ -200,6 +214,31 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
       radiusX: DEFAULT_ELLIPSE.radiusX,
       radiusY: DEFAULT_ELLIPSE.radiusY,
     };
+  },
+
+  /**
+   * Get the connector anchor points for the ellipse.
+   * Returns 5 anchors: center and 4 edge midpoints.
+   */
+  getAnchors(shape: EllipseShape): Anchor[] {
+    const { radiusX, radiusY } = shape;
+
+    const localAnchors: Array<{ position: AnchorPosition; x: number; y: number }> = [
+      { position: 'center', x: 0, y: 0 },
+      { position: 'top', x: 0, y: -radiusY },
+      { position: 'right', x: radiusX, y: 0 },
+      { position: 'bottom', x: 0, y: radiusY },
+      { position: 'left', x: -radiusX, y: 0 },
+    ];
+
+    return localAnchors.map((a) => {
+      const world = localToWorld(new Vec2(a.x, a.y), shape);
+      return {
+        position: a.position,
+        x: world.x,
+        y: world.y,
+      };
+    });
   },
 };
 

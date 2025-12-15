@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { pushHistory } from '../store/historyStore';
-import { isText } from '../shapes/Shape';
+import { isText, isRectangle, isEllipse, Shape } from '../shapes/Shape';
 import { Vec2 } from '../math/Vec2';
 import { Camera } from '../engine/Camera';
 import './TextEditor.css';
@@ -12,9 +12,65 @@ export interface TextEditorProps {
 }
 
 /**
+ * Get the text content to edit for a shape.
+ */
+function getEditableText(shape: Shape): string {
+  if (isText(shape)) {
+    return shape.text;
+  }
+  if (isRectangle(shape) || isEllipse(shape)) {
+    return shape.label || '';
+  }
+  return '';
+}
+
+/**
+ * Get the font size for editing.
+ */
+function getEditFontSize(shape: Shape): number {
+  if (isText(shape)) {
+    return shape.fontSize;
+  }
+  if (isRectangle(shape) || isEllipse(shape)) {
+    return shape.labelFontSize || 14;
+  }
+  return 14;
+}
+
+/**
+ * Get the edit width for a shape.
+ */
+function getEditWidth(shape: Shape): number {
+  if (isText(shape)) {
+    return shape.width;
+  }
+  if (isRectangle(shape)) {
+    return shape.width;
+  }
+  if (isEllipse(shape)) {
+    return shape.radiusX * 2;
+  }
+  return 100;
+}
+
+/**
+ * Get the text color for editing.
+ */
+function getEditColor(shape: Shape): string {
+  if (isText(shape)) {
+    return shape.fill || '#000000';
+  }
+  if (isRectangle(shape) || isEllipse(shape)) {
+    return shape.labelColor || shape.stroke || '#000000';
+  }
+  return '#000000';
+}
+
+/**
  * Inline text editor component that overlays on the canvas.
  *
- * Shows a textarea positioned over the text shape being edited.
+ * Shows a textarea positioned over the shape being edited.
+ * Works with Text shapes (editing text content) and Rectangle/Ellipse shapes (editing labels).
  * Saves changes on blur or Enter (with Shift+Enter for newlines).
  */
 export function TextEditor({ camera }: TextEditorProps) {
@@ -28,28 +84,35 @@ export function TextEditor({ camera }: TextEditorProps) {
 
   // Get the shape being edited
   const shape = editingTextId ? shapes[editingTextId] : null;
-  const textShape = shape && isText(shape) ? shape : null;
+  const canEdit = shape && (isText(shape) || isRectangle(shape) || isEllipse(shape));
 
   // Focus the textarea when editing starts
   useEffect(() => {
-    if (textShape && textareaRef.current) {
-      originalTextRef.current = textShape.text;
-      textareaRef.current.value = textShape.text;
+    if (canEdit && shape && textareaRef.current) {
+      const text = getEditableText(shape);
+      originalTextRef.current = text;
+      textareaRef.current.value = text;
       textareaRef.current.focus();
       textareaRef.current.select();
     }
-  }, [textShape]);
+  }, [canEdit, shape]);
 
   const handleSave = useCallback(() => {
-    if (!editingTextId || !textareaRef.current) return;
+    if (!editingTextId || !textareaRef.current || !shape) return;
 
     const newText = textareaRef.current.value;
     if (newText !== originalTextRef.current) {
-      pushHistory('Edit text');
-      updateShape(editingTextId, { text: newText });
+      if (isText(shape)) {
+        pushHistory('Edit text');
+        updateShape(editingTextId, { text: newText });
+      } else if (isRectangle(shape) || isEllipse(shape)) {
+        pushHistory('Edit label');
+        // Use empty string instead of undefined for TypeScript compatibility
+        updateShape(editingTextId, newText ? { label: newText } : { label: '' });
+      }
     }
     stopTextEdit();
-  }, [editingTextId, updateShape, stopTextEdit]);
+  }, [editingTextId, shape, updateShape, stopTextEdit]);
 
   const handleCancel = useCallback(() => {
     stopTextEdit();
@@ -74,31 +137,47 @@ export function TextEditor({ camera }: TextEditorProps) {
   );
 
   // Don't render if not editing or no camera
-  if (!textShape || !camera) {
+  if (!canEdit || !shape || !camera) {
     return null;
   }
 
   // Calculate position in screen coordinates
-  const screenPos = camera.worldToScreen(new Vec2(textShape.x, textShape.y));
+  const screenPos = camera.worldToScreen(new Vec2(shape.x, shape.y));
 
-  // Estimate text dimensions based on font size and content
-  const fontSize = textShape.fontSize * camera.zoom;
-  const minWidth = Math.max(100, textShape.width * camera.zoom);
+  // Get font size and dimensions
+  const baseFontSize = getEditFontSize(shape);
+  const fontSize = baseFontSize * camera.zoom;
+  const editWidth = getEditWidth(shape);
+  const minWidth = Math.max(100, editWidth * camera.zoom);
   const minHeight = fontSize * 1.5;
 
-  // Position the textarea at the text shape's position
+  // Get text alignment and color
+  const textAlign = isText(shape) ? shape.textAlign : 'center';
+  const color = getEditColor(shape);
+
+  // Calculate position offset for centered shapes
+  let offsetX = 0;
+  let offsetY = 0;
+
+  if (isRectangle(shape) || isEllipse(shape)) {
+    // Center the textarea on the shape
+    offsetX = -minWidth / 2;
+    offsetY = -minHeight / 2;
+  }
+
+  // Position the textarea at the shape's position
   const style: React.CSSProperties = {
     position: 'absolute',
-    left: `${screenPos.x}px`,
-    top: `${screenPos.y}px`,
-    transform: `rotate(${textShape.rotation}rad)`,
-    transformOrigin: 'left top',
+    left: `${screenPos.x + offsetX}px`,
+    top: `${screenPos.y + offsetY}px`,
+    transform: `rotate(${shape.rotation}rad)`,
+    transformOrigin: isText(shape) ? 'left top' : 'center center',
     fontSize: `${fontSize}px`,
-    fontFamily: textShape.fontFamily,
-    color: textShape.fill || '#000000',
+    fontFamily: isText(shape) ? shape.fontFamily : 'sans-serif',
+    color: color,
     minWidth: `${minWidth}px`,
     minHeight: `${minHeight}px`,
-    textAlign: textShape.textAlign,
+    textAlign: textAlign,
   };
 
   return (
@@ -107,11 +186,12 @@ export function TextEditor({ camera }: TextEditorProps) {
         ref={textareaRef}
         className="text-editor-textarea"
         style={style}
-        defaultValue={textShape.text}
+        defaultValue={getEditableText(shape)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
+        placeholder={isRectangle(shape) || isEllipse(shape) ? 'Enter label...' : ''}
       />
     </div>
   );

@@ -164,7 +164,8 @@ export class ToolManager {
     if (!event.ctrlKey && !event.altKey && !event.metaKey) {
       const shortcutTool = this.findToolByShortcut(event.key.toLowerCase());
       if (shortcutTool && shortcutTool !== this.activeTool) {
-        this.setActiveTool(shortcutTool.type);
+        // Use context.setActiveTool to update both ToolManager and sessionStore
+        this.context.setActiveTool(shortcutTool.type);
         return true;
       }
     }

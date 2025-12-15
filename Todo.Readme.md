@@ -364,8 +364,12 @@ This will provide:
 
 - [x] Copy/paste implementation (Ctrl+C/V with offset for cascading pastes)
 - [ ] Layer panel with z-order management
-- [x] Text inline editing (double-click to edit)
+- [ ] Dark mode
+- [ ] [STILL-BROKEN] Text inline editing (double-click to edit)
+- [ ] Immersive controls (WASD/arrow keys for pan, Q/E for zoom)
 - [ ] Connectors (shapes that attach to other shapes)
+- [ ] Colour palette for fast colour selection
+- [ ] Smart alignment and snapping (align to grid or other shapes)
 - [ ] Grouping/ungrouping
 - [ ] Alignment tools
 - [ ] Distribution tools
@@ -374,7 +378,7 @@ This will provide:
 - [ ] Multi-page documents
 - [ ] Real-time collaboration (CRDT integration)
 - [ ] Offline-first with persistence
-- [ ] Playwright e2e tests
+- [ ] Playwright e2e tests (FUTURE)
 
 ## Phase 7: Documentation Features (Future)
 
