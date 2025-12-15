@@ -51,11 +51,17 @@ const DEFAULT_OPTIONS: Required<EngineOptions> = {
 /** Pan speed in world units per frame */
 const PAN_SPEED = 10;
 
+/** Zoom speed per frame (multiplier) */
+const ZOOM_SPEED = 0.02;
+
 /** Keys that trigger panning */
 const PAN_KEYS = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
 ]);
+
+/** Keys that trigger zooming */
+const ZOOM_KEYS = new Set(['q', 'Q', 'e', 'E']);
 
 /**
  * Main engine class that coordinates all components.
@@ -434,7 +440,7 @@ export class Engine {
   }
 
   /**
-   * Handle keydown for keyboard panning.
+   * Handle keydown for keyboard navigation (pan and zoom).
    * Returns true if the event was handled.
    */
   private handleKeyboardPanDown(event: KeyboardEvent): boolean {
@@ -443,8 +449,11 @@ export class Engine {
       return false;
     }
 
-    // Check if this is a pan key
-    if (!PAN_KEYS.has(event.key)) {
+    // Check if this is a navigation key (pan or zoom)
+    const isPanKey = PAN_KEYS.has(event.key);
+    const isZoomKey = ZOOM_KEYS.has(event.key);
+
+    if (!isPanKey && !isZoomKey) {
       return false;
     }
 
@@ -482,7 +491,7 @@ export class Engine {
   }
 
   /**
-   * Start the keyboard pan animation loop.
+   * Start the keyboard navigation animation loop.
    */
   private startPanAnimation(): void {
     const animate = () => {
@@ -491,39 +500,67 @@ export class Engine {
         return;
       }
 
-      // Calculate pan direction from active keys
+      // Calculate pan direction and zoom from active keys
       let dx = 0;
       let dy = 0;
+      let zoomDir = 0;
 
       for (const key of this.activePanKeys) {
         switch (key) {
+          // Pan keys - signs are flipped because camera.pan() subtracts the delta
+          // W/Up = move view up = see content above = camera moves up (negative Y)
           case 'ArrowUp':
           case 'w':
           case 'W':
-            dy -= 1;
+            dy += 1;
             break;
           case 'ArrowDown':
           case 's':
           case 'S':
-            dy += 1;
+            dy -= 1;
             break;
           case 'ArrowLeft':
           case 'a':
           case 'A':
-            dx -= 1;
+            dx += 1;
             break;
           case 'ArrowRight':
           case 'd':
           case 'D':
-            dx += 1;
+            dx -= 1;
+            break;
+          // Zoom keys
+          case 'q':
+          case 'Q':
+            zoomDir -= 1; // Zoom out
+            break;
+          case 'e':
+          case 'E':
+            zoomDir += 1; // Zoom in
             break;
         }
       }
+
+      let needsRender = false;
 
       // Apply pan (adjust for zoom to maintain consistent screen speed)
       if (dx !== 0 || dy !== 0) {
         const panAmount = PAN_SPEED / this.camera.zoom;
         this.camera.pan(new Vec2(dx * panAmount, dy * panAmount));
+        needsRender = true;
+      }
+
+      // Apply zoom centered on viewport center
+      if (zoomDir !== 0) {
+        const zoomFactor = 1 + zoomDir * ZOOM_SPEED;
+        const viewportCenter = this.camera.screenToWorld(
+          new Vec2(this.camera.screenWidth / 2, this.camera.screenHeight / 2)
+        );
+        this.camera.zoomAt(viewportCenter, zoomFactor);
+        needsRender = true;
+      }
+
+      if (needsRender) {
         this.renderer.requestRender();
       }
 

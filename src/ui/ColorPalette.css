@@ -1,0 +1,62 @@
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.color-swatch.selected {
+  border: 2px solid var(--selection-color, #2196f3);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.color-swatch.no-fill {
+  background: repeating-linear-gradient(
+    45deg,
+    #fff,
+    #fff 4px,
+    #eee 4px,
+    #eee 8px
+  );
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-fill-icon {
+  color: #cc0000;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .color-swatch {
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .color-swatch.no-fill {
+  background: repeating-linear-gradient(
+    45deg,
+    #333,
+    #333 4px,
+    #444 4px,
+    #444 8px
+  );
+}

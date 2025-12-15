@@ -1,10 +1,29 @@
 .property-panel {
-  width: 240px;
+  position: relative;
+  min-width: 180px;
+  max-width: 400px;
   background-color: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.property-panel-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: ew-resize;
+  background: transparent;
+  transition: background-color 0.15s ease;
+  z-index: 10;
+}
+
+.property-panel-resize-handle:hover,
+.property-panel-resize-handle.resizing {
+  background-color: var(--selection-color, #2196f3);
 }
 
 .property-panel-header {

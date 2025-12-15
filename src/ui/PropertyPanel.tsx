@@ -1,7 +1,14 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { Shape, isRectangle, isEllipse, isLine, isText } from '../shapes/Shape';
+import { ColorPalette } from './ColorPalette';
 import './PropertyPanel.css';
+
+/** Default and constraints for panel width */
+const DEFAULT_WIDTH = 240;
+const MIN_WIDTH = 180;
+const MAX_WIDTH = 400;
 
 /**
  * PropertyPanel component for editing selected shape properties.
@@ -18,6 +25,44 @@ export function PropertyPanel() {
   const shapes = useDocumentStore((state) => state.shapes);
   const updateShape = useDocumentStore((state) => state.updateShape);
 
+  // Resize state
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [isResizing, setIsResizing] = useState(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(DEFAULT_WIDTH);
+
+  // Handle resize start
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = width;
+  }, [width]);
+
+  // Handle resize move and end
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Dragging left edge: moving left increases width, moving right decreases
+      const delta = startXRef.current - e.clientX;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current + delta));
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
   // Get selected shapes
   const selectedShapes = Array.from(selectedIds)
     .map((id) => shapes[id])
@@ -26,7 +71,11 @@ export function PropertyPanel() {
   // No selection
   if (selectedShapes.length === 0) {
     return (
-      <div className="property-panel">
+      <div className="property-panel" style={{ width }}>
+        <div
+          className={`property-panel-resize-handle ${isResizing ? 'resizing' : ''}`}
+          onMouseDown={handleResizeStart}
+        />
         <div className="property-panel-header">Properties</div>
         <div className="property-panel-empty">No shape selected</div>
       </div>
@@ -104,7 +153,11 @@ export function PropertyPanel() {
   };
 
   return (
-    <div className="property-panel">
+    <div className="property-panel" style={{ width }}>
+      <div
+        className={`property-panel-resize-handle ${isResizing ? 'resizing' : ''}`}
+        onMouseDown={handleResizeStart}
+      />
       <div className="property-panel-header">
         Properties {isMultiple && `(${selectedShapes.length} shapes)`}
       </div>
@@ -118,46 +171,59 @@ export function PropertyPanel() {
 
         {/* Fill Color */}
         {shape.fill !== null && (
-          <div className="property-row">
-            <label className="property-label">Fill</label>
-            <div className="property-input-group">
-              <input
-                type="color"
-                value={shape.fill || '#000000'}
-                onChange={handleFillChange}
-                className="property-color"
-              />
-              <input
-                type="text"
-                value={shape.fill || ''}
-                onChange={(e) => handleFillChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
-                className="property-text"
-                placeholder="#000000"
-              />
+          <>
+            <div className="property-row">
+              <label className="property-label">Fill</label>
+              <div className="property-input-group">
+                <input
+                  type="color"
+                  value={shape.fill || '#000000'}
+                  onChange={handleFillChange}
+                  className="property-color"
+                />
+                <input
+                  type="text"
+                  value={shape.fill || ''}
+                  onChange={(e) => handleFillChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
+                  className="property-text"
+                  placeholder="#000000"
+                />
+              </div>
             </div>
-          </div>
+            <ColorPalette
+              value={shape.fill || ''}
+              onChange={(color) => selectedShapes.forEach((s) => updateShape(s.id, { fill: color }))}
+              showNoFill={true}
+            />
+          </>
         )}
 
         {/* Stroke Color */}
         {shape.stroke !== null && (
-          <div className="property-row">
-            <label className="property-label">Stroke</label>
-            <div className="property-input-group">
-              <input
-                type="color"
-                value={shape.stroke || '#000000'}
-                onChange={handleStrokeChange}
-                className="property-color"
-              />
-              <input
-                type="text"
-                value={shape.stroke || ''}
-                onChange={(e) => handleStrokeChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
-                className="property-text"
-                placeholder="#000000"
-              />
+          <>
+            <div className="property-row">
+              <label className="property-label">Stroke</label>
+              <div className="property-input-group">
+                <input
+                  type="color"
+                  value={shape.stroke || '#000000'}
+                  onChange={handleStrokeChange}
+                  className="property-color"
+                />
+                <input
+                  type="text"
+                  value={shape.stroke || ''}
+                  onChange={(e) => handleStrokeChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
+                  className="property-text"
+                  placeholder="#000000"
+                />
+              </div>
             </div>
-          </div>
+            <ColorPalette
+              value={shape.stroke || ''}
+              onChange={(color) => selectedShapes.forEach((s) => updateShape(s.id, { stroke: color }))}
+            />
+          </>
         )}
 
         {/* Stroke Width */}
