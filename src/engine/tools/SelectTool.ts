@@ -5,6 +5,8 @@ import { Box } from '../../math/Box';
 import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
 import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText } from '../../shapes/Shape';
+import { snapBounds, SnapResult } from '../Snapping';
+import { shapeRegistry } from '../../shapes/ShapeRegistry';
 
 /**
  * State machine states for the SelectTool.
@@ -25,12 +27,12 @@ const DRAG_THRESHOLD = 3;
 /**
  * Maximum time between clicks for a double-click (ms).
  */
-const DOUBLE_CLICK_THRESHOLD = 500;
+const DOUBLE_CLICK_THRESHOLD = 600;
 
 /**
  * Maximum distance between clicks for a double-click (pixels).
  */
-const DOUBLE_CLICK_DISTANCE = 10;
+const DOUBLE_CLICK_DISTANCE = 15;
 
 /**
  * Select tool for selecting and moving shapes.
@@ -87,6 +89,9 @@ export class SelectTool extends BaseTool {
   private lastClickTime: number = 0;
   private lastClickPoint: Vec2 | null = null;
   private lastClickShapeId: string | null = null;
+
+  // Snapping
+  private currentSnapResult: SnapResult | null = null;
 
   onActivate(ctx: ToolContext): void {
     ctx.setCursor('default');
@@ -324,10 +329,41 @@ export class SelectTool extends BaseTool {
   }
 
   renderOverlay(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
+    const camera = toolCtx.camera;
+
+    // Draw snap guides when translating
+    if (this.state === 'translating' && this.currentSnapResult) {
+      ctx2d.save();
+      ctx2d.strokeStyle = '#ff4081'; // Pink/magenta for snap guides
+      ctx2d.lineWidth = 1;
+      ctx2d.setLineDash([4, 4]);
+
+      const canvasWidth = ctx2d.canvas.width;
+      const canvasHeight = ctx2d.canvas.height;
+
+      // Draw vertical snap line
+      if (this.currentSnapResult.snappedX && this.currentSnapResult.snapLineX !== undefined) {
+        const screenX = camera.worldToScreen(new Vec2(this.currentSnapResult.snapLineX, 0)).x;
+        ctx2d.beginPath();
+        ctx2d.moveTo(screenX, 0);
+        ctx2d.lineTo(screenX, canvasHeight);
+        ctx2d.stroke();
+      }
+
+      // Draw horizontal snap line
+      if (this.currentSnapResult.snappedY && this.currentSnapResult.snapLineY !== undefined) {
+        const screenY = camera.worldToScreen(new Vec2(0, this.currentSnapResult.snapLineY)).y;
+        ctx2d.beginPath();
+        ctx2d.moveTo(0, screenY);
+        ctx2d.lineTo(canvasWidth, screenY);
+        ctx2d.stroke();
+      }
+
+      ctx2d.restore();
+    }
+
     // Draw marquee selection box
     if (this.state === 'marquee' && this.marqueeStart && this.marqueeEnd) {
-      const camera = toolCtx.camera;
-
       // Convert world points to screen points
       const start = camera.worldToScreen(this.marqueeStart);
       const end = camera.worldToScreen(this.marqueeEnd);
@@ -412,16 +448,80 @@ export class SelectTool extends BaseTool {
     if (!this.pointerDownWorldPoint) return;
 
     const delta = Vec2.subtract(event.worldPoint, this.pointerDownWorldPoint);
+    const snapSettings = ctx.getSnapSettings();
 
-    // Update all selected shapes
+    // Calculate the proposed new positions and get combined bounds
+    let combinedBounds: Box | null = null;
+    let firstShapeCenter: Vec2 | null = null;
+
+    for (const [id, startPos] of this.dragStartPositions) {
+      const shape = ctx.getShapes()[id];
+      if (!shape) continue;
+
+      const handler = shapeRegistry.getHandler(shape.type);
+      const newCenter = new Vec2(startPos.x + delta.x, startPos.y + delta.y);
+
+      // Create a temporary shape position to get bounds
+      const tempShape = { ...shape, x: newCenter.x, y: newCenter.y };
+      const bounds = handler.getBounds(tempShape);
+
+      if (!combinedBounds) {
+        combinedBounds = bounds;
+        firstShapeCenter = newCenter;
+      } else {
+        combinedBounds = combinedBounds.union(bounds);
+      }
+    }
+
+    // Apply snapping if enabled
+    let finalDelta = delta;
+    this.currentSnapResult = null;
+
+    if (snapSettings.enabled && combinedBounds && firstShapeCenter) {
+      const selectedIds = new Set(ctx.getSelectedIds());
+      const snapResult = snapBounds(
+        combinedBounds,
+        firstShapeCenter,
+        ctx.getShapes(),
+        ctx.getShapeOrder(),
+        {
+          snapToGrid: snapSettings.snapToGrid,
+          snapToShapes: snapSettings.snapToShapes,
+          gridSpacing: snapSettings.gridSpacing,
+          threshold: 10 / ctx.camera.zoom, // Adjust threshold based on zoom
+          excludeIds: selectedIds,
+        }
+      );
+
+      if (snapResult.snappedX || snapResult.snappedY) {
+        this.currentSnapResult = snapResult;
+        // Adjust delta based on snap
+        const snapOffset = Vec2.subtract(snapResult.position, firstShapeCenter);
+        finalDelta = Vec2.add(delta, snapOffset);
+
+        // Set snap guides for rendering
+        const guides: { verticalX?: number; horizontalY?: number } = {};
+        if (snapResult.snappedX && snapResult.snapLineX !== undefined) {
+          guides.verticalX = snapResult.snapLineX;
+        }
+        if (snapResult.snappedY && snapResult.snapLineY !== undefined) {
+          guides.horizontalY = snapResult.snapLineY;
+        }
+        ctx.setSnapGuides(guides);
+      } else {
+        ctx.clearSnapGuides();
+      }
+    }
+
+    // Update all selected shapes with the (possibly snapped) delta
     const updates: Array<{ id: string; updates: { x: number; y: number } }> = [];
 
     for (const [id, startPos] of this.dragStartPositions) {
       updates.push({
         id,
         updates: {
-          x: startPos.x + delta.x,
-          y: startPos.y + delta.y,
+          x: startPos.x + finalDelta.x,
+          y: startPos.y + finalDelta.y,
         },
       });
     }
@@ -519,6 +619,10 @@ export class SelectTool extends BaseTool {
     // In the future, we might want to record this for undo/redo
     this.dragStartPositions.clear();
 
+    // Clear snap guides
+    ctx.clearSnapGuides();
+    this.currentSnapResult = null;
+
     // Update spatial index for moved shapes
     const selectedIds = ctx.getSelectedIds();
     const shapes = ctx.getShapes();
@@ -580,6 +684,7 @@ export class SelectTool extends BaseTool {
     this.rotateOriginalRotation = 0;
     this.rotateStartAngle = 0;
     this.rotateShapeCenter = null;
+    this.currentSnapResult = null;
     this.panHandler.reset();
     // Note: Don't reset click tracking here, it persists across interactions
   }

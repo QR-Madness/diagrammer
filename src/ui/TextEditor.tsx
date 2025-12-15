@@ -92,10 +92,15 @@ export function TextEditor({ camera }: TextEditorProps) {
       const text = getEditableText(shape);
       originalTextRef.current = text;
       textareaRef.current.value = text;
-      textareaRef.current.focus();
-      textareaRef.current.select();
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.select();
+        }
+      });
     }
-  }, [canEdit, shape]);
+  }, [canEdit, shape, editingTextId]);
 
   const handleSave = useCallback(() => {
     if (!editingTextId || !textareaRef.current || !shape) return;

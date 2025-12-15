@@ -64,22 +64,23 @@ implementation phase as defined in Specification.Readme.md.
 
 #### Text Editing
 
-- [ ] Fix text inline editing (double-click to edit is broken)
-    - Investigate current TextEditor component behavior
-    - Ensure proper positioning overlay on shapes
-    - Handle text selection and cursor positioning
+- [x] Fix text inline editing (double-click to edit)
+    - Improved double-click detection thresholds
+    - Fixed TextEditor focus timing with requestAnimationFrame
+    - Added dark mode support for text editing overlay
 
 #### Alignment & Guides
 
-- [ ] Smart snapping to grid
+- [x] Smart snapping to grid
     - Snap shapes to grid points during drag
-    - Visual guides showing snap targets
-- [ ] Smart alignment guides
+    - Visual guides showing snap targets (pink dashed lines)
+- [x] Smart alignment guides
     - Show guides when shapes align with others (center, edges)
     - Snap to nearby shape edges/centers
-- [ ] Alignment tools
+- [x] Alignment tools
     - Align selected shapes (left, center, right, top, middle, bottom)
     - Distribute selected shapes (horizontal, vertical)
+    - AlignmentPanel component with visual icon buttons
 
 ### Medium Priority - Extended Features
 

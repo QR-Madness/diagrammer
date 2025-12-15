@@ -280,6 +280,11 @@ export class Engine {
         sessionStore.getState().startTextEdit(id);
       },
 
+      // Snapping
+      getSnapSettings: () => sessionStore.getState().snapSettings,
+      setSnapGuides: (guides) => sessionStore.getState().setSnapGuides(guides),
+      clearSnapGuides: () => sessionStore.getState().clearSnapGuides(),
+
       // Rendering
       requestRender: () => this.renderer.requestRender(),
 

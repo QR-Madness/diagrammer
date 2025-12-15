@@ -5,7 +5,7 @@ import { SpatialIndex } from '../SpatialIndex';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { Shape } from '../../shapes/Shape';
-import { ToolType, CursorStyle } from '../../store/sessionStore';
+import { ToolType, CursorStyle, SnapSettings, SnapGuides } from '../../store/sessionStore';
 
 /**
  * Context passed to tools providing access to engine components.
@@ -60,6 +60,14 @@ export interface ToolContext {
   setActiveTool: (tool: ToolType) => void;
   /** Start inline text editing for a text shape */
   startTextEdit: (id: string) => void;
+
+  // Snapping
+  /** Get current snap settings */
+  getSnapSettings: () => SnapSettings;
+  /** Set active snap guides for rendering */
+  setSnapGuides: (guides: SnapGuides) => void;
+  /** Clear snap guides */
+  clearSnapGuides: () => void;
 
   // Rendering
   /** Request a render on the next animation frame */

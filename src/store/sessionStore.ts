@@ -36,6 +36,30 @@ export type CursorStyle =
   | 'ew-resize';
 
 /**
+ * Snapping settings.
+ */
+export interface SnapSettings {
+  /** Whether snapping is enabled */
+  enabled: boolean;
+  /** Whether to snap to grid */
+  snapToGrid: boolean;
+  /** Whether to snap to other shapes */
+  snapToShapes: boolean;
+  /** Grid spacing for snapping */
+  gridSpacing: number;
+}
+
+/**
+ * Active snap guide lines for rendering.
+ */
+export interface SnapGuides {
+  /** Vertical guide line X position */
+  verticalX?: number;
+  /** Horizontal guide line Y position */
+  horizontalY?: number;
+}
+
+/**
  * Session state for ephemeral UI state.
  * This is NOT persisted - it's reset on page reload.
  */
@@ -54,6 +78,10 @@ export interface SessionState {
   hoveredId: string | null;
   /** ID of text shape currently being edited (null if not editing) */
   editingTextId: string | null;
+  /** Snapping settings */
+  snapSettings: SnapSettings;
+  /** Active snap guides for visual feedback */
+  snapGuides: SnapGuides;
 }
 
 /**
@@ -89,6 +117,11 @@ export interface SessionActions {
   stopTextEdit: () => void;
   isEditingText: () => boolean;
 
+  // Snapping
+  setSnapSettings: (settings: Partial<SnapSettings>) => void;
+  setSnapGuides: (guides: SnapGuides) => void;
+  clearSnapGuides: () => void;
+
   // Utilities
   isSelected: (id: string) => boolean;
   getSelectedIds: () => string[];
@@ -106,6 +139,16 @@ const DEFAULT_CAMERA: CameraState = {
 };
 
 /**
+ * Default snap settings.
+ */
+const DEFAULT_SNAP_SETTINGS: SnapSettings = {
+  enabled: true,
+  snapToGrid: true,
+  snapToShapes: true,
+  gridSpacing: 50,
+};
+
+/**
  * Initial session state.
  */
 const initialState: SessionState = {
@@ -116,6 +159,8 @@ const initialState: SessionState = {
   isInteracting: false,
   hoveredId: null,
   editingTextId: null,
+  snapSettings: { ...DEFAULT_SNAP_SETTINGS },
+  snapGuides: {},
 };
 
 /**
@@ -232,6 +277,21 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
     return get().editingTextId !== null;
   },
 
+  // Snapping
+  setSnapSettings: (settings: Partial<SnapSettings>) => {
+    set((state) => ({
+      snapSettings: { ...state.snapSettings, ...settings },
+    }));
+  },
+
+  setSnapGuides: (guides: SnapGuides) => {
+    set({ snapGuides: guides });
+  },
+
+  clearSnapGuides: () => {
+    set({ snapGuides: {} });
+  },
+
   // Utilities
   isSelected: (id: string): boolean => {
     return get().selectedIds.has(id);
@@ -246,7 +306,7 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   },
 
   reset: () => {
-    set({ ...initialState, selectedIds: new Set() });
+    set({ ...initialState, selectedIds: new Set(), snapSettings: { ...DEFAULT_SNAP_SETTINGS }, snapGuides: {} });
   },
 }));
 

@@ -3,6 +3,7 @@ import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { Shape, isRectangle, isEllipse, isLine, isText } from '../shapes/Shape';
 import { ColorPalette } from './ColorPalette';
+import { AlignmentPanel } from './AlignmentPanel';
 import './PropertyPanel.css';
 
 /** Default and constraints for panel width */
@@ -161,6 +162,9 @@ export function PropertyPanel() {
       <div className="property-panel-header">
         Properties {isMultiple && `(${selectedShapes.length} shapes)`}
       </div>
+
+      {/* Alignment tools for multiple selection */}
+      <AlignmentPanel />
 
       <div className="property-panel-content">
         {/* Shape Type */}
