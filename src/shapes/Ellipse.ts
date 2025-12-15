@@ -9,6 +9,7 @@ import {
   AnchorPosition,
   DEFAULT_ELLIPSE,
 } from './Shape';
+import { renderWrappedText } from '../utils/textUtils';
 
 /**
  * Transform a local point to world space.
@@ -87,12 +88,11 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
     if (shape.label) {
       const fontSize = shape.labelFontSize || 14;
       const labelColor = shape.labelColor || stroke || '#000000';
+      // Use 70% of ellipse dimensions for text area (ellipse has less usable area than rectangle)
+      const textMaxWidth = radiusX * 2 * 0.7;
+      const textMaxHeight = radiusY * 2 * 0.7;
 
-      ctx.fillStyle = labelColor;
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(shape.label, 0, 0);
+      renderWrappedText(ctx, shape.label, textMaxWidth, textMaxHeight, fontSize, 'sans-serif', labelColor);
     }
 
     ctx.restore();

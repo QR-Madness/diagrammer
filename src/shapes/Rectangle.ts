@@ -9,6 +9,7 @@ import {
   AnchorPosition,
   DEFAULT_RECTANGLE,
 } from './Shape';
+import { renderWrappedText } from '../utils/textUtils';
 
 /**
  * Get the four corners of a rectangle in local space (before rotation).
@@ -113,12 +114,11 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
     if (shape.label) {
       const fontSize = shape.labelFontSize || 14;
       const labelColor = shape.labelColor || stroke || '#000000';
+      // Use 80% of shape dimensions for text area with some padding
+      const textMaxWidth = width * 0.85;
+      const textMaxHeight = height * 0.85;
 
-      ctx.fillStyle = labelColor;
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(shape.label, 0, 0);
+      renderWrappedText(ctx, shape.label, textMaxWidth, textMaxHeight, fontSize, 'sans-serif', labelColor);
     }
 
     ctx.restore();

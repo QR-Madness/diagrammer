@@ -364,10 +364,10 @@ This will provide:
 
 - [x] Copy/paste implementation (Ctrl+C/V with offset for cascading pastes)
 - [ ] Layer panel with z-order management
-- [ ] Dark mode
+- [X] Dark mode
 - [ ] [STILL-BROKEN] Text inline editing (double-click to edit)
 - [ ] Immersive controls (WASD/arrow keys for pan, Q/E for zoom)
-- [ ] Connectors (shapes that attach to other shapes)
+- [X] Connectors (shapes that attach to other shapes)
 - [ ] Colour palette for fast colour selection
 - [ ] Smart alignment and snapping (align to grid or other shapes)
 - [ ] Grouping/ungrouping
