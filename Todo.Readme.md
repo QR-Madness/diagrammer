@@ -93,6 +93,30 @@ implementation phase as defined in Specification.Readme.md.
     - Show/hide individual shapes
     - Bring to front / Send to back buttons
 
+#### Style Profiles
+
+- [x] Style profiles for reusable shape styles
+    - Save current shape's style as a named profile
+    - Profile stores: fill, stroke, strokeWidth, opacity, cornerRadius (if applicable)
+    - Profile also stores: labelFontSize, labelColor for shapes with labels
+    - Five built-in default profiles (Default Blue, Fresh Green, Warm Orange, Outline Only, Subtle Gray)
+    - List saved profiles in PropertyPanel with color preview swatches
+    - Apply profile to selected shape(s) with checkmark button
+    - Delete custom profiles (defaults are protected)
+    - Rename custom profiles via double-click
+    - Persist custom profiles in localStorage
+    - Ready for group application (future group feature)
+
+#### Temporary Section: Bug Fixes & Quality of Life Improvements (REMOVE THIS SECTION ONCE ALL TASKS ARE COMPLETE)
+
+- [ ] When inline editing text, adopt a default theme for the editor textarea, as it inherits the shape's theme and can sometimes result in a black BG with black text.
+- [ ] Ensure Layers panel can be vertically resized, is collapsible, and is collapsed by default.
+- [ ] Fix text alignment in Text-shapes; implement various text alignment properties, and allow vertical resizing as well.
+- [ ] When selecting a layer from the Layers panel, move the screen to that layer and try to apply an animation to the layer to emphasize the selection.
+- [ ] Require a confirmation-click to delete a style profile, and also allow favorite style profiles (which add a small star icon to the profile name and alphabetically sorts the subset of profiles and shifts them to the top of the list).
+- [ ] Allow Searching of style profiles by name.
+- [ ] Fix the zooming bug which moves the canvas when zooming in/out (top-left skewed when going in, and vice versa), we need smooth zoom with zero horizontal delta.
+
 #### Grouping
 
 - [ ] Group/ungroup shapes
@@ -115,8 +139,8 @@ implementation phase as defined in Specification.Readme.md.
 
 #### UI Polish
 
-- [ ] Zoom controls in toolbar (zoom in, out, fit, 100%)
-- [ ] Minimap for large canvases
+- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
+- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
 - [ ] Status bar with cursor position and zoom level
 - [ ] Context menu (right-click)
     - Show relevant actions based on selection (cut, copy, paste, delete)
@@ -160,7 +184,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Connector labels
 - [ ] Shape libraries (presets, templates)
 - [ ] Custom shape definitions
-- [ ] Customizable PDF document export
+- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
 
 ---
 

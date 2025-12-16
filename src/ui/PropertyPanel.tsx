@@ -4,6 +4,7 @@ import { useDocumentStore } from '../store/documentStore';
 import { Shape, isRectangle, isEllipse, isLine, isText } from '../shapes/Shape';
 import { ColorPalette } from './ColorPalette';
 import { AlignmentPanel } from './AlignmentPanel';
+import { StyleProfilePanel } from './StyleProfilePanel';
 import './PropertyPanel.css';
 
 /** Default and constraints for panel width */
@@ -79,6 +80,7 @@ export function PropertyPanel() {
         />
         <div className="property-panel-header">Properties</div>
         <div className="property-panel-empty">No shape selected</div>
+        <StyleProfilePanel />
       </div>
     );
   }
@@ -395,6 +397,9 @@ export function PropertyPanel() {
           </>
         )}
       </div>
+
+      {/* Style Profiles */}
+      <StyleProfilePanel />
     </div>
   );
 }
