@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
-import { Shape, isRectangle, isEllipse, isLine, isText } from '../shapes/Shape';
+import { Shape, isRectangle, isEllipse, isLine, isText, TextAlign, VerticalAlign } from '../shapes/Shape';
 import { ColorPalette } from './ColorPalette';
 import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
@@ -323,6 +323,44 @@ export function PropertyPanel() {
                 max={200}
                 step={1}
               />
+            </div>
+            <div className="property-row">
+              <label className="property-label">H. Align</label>
+              <select
+                value={shape.textAlign}
+                onChange={(e) => {
+                  const value = e.target.value as TextAlign;
+                  selectedShapes.forEach((s) => {
+                    if (isText(s)) {
+                      updateShape(s.id, { textAlign: value });
+                    }
+                  });
+                }}
+                className="property-select"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+            <div className="property-row">
+              <label className="property-label">V. Align</label>
+              <select
+                value={shape.verticalAlign}
+                onChange={(e) => {
+                  const value = e.target.value as VerticalAlign;
+                  selectedShapes.forEach((s) => {
+                    if (isText(s)) {
+                      updateShape(s.id, { verticalAlign: value });
+                    }
+                  });
+                }}
+                className="property-select"
+              >
+                <option value="top">Top</option>
+                <option value="middle">Middle</option>
+                <option value="bottom">Bottom</option>
+              </select>
             </div>
             <div className="property-row property-row-full">
               <label className="property-label">Text</label>

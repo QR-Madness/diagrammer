@@ -54,19 +54,6 @@ function getEditWidth(shape: Shape): number {
 }
 
 /**
- * Get the text color for editing.
- */
-function getEditColor(shape: Shape): string {
-  if (isText(shape)) {
-    return shape.fill || '#000000';
-  }
-  if (isRectangle(shape) || isEllipse(shape)) {
-    return shape.labelColor || shape.stroke || '#000000';
-  }
-  return '#000000';
-}
-
-/**
  * Inline text editor component that overlays on the canvas.
  *
  * Shows a textarea positioned over the shape being edited.
@@ -156,9 +143,8 @@ export function TextEditor({ camera }: TextEditorProps) {
   const minWidth = Math.max(100, editWidth * camera.zoom);
   const minHeight = fontSize * 1.5;
 
-  // Get text alignment and color
+  // Get text alignment (color is handled by CSS for consistent theme)
   const textAlign = isText(shape) ? shape.textAlign : 'center';
-  const color = getEditColor(shape);
 
   // Calculate position offset for centered shapes
   let offsetX = 0;
@@ -171,6 +157,7 @@ export function TextEditor({ camera }: TextEditorProps) {
   }
 
   // Position the textarea at the shape's position
+  // Note: color is handled by CSS to ensure good contrast with themed background
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${screenPos.x + offsetX}px`,
@@ -179,7 +166,6 @@ export function TextEditor({ camera }: TextEditorProps) {
     transformOrigin: isText(shape) ? 'left top' : 'center center',
     fontSize: `${fontSize}px`,
     fontFamily: isText(shape) ? shape.fontFamily : 'sans-serif',
-    color: color,
     minWidth: `${minWidth}px`,
     minHeight: `${minHeight}px`,
     textAlign: textAlign,

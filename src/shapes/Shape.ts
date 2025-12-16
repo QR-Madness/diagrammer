@@ -161,9 +161,14 @@ export interface ConnectorShape extends BaseShape {
 }
 
 /**
- * Text alignment options.
+ * Horizontal text alignment options.
  */
 export type TextAlign = 'left' | 'center' | 'right';
+
+/**
+ * Vertical text alignment options.
+ */
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
 
 /**
  * Text shape for displaying text blocks.
@@ -176,10 +181,14 @@ export interface TextShape extends BaseShape {
   fontSize: number;
   /** Font family (CSS font-family) */
   fontFamily: string;
-  /** Text alignment within the text box */
+  /** Horizontal text alignment within the text box */
   textAlign: TextAlign;
+  /** Vertical text alignment within the text box */
+  verticalAlign: VerticalAlign;
   /** Text box width for text wrapping */
   width: number;
+  /** Text box height for vertical alignment */
+  height: number;
 }
 
 /**
@@ -281,7 +290,9 @@ export const DEFAULT_TEXT = {
   fontSize: 16,
   fontFamily: 'sans-serif',
   textAlign: 'left' as TextAlign,
+  verticalAlign: 'top' as VerticalAlign,
   width: 200,
+  height: 50,
 } as const;
 
 /**

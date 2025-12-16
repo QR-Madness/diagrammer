@@ -3,6 +3,7 @@ import { Engine } from '../engine/Engine';
 import { Camera } from '../engine/Camera';
 import { TextEditor } from './TextEditor';
 import { useThemeStore } from '../store/themeStore';
+import { useSessionStore } from '../store/sessionStore';
 
 /**
  * Props for the CanvasContainer component.
@@ -131,6 +132,36 @@ export function CanvasContainer({
 
     // Subscribe to theme changes
     const unsubscribe = useThemeStore.subscribe(updateThemeColors);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  /**
+   * Subscribe to emphasis changes for focus animation.
+   */
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    let lastEmphasis: string | null = null;
+
+    // Update renderer with emphasis state
+    const updateEmphasis = () => {
+      const { emphasizedShapeId } = useSessionStore.getState();
+      if (emphasizedShapeId !== lastEmphasis) {
+        lastEmphasis = emphasizedShapeId;
+        engine.renderer.setEmphasis(emphasizedShapeId);
+        engine.requestRender();
+      }
+    };
+
+    // Initial update
+    updateEmphasis();
+
+    // Subscribe to session store changes
+    const unsubscribe = useSessionStore.subscribe(updateEmphasis);
 
     return () => {
       unsubscribe();

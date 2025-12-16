@@ -120,6 +120,10 @@ export class Renderer {
   private shapeOrder: string[] = [];
   private selectedIds: Set<string> = new Set();
 
+  // Emphasis animation
+  private emphasizedShapeId: string | null = null;
+  private emphasisStartTime: number = 0;
+
   // Performance metrics
   private lastFrameTime: number = 0;
   private frameCount: number = 0;
@@ -246,6 +250,21 @@ export class Renderer {
   }
 
   /**
+   * Set the emphasized shape ID for focus animation.
+   * @param shapeId - ID of shape to emphasize, or null to clear
+   */
+  setEmphasis(shapeId: string | null): void {
+    if (shapeId !== this.emphasizedShapeId) {
+      this.emphasizedShapeId = shapeId;
+      this.emphasisStartTime = performance.now();
+      if (shapeId) {
+        // Trigger continuous rendering for animation
+        this.requestRender();
+      }
+    }
+  }
+
+  /**
    * Check if a render is pending.
    */
   get isPending(): boolean {
@@ -333,6 +352,11 @@ export class Renderer {
 
     // 6. Draw selection overlay (in world space, applied manually)
     this.drawSelectionOverlay();
+
+    // 6.5. Draw emphasis animation if active
+    if (this.emphasizedShapeId) {
+      this.drawEmphasisAnimation(timestamp);
+    }
 
     // 7. Let active tool draw its overlay (screen space)
     if (this.toolOverlayCallback) {
@@ -599,6 +623,82 @@ export class Renderer {
     }
 
     ctx.restore();
+  }
+
+  /**
+   * Draw emphasis animation for focused shape.
+   * Creates a pulsing ring effect around the shape.
+   */
+  private drawEmphasisAnimation(timestamp: number): void {
+    const { ctx, shapes, camera, emphasizedShapeId, emphasisStartTime } = this;
+
+    if (!emphasizedShapeId) return;
+
+    const shape = shapes[emphasizedShapeId];
+    if (!shape) {
+      this.emphasizedShapeId = null;
+      return;
+    }
+
+    // Calculate animation progress (1.5 seconds duration)
+    const duration = 1500;
+    const elapsed = timestamp - emphasisStartTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Stop animation after completion
+    if (progress >= 1) {
+      this.emphasizedShapeId = null;
+      return;
+    }
+
+    // Continue rendering for animation
+    this.requestRender();
+
+    try {
+      const handler = shapeRegistry.getHandler(shape.type);
+      const bounds = handler.getBounds(shape);
+
+      // Apply camera transform
+      ctx.save();
+      this.applyCameraTransform();
+
+      const zoom = camera.zoom;
+      const strokeWidth = 3 / zoom;
+
+      // Pulsing effect: expand outward and fade
+      const pulsePhase = Math.sin(progress * Math.PI * 3); // 3 pulses
+      const expansion = (10 + pulsePhase * 5) / zoom;
+      const alpha = 1 - progress;
+
+      // Draw expanding ring
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(33, 150, 243, ${alpha * 0.8})`;
+      ctx.lineWidth = strokeWidth;
+      ctx.rect(
+        bounds.minX - expansion,
+        bounds.minY - expansion,
+        bounds.width + expansion * 2,
+        bounds.height + expansion * 2
+      );
+      ctx.stroke();
+
+      // Draw inner glow
+      ctx.beginPath();
+      ctx.strokeStyle = `rgba(33, 150, 243, ${alpha * 0.4})`;
+      ctx.lineWidth = strokeWidth * 2;
+      ctx.rect(
+        bounds.minX - expansion / 2,
+        bounds.minY - expansion / 2,
+        bounds.width + expansion,
+        bounds.height + expansion
+      );
+      ctx.stroke();
+
+      ctx.restore();
+    } catch {
+      // Shape type not registered - skip silently
+      this.emphasizedShapeId = null;
+    }
   }
 
   /**

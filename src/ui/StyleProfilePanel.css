@@ -35,6 +35,62 @@
   color: var(--text-primary, #1e293b);
 }
 
+/* Search input */
+.style-profile-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 8px 8px;
+  padding: 6px 10px;
+  background: var(--input-bg, #fff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 4px;
+}
+
+.style-profile-search:focus-within {
+  border-color: var(--accent-color, #4a90d9);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.2);
+}
+
+.style-profile-search svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.style-profile-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-primary, #1e293b);
+  outline: none;
+}
+
+.style-profile-search-input::placeholder {
+  color: var(--text-tertiary, #94a3b8);
+}
+
+.style-profile-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--hover-bg, #e2e8f0);
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.style-profile-search-clear:hover {
+  background: var(--border-color, #cbd5e1);
+  color: var(--text-primary, #1e293b);
+}
+
 /* Create new profile form */
 .style-profile-create {
   padding: 8px 12px;
@@ -201,6 +257,43 @@
   color: var(--danger-color, #e53e3e);
 }
 
+/* Favorite star button - always visible */
+.style-profile-action.favorite {
+  opacity: 0.4;
+}
+
+.style-profile-item:hover .style-profile-action.favorite {
+  opacity: 1;
+}
+
+.style-profile-action.favorite.active {
+  opacity: 1;
+  color: var(--warning-color, #eab308);
+}
+
+.style-profile-action.favorite:hover {
+  color: var(--warning-color, #eab308);
+}
+
+/* Confirmation buttons */
+.style-profile-action.confirm {
+  color: var(--success-color, #48bb78);
+}
+
+.style-profile-action.confirm:hover {
+  background: rgba(72, 187, 120, 0.15);
+  color: var(--success-color, #48bb78);
+}
+
+.style-profile-action.cancel {
+  color: var(--danger-color, #e53e3e);
+}
+
+.style-profile-action.cancel:hover {
+  background: rgba(229, 62, 62, 0.15);
+  color: var(--danger-color, #e53e3e);
+}
+
 .style-profile-action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -230,6 +323,38 @@
 
 :root[data-theme='dark'] .style-profile-add-btn:hover {
   background: var(--hover-bg, #334155);
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .style-profile-search {
+  background: var(--input-bg, #0f172a);
+  border-color: var(--border-color, #475569);
+}
+
+:root[data-theme='dark'] .style-profile-search:focus-within {
+  border-color: var(--accent-color, #60a5fa);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+}
+
+:root[data-theme='dark'] .style-profile-search svg {
+  color: var(--text-tertiary, #64748b);
+}
+
+:root[data-theme='dark'] .style-profile-search-input {
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .style-profile-search-input::placeholder {
+  color: var(--text-tertiary, #64748b);
+}
+
+:root[data-theme='dark'] .style-profile-search-clear {
+  background: var(--hover-bg, #334155);
+  color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .style-profile-search-clear:hover {
+  background: var(--border-color, #475569);
   color: var(--text-primary, #f1f5f9);
 }
 
@@ -289,4 +414,30 @@
 
 :root[data-theme='dark'] .style-profile-hint {
   color: var(--text-tertiary, #64748b);
+}
+
+:root[data-theme='dark'] .style-profile-action.favorite.active {
+  color: var(--warning-color, #facc15);
+}
+
+:root[data-theme='dark'] .style-profile-action.favorite:hover {
+  color: var(--warning-color, #facc15);
+}
+
+:root[data-theme='dark'] .style-profile-action.confirm {
+  color: var(--success-color, #4ade80);
+}
+
+:root[data-theme='dark'] .style-profile-action.confirm:hover {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--success-color, #4ade80);
+}
+
+:root[data-theme='dark'] .style-profile-action.cancel {
+  color: var(--danger-color, #f87171);
+}
+
+:root[data-theme='dark'] .style-profile-action.cancel:hover {
+  background: rgba(248, 113, 113, 0.15);
+  color: var(--danger-color, #f87171);
 }

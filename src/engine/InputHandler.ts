@@ -60,8 +60,9 @@ export type KeyEventCallback = (event: KeyboardEvent) => void;
 
 /**
  * Callback type for wheel events.
+ * Provides both screen point (for zoom-at operations) and world point (for other uses).
  */
-export type WheelEventCallback = (event: WheelEvent, worldPoint: Vec2) => void;
+export type WheelEventCallback = (event: WheelEvent, screenPoint: Vec2, worldPoint: Vec2) => void;
 
 /**
  * Firefox wheel delta mode constants.
@@ -306,7 +307,7 @@ export class InputHandler {
     // Normalize the wheel event for cross-browser consistency
     const normalizedEvent = this.normalizeWheelEvent(e);
 
-    this.onWheelEvent(normalizedEvent, worldPoint);
+    this.onWheelEvent(normalizedEvent, screenPoint, worldPoint);
   }
 
   /**

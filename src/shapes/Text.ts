@@ -66,26 +66,6 @@ function wrapText(
 }
 
 /**
- * Calculate the height of the text block based on content and wrapping.
- * Uses a temporary canvas for text measurement.
- */
-function calculateTextHeight(shape: TextShape): number {
-  // Create a temporary canvas for measurement
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    // Fallback: estimate based on explicit newlines only
-    const lines = shape.text.split('\n');
-    const lineHeight = shape.fontSize * 1.4;
-    return Math.max(lines.length * lineHeight, shape.fontSize * 1.4);
-  }
-
-  const lines = wrapText(ctx, shape.text, shape.width, shape.fontSize, shape.fontFamily);
-  const lineHeight = shape.fontSize * 1.4;
-  return Math.max(lines.length * lineHeight, shape.fontSize * 1.4);
-}
-
-/**
  * Text shape handler implementation.
  */
 export const textHandler: ShapeHandler<TextShape> = {
@@ -93,7 +73,7 @@ export const textHandler: ShapeHandler<TextShape> = {
    * Render text to the canvas context.
    */
   render(ctx: CanvasRenderingContext2D, shape: TextShape): void {
-    const { x, y, text, fontSize, fontFamily, textAlign, rotation, fill, opacity, width } = shape;
+    const { x, y, text, fontSize, fontFamily, textAlign, verticalAlign, rotation, fill, opacity, width, height } = shape;
 
     if (!text) return;
 
@@ -107,22 +87,37 @@ export const textHandler: ShapeHandler<TextShape> = {
     ctx.textBaseline = 'top';
     ctx.textAlign = textAlign;
 
-    // Calculate text position based on alignment
-    let textX = 0;
+    // Shape's x,y is at center, so offset to top-left corner first
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    // Calculate text position based on horizontal alignment
+    // Starting from -halfWidth (left edge) to +halfWidth (right edge)
+    let textX = -halfWidth; // left align
     if (textAlign === 'center') {
-      textX = width / 2;
+      textX = 0; // center of shape
     } else if (textAlign === 'right') {
-      textX = width;
+      textX = halfWidth; // right edge
     }
 
     // Wrap text to fit width
     const lines = wrapText(ctx, text, width, fontSize, fontFamily);
     const lineHeight = fontSize * 1.4;
+    const totalTextHeight = lines.length * lineHeight;
+
+    // Calculate vertical offset based on verticalAlign
+    // Starting from -halfHeight (top edge)
+    let textY = -halfHeight; // top align
+    if (verticalAlign === 'middle') {
+      textY = -totalTextHeight / 2;
+    } else if (verticalAlign === 'bottom') {
+      textY = halfHeight - totalTextHeight;
+    }
 
     if (fill) {
       ctx.fillStyle = fill;
       lines.forEach((line, index) => {
-        ctx.fillText(line, textX, index * lineHeight);
+        ctx.fillText(line, textX, textY + index * lineHeight);
       });
     }
 
@@ -134,25 +129,25 @@ export const textHandler: ShapeHandler<TextShape> = {
    */
   hitTest(shape: TextShape, worldPoint: Vec2): boolean {
     const local = worldToLocal(worldPoint, shape);
-    const height = calculateTextHeight(shape);
+    const halfWidth = shape.width / 2;
+    const halfHeight = shape.height / 2;
 
-    return local.x >= 0 && local.x <= shape.width && local.y >= 0 && local.y <= height;
+    return local.x >= -halfWidth && local.x <= halfWidth && local.y >= -halfHeight && local.y <= halfHeight;
   },
 
   /**
    * Get the axis-aligned bounding box of the text.
    */
   getBounds(shape: TextShape): Box {
-    const height = calculateTextHeight(shape);
     const halfWidth = shape.width / 2;
-    const halfHeight = height / 2;
+    const halfHeight = shape.height / 2;
 
     // Get corners in local space (text is positioned from top-left)
     const corners = [
       new Vec2(0, 0),
       new Vec2(shape.width, 0),
-      new Vec2(shape.width, height),
-      new Vec2(0, height),
+      new Vec2(shape.width, shape.height),
+      new Vec2(0, shape.height),
     ];
 
     // Adjust for center positioning and transform to world
@@ -180,9 +175,8 @@ export const textHandler: ShapeHandler<TextShape> = {
    * Get resize handles for the text box.
    */
   getHandles(shape: TextShape): Handle[] {
-    const height = calculateTextHeight(shape);
     const halfWidth = shape.width / 2;
-    const halfHeight = height / 2;
+    const halfHeight = shape.height / 2;
     const rotationHandleOffset = 30;
 
     const localHandles: Array<{ type: HandleType; x: number; y: number; cursor: string }> = [
@@ -216,7 +210,9 @@ export const textHandler: ShapeHandler<TextShape> = {
       fontSize: DEFAULT_TEXT.fontSize,
       fontFamily: DEFAULT_TEXT.fontFamily,
       textAlign: DEFAULT_TEXT.textAlign,
+      verticalAlign: DEFAULT_TEXT.verticalAlign,
       width: DEFAULT_TEXT.width,
+      height: DEFAULT_TEXT.height,
       rotation: DEFAULT_TEXT.rotation,
       opacity: DEFAULT_TEXT.opacity,
       locked: DEFAULT_TEXT.locked,

@@ -27,6 +27,8 @@ export interface StyleProfile {
   name: string;
   properties: StyleProfileProperties;
   createdAt: number;
+  /** Whether this profile is marked as a favorite */
+  favorite: boolean;
 }
 
 /**
@@ -48,10 +50,14 @@ interface StyleProfileActions {
   deleteProfile: (id: string) => void;
   /** Rename a profile */
   renameProfile: (id: string, name: string) => void;
+  /** Toggle favorite status */
+  toggleFavorite: (id: string) => void;
   /** Get a profile by ID */
   getProfile: (id: string) => StyleProfile | undefined;
   /** Clear all profiles */
   clearProfiles: () => void;
+  /** Get profiles sorted with favorites first */
+  getSortedProfiles: () => StyleProfile[];
 }
 
 /**
@@ -69,6 +75,7 @@ const DEFAULT_PROFILES: StyleProfile[] = [
       cornerRadius: 0,
     },
     createdAt: 0,
+    favorite: false,
   },
   {
     id: 'default-green',
@@ -81,6 +88,7 @@ const DEFAULT_PROFILES: StyleProfile[] = [
       cornerRadius: 8,
     },
     createdAt: 0,
+    favorite: false,
   },
   {
     id: 'default-orange',
@@ -93,6 +101,7 @@ const DEFAULT_PROFILES: StyleProfile[] = [
       cornerRadius: 4,
     },
     createdAt: 0,
+    favorite: false,
   },
   {
     id: 'default-outline',
@@ -104,6 +113,7 @@ const DEFAULT_PROFILES: StyleProfile[] = [
       opacity: 1,
     },
     createdAt: 0,
+    favorite: false,
   },
   {
     id: 'default-subtle',
@@ -116,6 +126,7 @@ const DEFAULT_PROFILES: StyleProfile[] = [
       cornerRadius: 4,
     },
     createdAt: 0,
+    favorite: false,
   },
 ];
 
@@ -134,6 +145,7 @@ export const useStyleProfileStore = create<StyleProfileState & StyleProfileActio
           name,
           properties,
           createdAt: Date.now(),
+          favorite: false,
         };
 
         set((state) => ({
@@ -171,6 +183,14 @@ export const useStyleProfileStore = create<StyleProfileState & StyleProfileActio
         }));
       },
 
+      toggleFavorite: (id: string) => {
+        set((state) => ({
+          profiles: state.profiles.map((p) =>
+            p.id === id ? { ...p, favorite: !p.favorite } : p
+          ),
+        }));
+      },
+
       getProfile: (id: string) => {
         return get().profiles.find((p) => p.id === id);
       },
@@ -178,6 +198,16 @@ export const useStyleProfileStore = create<StyleProfileState & StyleProfileActio
       clearProfiles: () => {
         // Reset to default profiles only
         set({ profiles: DEFAULT_PROFILES });
+      },
+
+      getSortedProfiles: () => {
+        const profiles = get().profiles;
+        // Sort: favorites first (alphabetically), then non-favorites (alphabetically)
+        return [...profiles].sort((a, b) => {
+          if (a.favorite && !b.favorite) return -1;
+          if (!a.favorite && b.favorite) return 1;
+          return a.name.localeCompare(b.name);
+        });
       },
     }),
     {

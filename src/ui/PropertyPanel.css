@@ -152,6 +152,23 @@
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+.property-select {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.property-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
 .property-slider {
   flex: 1;
   height: 4px;

@@ -1,9 +1,14 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
 import { Shape } from '../shapes/Shape';
 import './LayerPanel.css';
+
+/** Height constraints for resizable panel */
+const MIN_HEIGHT = 100;
+const MAX_HEIGHT = 500;
+const DEFAULT_HEIGHT = 250;
 
 /**
  * Get a display name for a shape based on its type.
@@ -41,12 +46,59 @@ export function LayerPanel() {
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const select = useSessionStore((state) => state.select);
   const addToSelection = useSessionStore((state) => state.addToSelection);
+  const focusOnShape = useSessionStore((state) => state.focusOnShape);
   const push = useHistoryStore((state) => state.push);
 
-  // Drag state
+  // Collapse state (collapsed by default)
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Resize state
+  const [height, setHeight] = useState(DEFAULT_HEIGHT);
+  const [isResizing, setIsResizing] = useState(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(DEFAULT_HEIGHT);
+
+  // Drag state for reordering
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragStartIndex = useRef<number | null>(null);
+
+  // Handle resize
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    startYRef.current = e.clientY;
+    startHeightRef.current = height;
+  }, [height]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Dragging up increases height, dragging down decreases
+      const delta = startYRef.current - e.clientY;
+      const newHeight = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, startHeightRef.current + delta));
+      setHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
+
+  // Toggle collapse
+  const handleToggleCollapse = useCallback(() => {
+    setIsCollapsed((prev) => !prev);
+  }, []);
 
   // Display order is reversed (top of list = front = end of shapeOrder)
   const displayOrder = [...shapeOrder].reverse();
@@ -115,7 +167,9 @@ export function LayerPanel() {
     } else {
       select([id]);
     }
-  }, [addToSelection, select]);
+    // Focus camera on the shape and trigger emphasis animation
+    focusOnShape(id);
+  }, [addToSelection, select, focusOnShape]);
 
   const handleMoveToFront = useCallback((id: string) => {
     push('Bring to front');
@@ -141,19 +195,44 @@ export function LayerPanel() {
 
   if (displayOrder.length === 0) {
     return (
-      <div className="layer-panel">
-        <div className="layer-panel-header">Layers</div>
-        <div className="layer-panel-empty">No shapes</div>
+      <div className={`layer-panel ${isCollapsed ? 'collapsed' : ''}`}>
+        <div
+          className="layer-panel-header"
+          onClick={handleToggleCollapse}
+          title={isCollapsed ? 'Expand' : 'Collapse'}
+        >
+          <ChevronIcon collapsed={isCollapsed} />
+          <span>Layers</span>
+        </div>
+        {!isCollapsed && (
+          <div className="layer-panel-empty">No shapes</div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="layer-panel">
-      <div className="layer-panel-header">
-        Layers ({displayOrder.length})
+    <div
+      className={`layer-panel ${isCollapsed ? 'collapsed' : ''} ${isResizing ? 'resizing' : ''}`}
+      style={isCollapsed ? undefined : { height }}
+    >
+      {/* Resize handle - only show when expanded */}
+      {!isCollapsed && (
+        <div
+          className="layer-panel-resize-handle"
+          onMouseDown={handleResizeStart}
+        />
+      )}
+      <div
+        className="layer-panel-header"
+        onClick={handleToggleCollapse}
+        title={isCollapsed ? 'Expand' : 'Collapse'}
+      >
+        <ChevronIcon collapsed={isCollapsed} />
+        <span>Layers ({displayOrder.length})</span>
       </div>
-      <div className="layer-panel-list">
+      {!isCollapsed && (
+        <div className="layer-panel-list">
         {displayOrder.map((id, index) => {
           const shape = shapes[id];
           if (!shape) return null;
@@ -228,12 +307,32 @@ export function LayerPanel() {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // SVG Icons
+
+function ChevronIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      style={{
+        transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+        transition: 'transform 0.2s ease',
+      }}
+    >
+      <path d="M4 5l3 3 3-3" />
+    </svg>
+  );
+}
 
 function DragIcon() {
   return (

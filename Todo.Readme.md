@@ -107,16 +107,6 @@ implementation phase as defined in Specification.Readme.md.
     - Persist custom profiles in localStorage
     - Ready for group application (future group feature)
 
-#### Temporary Section: Bug Fixes & Quality of Life Improvements (REMOVE THIS SECTION ONCE ALL TASKS ARE COMPLETE)
-
-- [ ] When inline editing text, adopt a default theme for the editor textarea, as it inherits the shape's theme and can sometimes result in a black BG with black text.
-- [ ] Ensure Layers panel can be vertically resized, is collapsible, and is collapsed by default.
-- [ ] Fix text alignment in Text-shapes; implement various text alignment properties, and allow vertical resizing as well.
-- [ ] When selecting a layer from the Layers panel, move the screen to that layer and try to apply an animation to the layer to emphasize the selection.
-- [ ] Require a confirmation-click to delete a style profile, and also allow favorite style profiles (which add a small star icon to the profile name and alphabetically sorts the subset of profiles and shifts them to the top of the list).
-- [ ] Allow Searching of style profiles by name.
-- [ ] Fix the zooming bug which moves the canvas when zooming in/out (top-left skewed when going in, and vice versa), we need smooth zoom with zero horizontal delta.
-
 #### Grouping
 
 - [ ] Group/ungroup shapes

@@ -82,6 +82,8 @@ export interface SessionState {
   snapSettings: SnapSettings;
   /** Active snap guides for visual feedback */
   snapGuides: SnapGuides;
+  /** ID of shape that should be visually emphasized (for focus animation) */
+  emphasizedShapeId: string | null;
 }
 
 /**
@@ -122,6 +124,12 @@ export interface SessionActions {
   setSnapGuides: (guides: SnapGuides) => void;
   clearSnapGuides: () => void;
 
+  // Focus/Emphasis
+  /** Focus camera on a shape and trigger emphasis animation */
+  focusOnShape: (id: string) => void;
+  /** Clear the emphasis animation */
+  clearEmphasis: () => void;
+
   // Utilities
   isSelected: (id: string) => boolean;
   getSelectedIds: () => string[];
@@ -161,6 +169,7 @@ const initialState: SessionState = {
   editingTextId: null,
   snapSettings: { ...DEFAULT_SNAP_SETTINGS },
   snapGuides: {},
+  emphasizedShapeId: null,
 };
 
 /**
@@ -290,6 +299,50 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
 
   clearSnapGuides: () => {
     set({ snapGuides: {} });
+  },
+
+  // Focus/Emphasis
+  focusOnShape: (id: string) => {
+    const shape = useDocumentStore.getState().shapes[id];
+    if (!shape) return;
+
+    // Calculate the center of the shape
+    // Simple approach: use x, y as the center (works for most shapes)
+    // For more accuracy, we'd need to get the bounds via ShapeRegistry
+    let centerX = shape.x;
+    let centerY = shape.y;
+
+    // Adjust for shapes that use top-left positioning
+    if (shape.type === 'rectangle') {
+      // Rectangle x,y is at center, so no adjustment needed
+    } else if (shape.type === 'line') {
+      // Line: use midpoint
+      const lineShape = shape as { x: number; y: number; x2: number; y2: number };
+      centerX = (lineShape.x + lineShape.x2) / 2;
+      centerY = (lineShape.y + lineShape.y2) / 2;
+    }
+
+    // Update camera to focus on the shape
+    set((state) => ({
+      camera: {
+        ...state.camera,
+        x: centerX,
+        y: centerY,
+      },
+      emphasizedShapeId: id,
+    }));
+
+    // Clear emphasis after animation completes
+    setTimeout(() => {
+      // Only clear if it's still the same shape
+      if (get().emphasizedShapeId === id) {
+        set({ emphasizedShapeId: null });
+      }
+    }, 1500);
+  },
+
+  clearEmphasis: () => {
+    set({ emphasizedShapeId: null });
   },
 
   // Utilities

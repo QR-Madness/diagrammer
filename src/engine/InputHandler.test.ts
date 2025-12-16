@@ -548,7 +548,7 @@ describe('InputHandler', () => {
   });
 
   describe('wheel events', () => {
-    it('calls wheel callback with world point', () => {
+    it('calls wheel callback with screen and world points', () => {
       const event = createWheelEvent({
         clientX: 400,
         clientY: 300,
@@ -558,9 +558,13 @@ describe('InputHandler', () => {
       canvas._dispatch('wheel', event);
 
       expect(wheelCallback).toHaveBeenCalledTimes(1);
-      const [_wheelEvent, worldPoint] = getFirstCallArgs(wheelCallback) as [WheelEvent, Vec2];
+      const [_wheelEvent, screenPoint, worldPoint] = getFirstCallArgs(wheelCallback) as [WheelEvent, Vec2, Vec2];
 
+      expect(screenPoint).toBeInstanceOf(Vec2);
       expect(worldPoint).toBeInstanceOf(Vec2);
+      // Screen point should be canvas-relative (400 - 0, 300 - 0)
+      expect(screenPoint.x).toBeCloseTo(400);
+      expect(screenPoint.y).toBeCloseTo(300);
       // Screen center should map to camera position (0, 0)
       expect(worldPoint.x).toBeCloseTo(0);
       expect(worldPoint.y).toBeCloseTo(0);

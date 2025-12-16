@@ -15,10 +15,12 @@ import './StyleProfilePanel.css';
  * Panel for managing and applying style profiles.
  */
 export function StyleProfilePanel() {
-  const profiles = useStyleProfileStore((state) => state.profiles);
+  // Subscribe to profiles array directly so changes trigger re-renders
+  const storeProfiles = useStyleProfileStore((state) => state.profiles);
   const addProfile = useStyleProfileStore((state) => state.addProfile);
   const deleteProfile = useStyleProfileStore((state) => state.deleteProfile);
   const renameProfile = useStyleProfileStore((state) => state.renameProfile);
+  const toggleFavorite = useStyleProfileStore((state) => state.toggleFavorite);
 
   const updateShape = useDocumentStore((state) => state.updateShape);
   const push = useHistoryStore((state) => state.push);
@@ -27,6 +29,20 @@ export function StyleProfilePanel() {
   const [newProfileName, setNewProfileName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Sort profiles: favorites first (alphabetically), then non-favorites (alphabetically)
+  const allProfiles = [...storeProfiles].sort((a, b) => {
+    if (a.favorite && !b.favorite) return -1;
+    if (!a.favorite && b.favorite) return 1;
+    return a.name.localeCompare(b.name);
+  });
+  const profiles = searchQuery.trim()
+    ? allProfiles.filter((p) =>
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : allProfiles;
 
   const selectedShapes = getSelectedShapes();
   const hasSelection = selectedShapes.length > 0;
@@ -84,13 +100,28 @@ export function StyleProfilePanel() {
     setEditingName('');
   }, []);
 
-  // Delete a profile
-  const handleDelete = useCallback(
-    (id: string) => {
-      deleteProfile(id);
-    },
-    [deleteProfile]
-  );
+  // Request delete confirmation
+  const handleRequestDelete = useCallback((id: string) => {
+    setConfirmDeleteId(id);
+  }, []);
+
+  // Confirm and delete a profile
+  const handleConfirmDelete = useCallback(() => {
+    if (confirmDeleteId) {
+      deleteProfile(confirmDeleteId);
+      setConfirmDeleteId(null);
+    }
+  }, [confirmDeleteId, deleteProfile]);
+
+  // Cancel delete
+  const handleCancelDelete = useCallback(() => {
+    setConfirmDeleteId(null);
+  }, []);
+
+  // Toggle favorite status
+  const handleToggleFavorite = useCallback((id: string) => {
+    toggleFavorite(id);
+  }, [toggleFavorite]);
 
   // Get preview style for a profile
   const getPreviewStyle = (profile: StyleProfile): React.CSSProperties => {
@@ -118,6 +149,29 @@ export function StyleProfilePanel() {
           </button>
         )}
       </div>
+
+      {/* Search input */}
+      {allProfiles.length > 3 && (
+        <div className="style-profile-search">
+          <SearchIcon />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search profiles..."
+            className="style-profile-search-input"
+          />
+          {searchQuery && (
+            <button
+              className="style-profile-search-clear"
+              onClick={() => setSearchQuery('')}
+              title="Clear search"
+            >
+              <ClearIcon />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Create new profile form */}
       {isCreating && firstShape && (
@@ -168,6 +222,18 @@ export function StyleProfilePanel() {
               style={getPreviewStyle(profile)}
             />
 
+            {/* Favorite star */}
+            <button
+              className={`style-profile-action favorite ${profile.favorite ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleFavorite(profile.id);
+              }}
+              title={profile.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <StarIcon filled={profile.favorite} />
+            </button>
+
             {/* Name (editable for custom profiles) */}
             {editingId === profile.id ? (
               <input
@@ -203,13 +269,42 @@ export function StyleProfilePanel() {
                 <ApplyIcon />
               </button>
               {!profile.id.startsWith('default-') && (
-                <button
-                  className="style-profile-action delete"
-                  onClick={() => handleDelete(profile.id)}
-                  title="Delete profile"
-                >
-                  <DeleteIcon />
-                </button>
+                confirmDeleteId === profile.id ? (
+                  // Confirmation buttons
+                  <>
+                    <button
+                      className="style-profile-action confirm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleConfirmDelete();
+                      }}
+                      title="Confirm delete"
+                    >
+                      <ApplyIcon />
+                    </button>
+                    <button
+                      className="style-profile-action cancel"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCancelDelete();
+                      }}
+                      title="Cancel"
+                    >
+                      <DeleteIcon />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="style-profile-action delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRequestDelete(profile.id);
+                    }}
+                    title="Delete profile"
+                  >
+                    <DeleteIcon />
+                  </button>
+                )
               )}
             </div>
           </div>
@@ -247,6 +342,38 @@ function DeleteIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M3 3l8 8M11 3l-8 8" />
+    </svg>
+  );
+}
+
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.5"
+    >
+      <path d="M7 1l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6L7 1z" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="6" cy="6" r="4" />
+      <path d="M9 9l3 3" />
+    </svg>
+  );
+}
+
+function ClearIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 2l8 8M10 2l-8 8" />
     </svg>
   );
 }

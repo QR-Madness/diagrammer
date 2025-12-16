@@ -112,6 +112,9 @@ export class Engine {
   private activePanKeys: Set<string> = new Set();
   private panAnimationId: number | null = null;
 
+  // Global keyboard handler for shortcuts that need to intercept browser defaults
+  private boundGlobalKeyDown: (e: KeyboardEvent) => void;
+
   constructor(canvas: HTMLCanvasElement, options?: EngineOptions) {
     this.canvas = canvas;
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -144,7 +147,7 @@ export class Engine {
       this.camera,
       (event) => this.handlePointerEvent(event),
       (event) => this.handleKeyEvent(event),
-      (event, worldPoint) => this.handleWheel(event, worldPoint)
+      (event, screenPoint, _worldPoint) => this.handleWheel(event, screenPoint)
     );
 
     // Subscribe to stores
@@ -152,6 +155,10 @@ export class Engine {
 
     // Set initial tool
     this.toolManager.setActiveTool(this.options.initialTool);
+
+    // Add global keyboard handler for shortcuts that need to intercept browser defaults
+    this.boundGlobalKeyDown = this.handleGlobalKeyDown.bind(this);
+    window.addEventListener('keydown', this.boundGlobalKeyDown);
 
     // Initial render
     this.syncFromStores();
@@ -216,6 +223,9 @@ export class Engine {
       this.panAnimationId = null;
     }
     this.activePanKeys.clear();
+
+    // Remove global keyboard listener
+    window.removeEventListener('keydown', this.boundGlobalKeyDown);
 
     // Unsubscribe from stores
     this.unsubscribeDocument?.();
@@ -327,6 +337,7 @@ export class Engine {
 
     // Subscribe to session store
     let previousTool = useSessionStore.getState().activeTool;
+    let previousCamera = useSessionStore.getState().camera;
     this.unsubscribeSession = useSessionStore.subscribe((state) => {
       // Sync tool changes from sessionStore to toolManager
       if (state.activeTool !== previousTool) {
@@ -335,6 +346,20 @@ export class Engine {
         if (this.toolManager.getActiveToolType() !== state.activeTool) {
           this.toolManager.setActiveTool(state.activeTool);
         }
+      }
+
+      // Sync camera changes from sessionStore to Engine camera
+      if (
+        state.camera.x !== previousCamera.x ||
+        state.camera.y !== previousCamera.y ||
+        state.camera.zoom !== previousCamera.zoom
+      ) {
+        previousCamera = state.camera;
+        this.camera.setState({
+          x: state.camera.x,
+          y: state.camera.y,
+          zoom: state.camera.zoom,
+        });
       }
 
       // Update renderer with selection
@@ -405,6 +430,24 @@ export class Engine {
   }
 
   // Event handlers
+
+  /**
+   * Global keyboard handler to intercept browser defaults like Ctrl+A.
+   * This runs on window, not canvas, so it works even when canvas isn't focused.
+   */
+  private handleGlobalKeyDown(event: KeyboardEvent): void {
+    if (this.destroyed) return;
+
+    const isCtrl = event.ctrlKey || event.metaKey;
+
+    // Ctrl+A: Select all - must intercept at window level to prevent browser select all
+    if (isCtrl && event.key === 'a') {
+      event.preventDefault();
+      useSessionStore.getState().selectAll();
+      this.renderer.requestRender();
+      return;
+    }
+  }
 
   private handlePointerEvent(event: NormalizedPointerEvent): void {
     this.toolManager.handlePointerEvent(event);
@@ -555,13 +598,14 @@ export class Engine {
         needsRender = true;
       }
 
-      // Apply zoom centered on viewport center
+      // Apply zoom centered on viewport center (use screen coordinates for zoomAt)
       if (zoomDir !== 0) {
         const zoomFactor = 1 + zoomDir * ZOOM_SPEED;
-        const viewportCenter = this.camera.screenToWorld(
-          new Vec2(this.camera.screenWidth / 2, this.camera.screenHeight / 2)
+        const screenCenter = new Vec2(
+          this.camera.screenWidth / 2,
+          this.camera.screenHeight / 2
         );
-        this.camera.zoomAt(viewportCenter, zoomFactor);
+        this.camera.zoomAt(screenCenter, zoomFactor);
         needsRender = true;
       }
 
@@ -678,8 +722,9 @@ export class Engine {
     }
   }
 
-  private handleWheel(event: WheelEvent, worldPoint: Vec2): void {
+  private handleWheel(event: WheelEvent, screenPoint: Vec2): void {
     // Let tool manager handle first
+    const worldPoint = this.camera.screenToWorld(screenPoint);
     const handled = this.toolManager.handleWheel(event, worldPoint);
 
     if (!handled) {
@@ -698,7 +743,8 @@ export class Engine {
       // Calculate zoom factor (zoom in for negative delta, out for positive)
       const zoomFactor = event.deltaY > 0 ? 1 - zoomStep : 1 + zoomStep;
 
-      this.camera.zoomAt(worldPoint, zoomFactor);
+      // Use screenPoint for zoomAt (it internally converts to world coordinates)
+      this.camera.zoomAt(screenPoint, zoomFactor);
       this.renderer.requestRender();
     }
   }
