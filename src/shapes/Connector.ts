@@ -221,6 +221,7 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       rotation: DEFAULT_CONNECTOR.rotation,
       opacity: DEFAULT_CONNECTOR.opacity,
       locked: DEFAULT_CONNECTOR.locked,
+      visible: DEFAULT_CONNECTOR.visible,
       fill: DEFAULT_CONNECTOR.fill,
       stroke: DEFAULT_CONNECTOR.stroke,
       strokeWidth: DEFAULT_CONNECTOR.strokeWidth,

@@ -86,11 +86,12 @@ implementation phase as defined in Specification.Readme.md.
 
 #### Layer Management
 
-- [ ] Layer panel with z-order management
+- [x] Layer panel with z-order management
     - Visual list of all shapes in z-order
     - Drag to reorder
     - Lock/unlock individual shapes
     - Show/hide individual shapes
+    - Bring to front / Send to back buttons
 
 #### Grouping
 

@@ -74,6 +74,8 @@ export interface BaseShape {
   opacity: number;
   /** Whether the shape is locked from editing */
   locked: boolean;
+  /** Whether the shape is visible (hidden shapes are not rendered) */
+  visible: boolean;
 
   // Style properties
   /** Fill color (CSS color string) or null for no fill */
@@ -234,6 +236,7 @@ export const DEFAULT_SHAPE_STYLE = {
   opacity: 1,
   rotation: 0,
   locked: false,
+  visible: true,
 } as const;
 
 /**

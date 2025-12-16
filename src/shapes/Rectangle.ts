@@ -219,6 +219,7 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       rotation: DEFAULT_RECTANGLE.rotation,
       opacity: DEFAULT_RECTANGLE.opacity,
       locked: DEFAULT_RECTANGLE.locked,
+      visible: DEFAULT_RECTANGLE.visible,
       fill: DEFAULT_RECTANGLE.fill,
       stroke: DEFAULT_RECTANGLE.stroke,
       strokeWidth: DEFAULT_RECTANGLE.strokeWidth,

@@ -267,6 +267,7 @@ export const lineHandler: ShapeHandler<LineShape> = {
       rotation: DEFAULT_LINE.rotation,
       opacity: DEFAULT_LINE.opacity,
       locked: DEFAULT_LINE.locked,
+      visible: DEFAULT_LINE.visible,
       fill: DEFAULT_LINE.fill,
       stroke: DEFAULT_LINE.stroke,
       strokeWidth: DEFAULT_LINE.strokeWidth,

@@ -3,6 +3,7 @@ import './App.css';
 import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
 import { PropertyPanel } from './PropertyPanel';
+import { LayerPanel } from './LayerPanel';
 import { useDocumentStore } from '../store/documentStore';
 import { useThemeStore } from '../store/themeStore';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
@@ -39,6 +40,7 @@ function createExampleShapes(): RectangleShape[] {
         rotation: 0,
         opacity: DEFAULT_RECTANGLE.opacity,
         locked: DEFAULT_RECTANGLE.locked,
+        visible: DEFAULT_RECTANGLE.visible,
         fill: color!.fill,
         stroke: color!.stroke,
         strokeWidth: 2,
@@ -58,6 +60,7 @@ function createExampleShapes(): RectangleShape[] {
     rotation: 0,
     opacity: 1,
     locked: false,
+    visible: true,
     fill: '#2c3e50',
     stroke: '#1a252f',
     strokeWidth: 2,
@@ -75,6 +78,7 @@ function createExampleShapes(): RectangleShape[] {
     rotation: Math.PI / 6, // 30 degrees
     opacity: 0.9,
     locked: false,
+    visible: true,
     fill: '#f6e05e',
     stroke: '#d69e2e',
     strokeWidth: 2,
@@ -91,6 +95,7 @@ function createExampleShapes(): RectangleShape[] {
     rotation: -Math.PI / 8, // -22.5 degrees
     opacity: 0.85,
     locked: false,
+    visible: true,
     fill: '#fc8181',
     stroke: '#c53030',
     strokeWidth: 3,
@@ -145,6 +150,7 @@ function App() {
           showFps={true}
         />
         <PropertyPanel />
+        <LayerPanel />
       </main>
     </div>
   );

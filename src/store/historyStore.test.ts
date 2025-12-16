@@ -17,6 +17,7 @@ function createTestRect(id: string, x = 0, y = 0): RectangleShape {
     rotation: 0,
     opacity: 1,
     locked: false,
+    visible: true,
     fill: '#4a90d9',
     stroke: '#2c5282',
     strokeWidth: 2,

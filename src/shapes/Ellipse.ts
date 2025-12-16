@@ -208,6 +208,7 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
       rotation: DEFAULT_ELLIPSE.rotation,
       opacity: DEFAULT_ELLIPSE.opacity,
       locked: DEFAULT_ELLIPSE.locked,
+      visible: DEFAULT_ELLIPSE.visible,
       fill: DEFAULT_ELLIPSE.fill,
       stroke: DEFAULT_ELLIPSE.stroke,
       strokeWidth: DEFAULT_ELLIPSE.strokeWidth,

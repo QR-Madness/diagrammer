@@ -37,6 +37,7 @@ export interface DocumentActions {
   // Batch z-order
   bringToFrontMultiple: (ids: string[]) => void;
   sendToBackMultiple: (ids: string[]) => void;
+  reorderShapes: (newOrder: string[]) => void;
 
   // Serialization
   getSnapshot: () => DocumentSnapshot;
@@ -239,6 +240,18 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
         const toMove = state.shapeOrder.filter((id) => idsSet.has(id));
         // Prepend in their original relative order
         state.shapeOrder = [...toMove, ...remaining];
+      });
+    },
+
+    reorderShapes: (newOrder: string[]) => {
+      set((state) => {
+        // Validate that all IDs exist and no duplicates
+        const existingIds = new Set(Object.keys(state.shapes));
+        const validOrder = newOrder.filter((id) => existingIds.has(id));
+        // Only update if all shapes accounted for
+        if (validOrder.length === state.shapeOrder.length) {
+          state.shapeOrder = validOrder;
+        }
       });
     },
 

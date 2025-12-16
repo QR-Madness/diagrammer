@@ -220,6 +220,7 @@ export const textHandler: ShapeHandler<TextShape> = {
       rotation: DEFAULT_TEXT.rotation,
       opacity: DEFAULT_TEXT.opacity,
       locked: DEFAULT_TEXT.locked,
+      visible: DEFAULT_TEXT.visible,
       fill: '#000000',
       stroke: DEFAULT_TEXT.stroke,
       strokeWidth: DEFAULT_TEXT.strokeWidth,

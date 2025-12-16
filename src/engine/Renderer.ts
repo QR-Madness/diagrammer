@@ -475,6 +475,11 @@ export class Renderer {
       const shape = shapes[id];
       if (!shape) continue;
 
+      // Skip hidden shapes
+      if (!shape.visible) {
+        continue;
+      }
+
       try {
         const handler = shapeRegistry.getHandler(shape.type);
         const bounds = handler.getBounds(shape);

@@ -218,6 +218,7 @@ export class ConnectorTool extends BaseTool {
       rotation: 0,
       opacity: DEFAULT_CONNECTOR.opacity,
       locked: false,
+      visible: true,
       fill: DEFAULT_CONNECTOR.fill,
       stroke: DEFAULT_CONNECTOR.stroke,
       strokeWidth: DEFAULT_CONNECTOR.strokeWidth,

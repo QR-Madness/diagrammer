@@ -17,6 +17,7 @@ function createTestLine(overrides: Partial<LineShape> = {}): LineShape {
     rotation: 0,
     opacity: 1,
     locked: false,
+    visible: true,
     fill: null,
     stroke: '#2c5282',
     strokeWidth: 2,
