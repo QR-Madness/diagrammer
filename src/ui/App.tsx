@@ -4,6 +4,7 @@ import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
+import { FileMenu } from './FileMenu';
 import { useDocumentStore } from '../store/documentStore';
 import { useThemeStore } from '../store/themeStore';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
@@ -127,9 +128,12 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-header-title">
-          <h1>Diagrammer</h1>
-          <p>Whiteboard Foundation - Interactive Demo</p>
+        <div className="app-header-left">
+          <FileMenu />
+          <div className="app-header-title">
+            <h1>Diagrammer</h1>
+            <p>Whiteboard Foundation - Interactive Demo</p>
+          </div>
         </div>
         <div className="app-header-actions">
           <button

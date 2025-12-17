@@ -3,6 +3,7 @@ import { Engine } from '../engine/Engine';
 import { Camera } from '../engine/Camera';
 import { TextEditor } from './TextEditor';
 import { ContextMenu } from './ContextMenu';
+import { ExportDialog } from './ExportDialog';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -54,6 +55,9 @@ export function CanvasContainer({
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // Export dialog state
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
   /**
    * Update canvas size to match container, accounting for DPI.
@@ -233,6 +237,14 @@ export function CanvasContainer({
     setContextMenu(null);
   }, []);
 
+  const handleExportSelection = useCallback(() => {
+    setExportDialogOpen(true);
+  }, []);
+
+  const handleCloseExportDialog = useCallback(() => {
+    setExportDialogOpen(false);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -275,8 +287,15 @@ export function CanvasContainer({
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={handleCloseContextMenu}
+          onExport={handleExportSelection}
         />
       )}
+      <ExportDialog
+        isOpen={exportDialogOpen}
+        onClose={handleCloseExportDialog}
+        scope="selection"
+        defaultFilename="selection"
+      />
     </div>
   );
 }

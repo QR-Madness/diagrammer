@@ -1,0 +1,703 @@
+/**
+ * Export utilities for PNG and SVG export.
+ */
+
+import { Box } from '../math/Box';
+import {
+  Shape,
+  RectangleShape,
+  EllipseShape,
+  LineShape,
+  TextShape,
+  ConnectorShape,
+  GroupShape,
+  isRectangle,
+  isEllipse,
+  isLine,
+  isText,
+  isConnector,
+  isGroup,
+} from '../shapes/Shape';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
+import { calculateCombinedBounds } from '../shapes/utils/bounds';
+import { getConnectorStartPoint, getConnectorEndPoint } from '../shapes/Connector';
+
+/**
+ * Export options for PNG and SVG export.
+ */
+export interface ExportOptions {
+  /** Export format */
+  format: 'png' | 'svg';
+  /** Export scope */
+  scope: 'all' | 'selection';
+  /** Scale factor for PNG (1, 2, 3) */
+  scale: number;
+  /** Background color or null for transparent */
+  background: string | null;
+  /** Padding around content in pixels */
+  padding: number;
+  /** Output filename */
+  filename: string;
+}
+
+/**
+ * Data needed for export operations.
+ */
+export interface ExportData {
+  /** All shapes in the document */
+  shapes: Record<string, Shape>;
+  /** Shape order (z-order) */
+  shapeOrder: string[];
+  /** Selected shape IDs (for selection export) */
+  selectedIds: string[];
+}
+
+/**
+ * Get the shapes to export based on scope.
+ */
+function getShapesToExport(data: ExportData, scope: 'all' | 'selection'): Shape[] {
+  if (scope === 'selection' && data.selectedIds.length > 0) {
+    return data.selectedIds
+      .map((id) => data.shapes[id])
+      .filter((s): s is Shape => s !== undefined && s.visible);
+  }
+
+  // All shapes in z-order
+  return data.shapeOrder
+    .map((id) => data.shapes[id])
+    .filter((s): s is Shape => s !== undefined && s.visible);
+}
+
+/**
+ * Calculate the bounds for export.
+ */
+export function getExportBounds(data: ExportData, scope: 'all' | 'selection'): Box | null {
+  const shapes = getShapesToExport(data, scope);
+  if (shapes.length === 0) return null;
+
+  // For groups, we need to include children in bounds calculation
+  const allShapes: Shape[] = [];
+  const addShapeAndChildren = (shape: Shape) => {
+    if (isGroup(shape)) {
+      for (const childId of shape.childIds) {
+        const child = data.shapes[childId];
+        if (child && child.visible) {
+          addShapeAndChildren(child);
+        }
+      }
+    } else {
+      allShapes.push(shape);
+    }
+  };
+
+  for (const shape of shapes) {
+    addShapeAndChildren(shape);
+  }
+
+  return calculateCombinedBounds(allShapes);
+}
+
+// ============ PNG Export ============
+
+/**
+ * Export shapes to PNG.
+ */
+export async function exportToPng(
+  data: ExportData,
+  options: ExportOptions
+): Promise<Blob> {
+  const bounds = getExportBounds(data, options.scope);
+  if (!bounds) {
+    throw new Error('No shapes to export');
+  }
+
+  const { scale, padding, background } = options;
+
+  // Calculate canvas size
+  const width = Math.ceil((bounds.width + padding * 2) * scale);
+  const height = Math.ceil((bounds.height + padding * 2) * scale);
+
+  // Create offscreen canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Could not get canvas context');
+  }
+
+  // Apply scale
+  ctx.scale(scale, scale);
+
+  // Fill background
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width / scale, height / scale);
+  }
+
+  // Translate to account for bounds offset and padding
+  ctx.translate(padding - bounds.minX, padding - bounds.minY);
+
+  // Get shapes to render
+  const shapes = getShapesToExport(data, options.scope);
+
+  // Render shapes in z-order
+  for (const shape of shapes) {
+    renderShapeForExport(ctx, shape, data.shapes, 1);
+  }
+
+  // Convert to blob
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create PNG blob'));
+        }
+      },
+      'image/png',
+      1.0
+    );
+  });
+}
+
+/**
+ * Render a shape for export (handles groups recursively).
+ */
+function renderShapeForExport(
+  ctx: CanvasRenderingContext2D,
+  shape: Shape,
+  allShapes: Record<string, Shape>,
+  parentOpacity: number
+): void {
+  if (!shape.visible) return;
+
+  const effectiveOpacity = shape.opacity * parentOpacity;
+
+  if (isGroup(shape)) {
+    // Render children with inherited opacity
+    for (const childId of shape.childIds) {
+      const child = allShapes[childId];
+      if (child) {
+        renderShapeForExport(ctx, child, allShapes, effectiveOpacity);
+      }
+    }
+  } else {
+    ctx.save();
+    ctx.globalAlpha = effectiveOpacity;
+    const handler = shapeRegistry.getHandler(shape.type);
+    handler.render(ctx, shape);
+    ctx.restore();
+  }
+}
+
+// ============ SVG Export ============
+
+/**
+ * Export shapes to SVG string.
+ */
+export function exportToSvg(data: ExportData, options: ExportOptions): string {
+  const bounds = getExportBounds(data, options.scope);
+  if (!bounds) {
+    throw new Error('No shapes to export');
+  }
+
+  const { padding, background } = options;
+
+  // Calculate SVG dimensions
+  const width = bounds.width + padding * 2;
+  const height = bounds.height + padding * 2;
+
+  // Offset to translate shapes
+  const offsetX = padding - bounds.minX;
+  const offsetY = padding - bounds.minY;
+
+  // Get shapes to export
+  const shapes = getShapesToExport(data, options.scope);
+
+  // Build SVG elements
+  const elements: string[] = [];
+
+  // Background rect
+  if (background) {
+    elements.push(`  <rect x="0" y="0" width="${width}" height="${height}" fill="${background}"/>`);
+  }
+
+  // Render shapes
+  for (const shape of shapes) {
+    const svg = shapeToSvg(shape, data.shapes, offsetX, offsetY, 1);
+    if (svg) {
+      elements.push(svg);
+    }
+  }
+
+  // Build final SVG
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+${elements.join('\n')}
+</svg>`;
+}
+
+/**
+ * Convert a shape to SVG element string.
+ */
+function shapeToSvg(
+  shape: Shape,
+  allShapes: Record<string, Shape>,
+  offsetX: number,
+  offsetY: number,
+  parentOpacity: number
+): string {
+  if (!shape.visible) return '';
+
+  const effectiveOpacity = shape.opacity * parentOpacity;
+
+  if (isGroup(shape)) {
+    return groupToSvg(shape, allShapes, offsetX, offsetY, effectiveOpacity);
+  } else if (isRectangle(shape)) {
+    return rectangleToSvg(shape, offsetX, offsetY, effectiveOpacity);
+  } else if (isEllipse(shape)) {
+    return ellipseToSvg(shape, offsetX, offsetY, effectiveOpacity);
+  } else if (isLine(shape)) {
+    return lineToSvg(shape, offsetX, offsetY, effectiveOpacity);
+  } else if (isText(shape)) {
+    return textToSvg(shape, offsetX, offsetY, effectiveOpacity);
+  } else if (isConnector(shape)) {
+    return connectorToSvg(shape, allShapes, offsetX, offsetY, effectiveOpacity);
+  }
+
+  return '';
+}
+
+/**
+ * Convert a group to SVG.
+ */
+function groupToSvg(
+  group: GroupShape,
+  allShapes: Record<string, Shape>,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  const children: string[] = [];
+
+  for (const childId of group.childIds) {
+    const child = allShapes[childId];
+    if (child) {
+      const svg = shapeToSvg(child, allShapes, offsetX, offsetY, opacity);
+      if (svg) {
+        children.push(svg);
+      }
+    }
+  }
+
+  if (children.length === 0) return '';
+
+  return `  <g>
+${children.join('\n')}
+  </g>`;
+}
+
+/**
+ * Convert a rectangle to SVG.
+ */
+function rectangleToSvg(
+  shape: RectangleShape,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  const x = shape.x + offsetX - shape.width / 2;
+  const y = shape.y + offsetY - shape.height / 2;
+  const cx = shape.x + offsetX;
+  const cy = shape.y + offsetY;
+  const rotation = (shape.rotation * 180) / Math.PI;
+
+  const attrs: string[] = [
+    `x="${x}"`,
+    `y="${y}"`,
+    `width="${shape.width}"`,
+    `height="${shape.height}"`,
+  ];
+
+  if (shape.cornerRadius > 0) {
+    attrs.push(`rx="${shape.cornerRadius}"`);
+    attrs.push(`ry="${shape.cornerRadius}"`);
+  }
+
+  attrs.push(...getStyleAttrs(shape, opacity));
+
+  if (rotation !== 0) {
+    attrs.push(`transform="rotate(${rotation}, ${cx}, ${cy})"`);
+  }
+
+  let svg = `  <rect ${attrs.join(' ')}/>`;
+
+  // Add label if present
+  if (shape.label) {
+    const labelSvg = labelToSvg(
+      shape.label,
+      cx,
+      cy,
+      shape.labelFontSize || 14,
+      shape.labelColor || shape.stroke || '#000000',
+      rotation,
+      opacity
+    );
+    svg += '\n' + labelSvg;
+  }
+
+  return svg;
+}
+
+/**
+ * Convert an ellipse to SVG.
+ */
+function ellipseToSvg(
+  shape: EllipseShape,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  const cx = shape.x + offsetX;
+  const cy = shape.y + offsetY;
+  const rotation = (shape.rotation * 180) / Math.PI;
+
+  const attrs: string[] = [
+    `cx="${cx}"`,
+    `cy="${cy}"`,
+    `rx="${shape.radiusX}"`,
+    `ry="${shape.radiusY}"`,
+  ];
+
+  attrs.push(...getStyleAttrs(shape, opacity));
+
+  if (rotation !== 0) {
+    attrs.push(`transform="rotate(${rotation}, ${cx}, ${cy})"`);
+  }
+
+  let svg = `  <ellipse ${attrs.join(' ')}/>`;
+
+  // Add label if present
+  if (shape.label) {
+    const labelSvg = labelToSvg(
+      shape.label,
+      cx,
+      cy,
+      shape.labelFontSize || 14,
+      shape.labelColor || shape.stroke || '#000000',
+      rotation,
+      opacity
+    );
+    svg += '\n' + labelSvg;
+  }
+
+  return svg;
+}
+
+/**
+ * Convert a line to SVG.
+ */
+function lineToSvg(
+  shape: LineShape,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  const x1 = shape.x + offsetX;
+  const y1 = shape.y + offsetY;
+  const x2 = shape.x2 + offsetX;
+  const y2 = shape.y2 + offsetY;
+
+  const elements: string[] = [];
+
+  // Line element
+  const lineAttrs: string[] = [
+    `x1="${x1}"`,
+    `y1="${y1}"`,
+    `x2="${x2}"`,
+    `y2="${y2}"`,
+    ...getStrokeAttrs(shape, opacity),
+  ];
+
+  elements.push(`  <line ${lineAttrs.join(' ')}/>`);
+
+  // Start arrow
+  if (shape.startArrow) {
+    const arrowSvg = arrowToSvg(x1, y1, x2, y2, shape.strokeWidth, shape.stroke || '#000000', opacity, true);
+    elements.push(arrowSvg);
+  }
+
+  // End arrow
+  if (shape.endArrow) {
+    const arrowSvg = arrowToSvg(x1, y1, x2, y2, shape.strokeWidth, shape.stroke || '#000000', opacity, false);
+    elements.push(arrowSvg);
+  }
+
+  return elements.join('\n');
+}
+
+/**
+ * Convert a connector to SVG.
+ */
+function connectorToSvg(
+  shape: ConnectorShape,
+  allShapes: Record<string, Shape>,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  // Get actual start/end points
+  const startPoint = getConnectorStartPoint(shape, allShapes);
+  const endPoint = getConnectorEndPoint(shape, allShapes);
+
+  const x1 = startPoint.x + offsetX;
+  const y1 = startPoint.y + offsetY;
+  const x2 = endPoint.x + offsetX;
+  const y2 = endPoint.y + offsetY;
+
+  const elements: string[] = [];
+
+  // Line element
+  const lineAttrs: string[] = [
+    `x1="${x1}"`,
+    `y1="${y1}"`,
+    `x2="${x2}"`,
+    `y2="${y2}"`,
+    ...getStrokeAttrs(shape, opacity),
+  ];
+
+  elements.push(`  <line ${lineAttrs.join(' ')}/>`);
+
+  // Start arrow
+  if (shape.startArrow) {
+    const arrowSvg = arrowToSvg(x1, y1, x2, y2, shape.strokeWidth, shape.stroke || '#000000', opacity, true);
+    elements.push(arrowSvg);
+  }
+
+  // End arrow
+  if (shape.endArrow) {
+    const arrowSvg = arrowToSvg(x1, y1, x2, y2, shape.strokeWidth, shape.stroke || '#000000', opacity, false);
+    elements.push(arrowSvg);
+  }
+
+  return elements.join('\n');
+}
+
+/**
+ * Convert text to SVG.
+ */
+function textToSvg(
+  shape: TextShape,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  const cx = shape.x + offsetX;
+  const cy = shape.y + offsetY;
+  const rotation = (shape.rotation * 180) / Math.PI;
+
+  // Calculate text anchor
+  let textAnchor = 'middle';
+  if (shape.textAlign === 'left') textAnchor = 'start';
+  else if (shape.textAlign === 'right') textAnchor = 'end';
+
+  // Calculate dominant baseline
+  let dominantBaseline = 'central';
+  if (shape.verticalAlign === 'top') dominantBaseline = 'hanging';
+  else if (shape.verticalAlign === 'bottom') dominantBaseline = 'auto';
+
+  // Calculate text position based on alignment
+  let textX = cx;
+  if (shape.textAlign === 'left') textX = cx - shape.width / 2;
+  else if (shape.textAlign === 'right') textX = cx + shape.width / 2;
+
+  let textY = cy;
+  if (shape.verticalAlign === 'top') textY = cy - shape.height / 2;
+  else if (shape.verticalAlign === 'bottom') textY = cy + shape.height / 2;
+
+  // Split text into lines
+  const lines = shape.text.split('\n');
+  const lineHeight = shape.fontSize * 1.2;
+
+  // Calculate starting Y position
+  let startY = textY;
+  if (shape.verticalAlign === 'middle') {
+    startY = textY - ((lines.length - 1) * lineHeight) / 2;
+  } else if (shape.verticalAlign === 'bottom') {
+    startY = textY - (lines.length - 1) * lineHeight;
+  }
+
+  const attrs: string[] = [
+    `x="${textX}"`,
+    `y="${startY}"`,
+    `font-family="${shape.fontFamily}"`,
+    `font-size="${shape.fontSize}"`,
+    `text-anchor="${textAnchor}"`,
+    `dominant-baseline="${dominantBaseline}"`,
+    `fill="${shape.fill || '#000000'}"`,
+  ];
+
+  if (opacity < 1) {
+    attrs.push(`opacity="${opacity}"`);
+  }
+
+  if (rotation !== 0) {
+    attrs.push(`transform="rotate(${rotation}, ${cx}, ${cy})"`);
+  }
+
+  if (lines.length === 1) {
+    return `  <text ${attrs.join(' ')}>${escapeXml(shape.text)}</text>`;
+  }
+
+  // Multi-line text with tspans
+  const tspans = lines.map((line, i) => {
+    const dy = i === 0 ? 0 : lineHeight;
+    return `    <tspan x="${textX}" dy="${dy}">${escapeXml(line)}</tspan>`;
+  });
+
+  return `  <text ${attrs.join(' ')}>
+${tspans.join('\n')}
+  </text>`;
+}
+
+/**
+ * Convert a label to SVG text element.
+ */
+function labelToSvg(
+  text: string,
+  cx: number,
+  cy: number,
+  fontSize: number,
+  color: string,
+  rotation: number,
+  opacity: number
+): string {
+  const attrs: string[] = [
+    `x="${cx}"`,
+    `y="${cy}"`,
+    `font-family="sans-serif"`,
+    `font-size="${fontSize}"`,
+    `text-anchor="middle"`,
+    `dominant-baseline="central"`,
+    `fill="${color}"`,
+  ];
+
+  if (opacity < 1) {
+    attrs.push(`opacity="${opacity}"`);
+  }
+
+  if (rotation !== 0) {
+    attrs.push(`transform="rotate(${rotation}, ${cx}, ${cy})"`);
+  }
+
+  return `  <text ${attrs.join(' ')}>${escapeXml(text)}</text>`;
+}
+
+/**
+ * Convert an arrow head to SVG polygon.
+ */
+function arrowToSvg(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  strokeWidth: number,
+  color: string,
+  opacity: number,
+  isStart: boolean
+): string {
+  const size = strokeWidth * 4;
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+
+  // Arrow tip position
+  let tipX: number, tipY: number;
+  let arrowAngle: number;
+
+  if (isStart) {
+    tipX = x1;
+    tipY = y1;
+    arrowAngle = angle + Math.PI; // Point away from line
+  } else {
+    tipX = x2;
+    tipY = y2;
+    arrowAngle = angle;
+  }
+
+  // Calculate arrow points (triangle)
+  const backLength = size;
+  const wingLength = size * 0.5;
+
+  // Back center point
+  const backX = tipX - Math.cos(arrowAngle) * backLength;
+  const backY = tipY - Math.sin(arrowAngle) * backLength;
+
+  // Wing points
+  const wing1X = backX + Math.cos(arrowAngle + Math.PI / 2) * wingLength;
+  const wing1Y = backY + Math.sin(arrowAngle + Math.PI / 2) * wingLength;
+  const wing2X = backX + Math.cos(arrowAngle - Math.PI / 2) * wingLength;
+  const wing2Y = backY + Math.sin(arrowAngle - Math.PI / 2) * wingLength;
+
+  const points = `${tipX},${tipY} ${wing1X},${wing1Y} ${wing2X},${wing2Y}`;
+
+  const attrs = [`points="${points}"`, `fill="${color}"`];
+
+  if (opacity < 1) {
+    attrs.push(`opacity="${opacity}"`);
+  }
+
+  return `  <polygon ${attrs.join(' ')}/>`;
+}
+
+/**
+ * Get common style attributes for a shape.
+ */
+function getStyleAttrs(shape: Shape, opacity: number): string[] {
+  const attrs: string[] = [];
+
+  attrs.push(`fill="${shape.fill || 'none'}"`);
+  attrs.push(`stroke="${shape.stroke || 'none'}"`);
+
+  if (shape.strokeWidth > 0) {
+    attrs.push(`stroke-width="${shape.strokeWidth}"`);
+  }
+
+  if (opacity < 1) {
+    attrs.push(`opacity="${opacity}"`);
+  }
+
+  return attrs;
+}
+
+/**
+ * Get stroke-only attributes for lines.
+ */
+function getStrokeAttrs(shape: Shape, opacity: number): string[] {
+  const attrs: string[] = [];
+
+  attrs.push(`stroke="${shape.stroke || '#000000'}"`);
+
+  if (shape.strokeWidth > 0) {
+    attrs.push(`stroke-width="${shape.strokeWidth}"`);
+  }
+
+  if (opacity < 1) {
+    attrs.push(`opacity="${opacity}"`);
+  }
+
+  return attrs;
+}
+
+/**
+ * Escape special XML characters.
+ */
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}

@@ -10,13 +10,14 @@ interface ContextMenuProps {
   x: number;
   y: number;
   onClose: () => void;
+  onExport?: () => void;
 }
 
 /**
  * Context menu for shape operations.
  * Shows contextual actions based on current selection.
  */
-export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, onClose, onExport }: ContextMenuProps) {
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const shapes = useDocumentStore((state) => state.shapes);
   const select = useSessionStore((state) => state.select);
@@ -105,6 +106,13 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     onClose();
   }, [hasSelection, selectedArray, push, sendToBackMultiple, onClose]);
 
+  const handleExport = useCallback(() => {
+    if (hasSelection && onExport) {
+      onExport();
+    }
+    onClose();
+  }, [hasSelection, onExport, onClose]);
+
   return (
     <div
       className="context-menu"
@@ -138,6 +146,14 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
             <span className="context-menu-label">Send to Back</span>
           </button>
           <div className="context-menu-separator" />
+          {onExport && (
+            <>
+              <button className="context-menu-item" onClick={handleExport}>
+                <span className="context-menu-label">Export Selection...</span>
+              </button>
+              <div className="context-menu-separator" />
+            </>
+          )}
           <button className="context-menu-item danger" onClick={handleDelete}>
             <span className="context-menu-label">Delete</span>
             <span className="context-menu-shortcut">Del</span>

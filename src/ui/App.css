@@ -15,6 +15,12 @@
   box-shadow: var(--shadow-md);
 }
 
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .app-header-title {
   display: flex;
   flex-direction: column;

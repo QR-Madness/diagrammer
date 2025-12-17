@@ -115,13 +115,19 @@ implementation phase as defined in Specification.Readme.md.
 
 #### Export Features
 
-- [ ] Export to PNG
-    - Export visible canvas area
-    - Export selected shapes only option
-    - High-DPI export option
-- [ ] Export to SVG
+- [x] Export to PNG
+    - Export visible canvas area or selected shapes
+    - High-DPI export option (1x, 2x, 3x scale)
+    - Configurable background (color or transparent)
+    - Configurable padding
+- [x] Export to SVG
     - Convert shapes to SVG elements
-    - Preserve colors and styles
+    - Preserve colors, strokes, opacity
+    - Support for all shape types including groups
+- [x] Export UI
+    - File menu in header with export options
+    - Context menu "Export Selection..." option
+    - Export dialog with format, scale, background, padding, filename options
 
 #### UI Polish
 
@@ -212,6 +218,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Implement a composable VCS pattern which allows interfacing with Git for version control, and others in the future
 - [ ] Implement Git file viewing and linking to shapes by adding a 'view code' button to a shape which opens a new tab with the relevant file
 - [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is /diagrammer/*.json)
+- [ ] Feat: Spawn a VS Code instance with access to Git repo
 
 ### Phase ??: FUTURE: AI Model Integration (Epic - Large Task with Multiple Components) – Version ?.?
 
