@@ -171,6 +171,7 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 10: Advanced Diagramming
 
 - [ ] Smart connectors with routing (avoid shapes)
+- [ ] Shape icons (similar to Eraser.io) + customizable icon library
 - [ ] Connector labels
 - [ ] Shape libraries (presets, templates)
 - [ ] Custom shape definitions

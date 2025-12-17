@@ -48,6 +48,9 @@ export function CanvasContainer({
   // State for camera reference (for TextEditor positioning)
   const [camera, setCamera] = useState<Camera | null>(null);
 
+  // Track canvas focus state for visual indicator
+  const [isFocused, setIsFocused] = useState(false);
+
   /**
    * Update canvas size to match container, accounting for DPI.
    */
@@ -206,6 +209,14 @@ export function CanvasContainer({
     canvasRef.current?.focus();
   }, []);
 
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -221,12 +232,26 @@ export function CanvasContainer({
         ref={canvasRef}
         tabIndex={0}
         onClick={handleCanvasClick}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         style={{
           display: 'block',
           outline: 'none',
           touchAction: 'none', // Prevent browser touch gestures
         }}
       />
+      {/* Focus indicator - shows when canvas is not focused */}
+      {!isFocused && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            boxShadow: 'inset 0 0 0 3px rgba(239, 68, 68, 0.5)',
+            borderRadius: '2px',
+          }}
+        />
+      )}
       <TextEditor camera={camera} />
     </div>
   );
