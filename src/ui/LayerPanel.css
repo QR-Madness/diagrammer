@@ -170,6 +170,48 @@
   opacity: 0.4;
 }
 
+/* Group expand/collapse button */
+.layer-item-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-secondary, #6c757d);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.layer-item-expand-btn:hover {
+  background: var(--bg-tertiary, #e9ecef);
+  color: var(--text-primary, #495057);
+}
+
+/* Group children container */
+.layer-group-children {
+  border-left: 2px solid var(--border-color, #dee2e6);
+  margin-left: 18px;
+}
+
+/* Child items - indented */
+.layer-item.child {
+  padding-left: 8px;
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.layer-item.child:hover {
+  background: var(--bg-hover, #f0f0f0);
+}
+
+.layer-item.child.selected {
+  background: var(--bg-selected, #d4e8ff);
+}
+
 /* Dark mode support */
 [data-theme="dark"] .layer-panel {
   background: var(--bg-primary, #1e1e1e);
@@ -203,4 +245,25 @@
 
 [data-theme="dark"] .layer-action-btn:hover {
   background: var(--bg-tertiary, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-item-expand-btn:hover {
+  background: var(--bg-tertiary, #3d3d3d);
+  color: var(--text-primary, #e0e0e0);
+}
+
+[data-theme="dark"] .layer-group-children {
+  border-color: var(--border-color, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-item.child {
+  background: var(--bg-secondary, #252526);
+}
+
+[data-theme="dark"] .layer-item.child:hover {
+  background: var(--bg-hover, #2d2d2d);
+}
+
+[data-theme="dark"] .layer-item.child.selected {
+  background: var(--bg-selected, #1e3a5f);
 }

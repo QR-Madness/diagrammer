@@ -36,7 +36,7 @@ export interface Handle {
 /**
  * Shape type discriminator.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector';
+export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector' | 'group';
 
 /**
  * Anchor position on a shape for connectors.
@@ -192,9 +192,19 @@ export interface TextShape extends BaseShape {
 }
 
 /**
+ * Group shape that contains other shapes.
+ * Groups allow multiple shapes to be selected, moved, and transformed as a unit.
+ */
+export interface GroupShape extends BaseShape {
+  type: 'group';
+  /** IDs of child shapes (can include other groups for nesting) */
+  childIds: string[];
+}
+
+/**
  * Union type of all shape types.
  */
-export type Shape = RectangleShape | EllipseShape | LineShape | TextShape | ConnectorShape;
+export type Shape = RectangleShape | EllipseShape | LineShape | TextShape | ConnectorShape | GroupShape;
 
 // ============ Type Guards ============
 
@@ -231,6 +241,13 @@ export function isText(shape: Shape): shape is TextShape {
  */
 export function isConnector(shape: Shape): shape is ConnectorShape {
   return shape.type === 'connector';
+}
+
+/**
+ * Check if a shape is a group.
+ */
+export function isGroup(shape: Shape): shape is GroupShape {
+  return shape.type === 'group';
 }
 
 // ============ Factory Defaults ============
@@ -309,4 +326,16 @@ export const DEFAULT_CONNECTOR = {
   endAnchor: 'center' as AnchorPosition,
   startArrow: false,
   endArrow: true,
+} as const;
+
+/**
+ * Default values for group shapes.
+ * Groups have no visual appearance - they only contain other shapes.
+ */
+export const DEFAULT_GROUP = {
+  ...DEFAULT_SHAPE_STYLE,
+  fill: null,
+  stroke: null,
+  strokeWidth: 0,
+  childIds: [] as string[],
 } as const;

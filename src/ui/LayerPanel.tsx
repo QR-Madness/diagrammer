@@ -2,7 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
-import { Shape } from '../shapes/Shape';
+import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import './LayerPanel.css';
 
 /** Height constraints for resizable panel */
@@ -25,6 +25,8 @@ function getShapeName(shape: Shape): string {
       return 'Text';
     case 'connector':
       return 'Connector';
+    case 'group':
+      return `Group (${(shape as GroupShape).childIds.length})`;
     default:
       return 'Shape';
   }
@@ -62,6 +64,9 @@ export function LayerPanel() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragStartIndex = useRef<number | null>(null);
+
+  // Expanded groups state (tracks which groups are expanded)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Handle resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -193,6 +198,135 @@ export function LayerPanel() {
     }
   }, [push, shapeOrder, reorderShapes]);
 
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  /**
+   * Render a layer item (shape or group child).
+   */
+  const renderLayerItem = useCallback((
+    shape: Shape,
+    index: number,
+    isChild: boolean = false
+  ) => {
+    const id = shape.id;
+    const isSelected = selectedIds.has(id);
+    const isDragging = draggedId === id;
+    const isDragOver = dragOverIndex === index;
+    const isGroupShape = isGroup(shape);
+    const isExpanded = expandedGroups.has(id);
+
+    return (
+      <div key={id}>
+        <div
+          className={`layer-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''} ${isChild ? 'child' : ''}`}
+          draggable={!isChild}
+          onDragStart={isChild ? undefined : (e) => handleDragStart(e, id, index)}
+          onDragOver={isChild ? undefined : (e) => handleDragOver(e, index)}
+          onDragLeave={isChild ? undefined : handleDragLeave}
+          onDrop={isChild ? undefined : (e) => handleDrop(e, index)}
+          onDragEnd={isChild ? undefined : handleDragEnd}
+          onClick={(e) => handleSelectShape(e, id)}
+        >
+          {/* Expand/collapse toggle for groups */}
+          {isGroupShape ? (
+            <button
+              className="layer-item-expand-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleExpand(id);
+              }}
+              title={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronIcon collapsed={!isExpanded} />
+            </button>
+          ) : (
+            <div className="layer-item-drag-handle">
+              {!isChild && <DragIcon />}
+            </div>
+          )}
+
+          <div className="layer-item-info">
+            <span className="layer-item-type">{getShapeName(shape)}</span>
+            <span className="layer-item-id">{id.slice(0, 6)}</span>
+          </div>
+
+          <div className="layer-item-actions">
+            <button
+              className={`layer-action-btn ${shape.visible ? '' : 'inactive'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleVisibility(id, shape.visible);
+              }}
+              title={shape.visible ? 'Hide' : 'Show'}
+            >
+              {shape.visible ? <EyeIcon /> : <EyeOffIcon />}
+            </button>
+            <button
+              className={`layer-action-btn ${shape.locked ? 'active' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleToggleLock(id, shape.locked);
+              }}
+              title={shape.locked ? 'Unlock' : 'Lock'}
+            >
+              {shape.locked ? <LockIcon /> : <UnlockIcon />}
+            </button>
+            {!isChild && (
+              <>
+                <button
+                  className="layer-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveToFront(id);
+                  }}
+                  title="Bring to front"
+                >
+                  <MoveUpIcon />
+                </button>
+                <button
+                  className="layer-action-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMoveToBack(id);
+                  }}
+                  title="Send to back"
+                >
+                  <MoveDownIcon />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Render children if this is an expanded group */}
+        {isGroupShape && isExpanded && (
+          <div className="layer-group-children">
+            {(shape as GroupShape).childIds.map((childId) => {
+              const childShape = shapes[childId];
+              if (!childShape) return null;
+              return renderLayerItem(childShape, -1, true);
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }, [
+    selectedIds, draggedId, dragOverIndex, expandedGroups, shapes,
+    handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd,
+    handleSelectShape, handleToggleExpand, handleToggleVisibility, handleToggleLock,
+    handleMoveToFront, handleMoveToBack
+  ]);
+
   if (displayOrder.length === 0) {
     return (
       <div className={`layer-panel ${isCollapsed ? 'collapsed' : ''}`}>
@@ -233,80 +367,11 @@ export function LayerPanel() {
       </div>
       {!isCollapsed && (
         <div className="layer-panel-list">
-        {displayOrder.map((id, index) => {
-          const shape = shapes[id];
-          if (!shape) return null;
-
-          const isSelected = selectedIds.has(id);
-          const isDragging = draggedId === id;
-          const isDragOver = dragOverIndex === index;
-
-          return (
-            <div
-              key={id}
-              className={`layer-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''}`}
-              draggable
-              onDragStart={(e) => handleDragStart(e, id, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, index)}
-              onDragEnd={handleDragEnd}
-              onClick={(e) => handleSelectShape(e, id)}
-            >
-              <div className="layer-item-drag-handle">
-                <DragIcon />
-              </div>
-
-              <div className="layer-item-info">
-                <span className="layer-item-type">{getShapeName(shape)}</span>
-                <span className="layer-item-id">{id.slice(0, 6)}</span>
-              </div>
-
-              <div className="layer-item-actions">
-                <button
-                  className={`layer-action-btn ${shape.visible ? '' : 'inactive'}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleVisibility(id, shape.visible);
-                  }}
-                  title={shape.visible ? 'Hide' : 'Show'}
-                >
-                  {shape.visible ? <EyeIcon /> : <EyeOffIcon />}
-                </button>
-                <button
-                  className={`layer-action-btn ${shape.locked ? 'active' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleLock(id, shape.locked);
-                  }}
-                  title={shape.locked ? 'Unlock' : 'Lock'}
-                >
-                  {shape.locked ? <LockIcon /> : <UnlockIcon />}
-                </button>
-                <button
-                  className="layer-action-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMoveToFront(id);
-                  }}
-                  title="Bring to front"
-                >
-                  <MoveUpIcon />
-                </button>
-                <button
-                  className="layer-action-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMoveToBack(id);
-                  }}
-                  title="Send to back"
-                >
-                  <MoveDownIcon />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+          {displayOrder.map((id, index) => {
+            const shape = shapes[id];
+            if (!shape) return null;
+            return renderLayerItem(shape, index);
+          })}
         </div>
       )}
     </div>

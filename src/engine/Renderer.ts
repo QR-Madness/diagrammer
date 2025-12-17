@@ -1,6 +1,6 @@
 import { Camera } from './Camera';
 import { Box } from '../math/Box';
-import { Shape } from '../shapes/Shape';
+import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 
 /**
@@ -514,11 +514,18 @@ export class Renderer {
           continue;
         }
 
-        // Render the shape
-        ctx.save();
-        handler.render(ctx, shape);
-        ctx.restore();
-        rendered++;
+        // Handle groups specially - render their children
+        if (isGroup(shape)) {
+          const stats = this.renderGroup(shape, visibleBounds);
+          rendered += stats.rendered;
+          culled += stats.culled;
+        } else {
+          // Render the shape
+          ctx.save();
+          handler.render(ctx, shape);
+          ctx.restore();
+          rendered++;
+        }
       } catch {
         // Shape type not registered - skip silently
       }
@@ -527,6 +534,57 @@ export class Renderer {
     // Could expose these stats via getMetrics() if needed
     void rendered;
     void culled;
+  }
+
+  /**
+   * Render a group and all its children recursively.
+   * Children inherit the group's opacity.
+   */
+  private renderGroup(
+    group: GroupShape,
+    visibleBounds: Box,
+    parentOpacity: number = 1
+  ): { rendered: number; culled: number } {
+    const { ctx, shapes } = this;
+    let rendered = 0;
+    let culled = 0;
+
+    // Calculate effective opacity (multiply with parent)
+    const effectiveOpacity = group.opacity * parentOpacity;
+
+    for (const childId of group.childIds) {
+      const child = shapes[childId];
+      if (!child || !child.visible) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(child.type);
+        const bounds = handler.getBounds(child);
+
+        // Viewport culling
+        if (!visibleBounds.intersects(bounds)) {
+          culled++;
+          continue;
+        }
+
+        // Handle nested groups recursively
+        if (isGroup(child)) {
+          const stats = this.renderGroup(child, visibleBounds, effectiveOpacity);
+          rendered += stats.rendered;
+          culled += stats.culled;
+        } else {
+          // Render the child with inherited opacity
+          ctx.save();
+          ctx.globalAlpha = child.opacity * effectiveOpacity;
+          handler.render(ctx, child);
+          ctx.restore();
+          rendered++;
+        }
+      } catch {
+        // Skip unregistered shape types
+      }
+    }
+
+    return { rendered, culled };
   }
 
   /**

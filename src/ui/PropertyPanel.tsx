@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
-import { Shape, isRectangle, isEllipse, isLine, isText, TextAlign, VerticalAlign } from '../shapes/Shape';
+import { Shape, isRectangle, isEllipse, isLine, isText, isGroup, GroupShape, TextAlign, VerticalAlign } from '../shapes/Shape';
 import { ColorPalette } from './ColorPalette';
 import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
 import './PropertyPanel.css';
 
 /** Default and constraints for panel width */
@@ -70,8 +71,21 @@ export function PropertyPanel() {
     .map((id) => shapes[id])
     .filter((s): s is Shape => s !== undefined);
 
+  // Get first selected shape for display (multi-selection shows first)
+  const shape = selectedShapes[0];
+  const isMultiple = selectedShapes.length > 1;
+  const isGroupSelected = shape ? isGroup(shape) : false;
+
+  // Calculate group bounds if a group is selected
+  // Must be called before any early returns to maintain hook order
+  const groupBounds = useMemo(() => {
+    if (!shape || !isGroupSelected) return null;
+    const handler = shapeRegistry.getHandler('group');
+    return handler.getBounds(shape as GroupShape);
+  }, [isGroupSelected, shape]);
+
   // No selection
-  if (selectedShapes.length === 0) {
+  if (!shape) {
     return (
       <div className="property-panel" style={{ width }}>
         <div
@@ -84,10 +98,6 @@ export function PropertyPanel() {
       </div>
     );
   }
-
-  // Get first selected shape for display (multi-selection shows first)
-  const shape = selectedShapes[0]!;
-  const isMultiple = selectedShapes.length > 1;
 
   const handleFillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -172,11 +182,61 @@ export function PropertyPanel() {
         {/* Shape Type */}
         <div className="property-row">
           <label className="property-label">Type</label>
-          <span className="property-value">{shape.type}</span>
+          <span className="property-value">{isGroupSelected ? 'Group' : shape.type}</span>
         </div>
 
-        {/* Fill Color */}
-        {shape.fill !== null && (
+        {/* Group-specific properties */}
+        {isGroupSelected && (
+          <>
+            <div className="property-row">
+              <label className="property-label">Children</label>
+              <span className="property-value">{(shape as GroupShape).childIds.length} shapes</span>
+            </div>
+
+            {/* Group Opacity */}
+            <div className="property-row">
+              <label className="property-label">Opacity</label>
+              <div className="property-input-group">
+                <input
+                  type="range"
+                  value={shape.opacity}
+                  onChange={handleOpacityChange}
+                  className="property-slider"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                />
+                <span className="property-value">{Math.round(shape.opacity * 100)}%</span>
+              </div>
+            </div>
+
+            {/* Group Bounds */}
+            {groupBounds && (
+              <>
+                <div className="property-section">Bounds</div>
+                <div className="property-row">
+                  <label className="property-label">Width</label>
+                  <span className="property-value">{Math.round(groupBounds.width)}</span>
+                </div>
+                <div className="property-row">
+                  <label className="property-label">Height</label>
+                  <span className="property-value">{Math.round(groupBounds.height)}</span>
+                </div>
+                <div className="property-row">
+                  <label className="property-label">Position</label>
+                  <span className="property-value">({Math.round(groupBounds.minX)}, {Math.round(groupBounds.minY)})</span>
+                </div>
+              </>
+            )}
+
+            <div className="property-group-hint">
+              <span>Press Ctrl+Shift+G to ungroup</span>
+            </div>
+          </>
+        )}
+
+        {/* Fill Color - only for non-group shapes */}
+        {!isGroupSelected && shape.fill !== null && (
           <>
             <div className="property-row">
               <label className="property-label">Fill</label>
@@ -204,8 +264,8 @@ export function PropertyPanel() {
           </>
         )}
 
-        {/* Stroke Color */}
-        {shape.stroke !== null && (
+        {/* Stroke Color - only for non-group shapes */}
+        {!isGroupSelected && shape.stroke !== null && (
           <>
             <div className="property-row">
               <label className="property-label">Stroke</label>
@@ -232,36 +292,40 @@ export function PropertyPanel() {
           </>
         )}
 
-        {/* Stroke Width */}
-        <div className="property-row">
-          <label className="property-label">Stroke Width</label>
-          <input
-            type="number"
-            value={shape.strokeWidth}
-            onChange={handleStrokeWidthChange}
-            className="property-number"
-            min={0}
-            max={50}
-            step={1}
-          />
-        </div>
-
-        {/* Opacity */}
-        <div className="property-row">
-          <label className="property-label">Opacity</label>
-          <div className="property-input-group">
+        {/* Stroke Width - only for non-group shapes */}
+        {!isGroupSelected && (
+          <div className="property-row">
+            <label className="property-label">Stroke Width</label>
             <input
-              type="range"
-              value={shape.opacity}
-              onChange={handleOpacityChange}
-              className="property-slider"
+              type="number"
+              value={shape.strokeWidth}
+              onChange={handleStrokeWidthChange}
+              className="property-number"
               min={0}
-              max={1}
-              step={0.05}
+              max={50}
+              step={1}
             />
-            <span className="property-value">{Math.round(shape.opacity * 100)}%</span>
           </div>
-        </div>
+        )}
+
+        {/* Opacity - only for non-group shapes (groups have their own opacity above) */}
+        {!isGroupSelected && (
+          <div className="property-row">
+            <label className="property-label">Opacity</label>
+            <div className="property-input-group">
+              <input
+                type="range"
+                value={shape.opacity}
+                onChange={handleOpacityChange}
+                className="property-slider"
+                min={0}
+                max={1}
+                step={0.05}
+              />
+              <span className="property-value">{Math.round(shape.opacity * 100)}%</span>
+            </div>
+          </div>
+        )}
 
         {/* Rectangle-specific: Corner Radius */}
         {isRectangle(shape) && (
@@ -374,20 +438,24 @@ export function PropertyPanel() {
           </>
         )}
 
-        {/* Position (read-only for now) */}
-        <div className="property-section">Position</div>
-        <div className="property-row">
-          <label className="property-label">X</label>
-          <span className="property-value">{Math.round(shape.x)}</span>
-        </div>
-        <div className="property-row">
-          <label className="property-label">Y</label>
-          <span className="property-value">{Math.round(shape.y)}</span>
-        </div>
-        <div className="property-row">
-          <label className="property-label">Rotation</label>
-          <span className="property-value">{Math.round((shape.rotation * 180) / Math.PI)}°</span>
-        </div>
+        {/* Position (read-only for now) - hide for groups as they show bounds instead */}
+        {!isGroupSelected && (
+          <>
+            <div className="property-section">Position</div>
+            <div className="property-row">
+              <label className="property-label">X</label>
+              <span className="property-value">{Math.round(shape.x)}</span>
+            </div>
+            <div className="property-row">
+              <label className="property-label">Y</label>
+              <span className="property-value">{Math.round(shape.y)}</span>
+            </div>
+            <div className="property-row">
+              <label className="property-label">Rotation</label>
+              <span className="property-value">{Math.round((shape.rotation * 180) / Math.PI)}°</span>
+            </div>
+          </>
+        )}
 
         {/* Size info for shapes with dimensions */}
         {(isRectangle(shape) || isEllipse(shape)) && (

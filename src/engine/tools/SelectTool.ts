@@ -4,7 +4,8 @@ import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
 import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
-import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText } from '../../shapes/Shape';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup } from '../../shapes/Shape';
+import { useDocumentStore } from '../../store/documentStore';
 import { snapBounds, SnapResult } from '../Snapping';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
 
@@ -93,6 +94,60 @@ export class SelectTool extends BaseTool {
   // Snapping
   private currentSnapResult: SnapResult | null = null;
 
+  /**
+   * Resolve a hit shape ID to the appropriate selection target.
+   * If the shape is in a group and the group is not selected, return the group ID.
+   * If the group is already selected, allow click-through to select the child.
+   */
+  private resolveHitToSelection(hitId: string, ctx: ToolContext): string {
+    const parentGroupId = useDocumentStore.getState().getParentGroup(hitId);
+
+    // Not in a group - select as-is
+    if (!parentGroupId) {
+      return hitId;
+    }
+
+    // Check if the parent group is already selected
+    const selectedIds = ctx.getSelectedIds();
+    if (selectedIds.includes(parentGroupId)) {
+      // Group is selected - allow click-through to select child
+      return hitId;
+    }
+
+    // Group not selected - select the group instead
+    // But first check if there's a grandparent group that's also not selected
+    return this.resolveHitToSelection(parentGroupId, ctx);
+  }
+
+  /**
+   * Expand selected IDs to include children of groups.
+   * When translating a group, we move all its children (not the group itself).
+   * Handles nested groups recursively.
+   */
+  private expandGroupsToChildren(selectedIds: string[], shapes: Record<string, Shape>): string[] {
+    const result = new Set<string>();
+
+    const addShapeAndChildren = (id: string) => {
+      const shape = shapes[id];
+      if (!shape) return;
+
+      if (isGroup(shape)) {
+        // For groups, add children recursively, not the group itself
+        for (const childId of shape.childIds) {
+          addShapeAndChildren(childId);
+        }
+      } else {
+        result.add(id);
+      }
+    };
+
+    for (const id of selectedIds) {
+      addShapeAndChildren(id);
+    }
+
+    return Array.from(result);
+  }
+
   onActivate(ctx: ToolContext): void {
     ctx.setCursor('default');
   }
@@ -167,27 +222,32 @@ export class SelectTool extends BaseTool {
       ctx.getShapeOrder()
     );
 
-    this.hitShapeId = hitResult.id;
     this.state = 'pending';
 
     // If we clicked on a shape, we might be starting a drag
     if (hitResult.id) {
+      // Resolve to group if shape is in a group (unless group already selected for click-through)
+      const effectiveId = this.resolveHitToSelection(hitResult.id, ctx);
+      this.hitShapeId = effectiveId;
+
       // Check if it's already selected
       const selectedIds = ctx.getSelectedIds();
-      const isAlreadySelected = selectedIds.includes(hitResult.id);
+      const isAlreadySelected = selectedIds.includes(effectiveId);
 
       if (event.modifiers.shift) {
         // Shift+click: toggle selection
         if (isAlreadySelected) {
-          ctx.removeFromSelection([hitResult.id]);
+          ctx.removeFromSelection([effectiveId]);
         } else {
-          ctx.addToSelection([hitResult.id]);
+          ctx.addToSelection([effectiveId]);
         }
       } else if (!isAlreadySelected) {
         // Click on unselected shape: select only this shape
-        ctx.select([hitResult.id]);
+        ctx.select([effectiveId]);
       }
       // If already selected without shift, wait to see if it's a click or drag
+    } else {
+      this.hitShapeId = null;
     }
 
     ctx.requestRender();
@@ -603,10 +663,12 @@ export class SelectTool extends BaseTool {
     ctx.pushHistory('Move shapes');
 
     // Store starting positions of all selected shapes
+    // Expand groups to their children since we move children, not the group itself
     this.dragStartPositions.clear();
     const shapes = ctx.getShapes();
+    const idsToTranslate = this.expandGroupsToChildren(ctx.getSelectedIds(), shapes);
 
-    for (const id of ctx.getSelectedIds()) {
+    for (const id of idsToTranslate) {
       const shape = shapes[id];
       if (shape) {
         this.dragStartPositions.set(id, { x: shape.x, y: shape.y });

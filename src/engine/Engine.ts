@@ -13,7 +13,7 @@ import { LineTool } from './tools/LineTool';
 import { TextTool } from './tools/TextTool';
 import { ConnectorTool } from './tools/ConnectorTool';
 import { Vec2 } from '../math/Vec2';
-import { Shape, isConnector } from '../shapes/Shape';
+import { Shape, isConnector, isGroup } from '../shapes/Shape';
 import { updateConnectorEndpoints } from '../shapes/Connector';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
@@ -26,6 +26,7 @@ import '../shapes/Ellipse';
 import '../shapes/Line';
 import '../shapes/Text';
 import '../shapes/Connector';
+import '../shapes/Group';
 
 // Clipboard for copy/paste (module-level to persist across operations)
 let clipboard: Shape[] = [];
@@ -432,19 +433,51 @@ export class Engine {
   // Event handlers
 
   /**
-   * Global keyboard handler to intercept browser defaults like Ctrl+A.
+   * Global keyboard handler to intercept browser defaults like Ctrl+A, Ctrl+G.
    * This runs on window, not canvas, so it works even when canvas isn't focused.
    */
   private handleGlobalKeyDown(event: KeyboardEvent): void {
     if (this.destroyed) return;
 
     const isCtrl = event.ctrlKey || event.metaKey;
+    const isShift = event.shiftKey;
 
     // Ctrl+A: Select all - must intercept at window level to prevent browser select all
     if (isCtrl && event.key === 'a') {
       event.preventDefault();
       useSessionStore.getState().selectAll();
       this.renderer.requestRender();
+      return;
+    }
+
+    // Ctrl+G: Group selected shapes - intercept to prevent browser "Find" dialog
+    if (isCtrl && !isShift && event.key === 'g') {
+      event.preventDefault();
+      const selectedIds = useSessionStore.getState().getSelectedIds();
+      if (selectedIds.length >= 2) {
+        pushHistory('Group shapes');
+        const groupId = nanoid();
+        useDocumentStore.getState().groupShapes(selectedIds, groupId);
+        useSessionStore.getState().select([groupId]);
+        this.renderer.requestRender();
+      }
+      return;
+    }
+
+    // Ctrl+Shift+G: Ungroup selected group
+    if (isCtrl && isShift && (event.key === 'G' || event.key === 'g')) {
+      event.preventDefault();
+      const selectedIds = useSessionStore.getState().getSelectedIds();
+      if (selectedIds.length === 1) {
+        const shape = useDocumentStore.getState().shapes[selectedIds[0]!];
+        if (shape && isGroup(shape)) {
+          pushHistory('Ungroup shapes');
+          const childIds = [...shape.childIds];
+          useDocumentStore.getState().ungroupShape(shape.id);
+          useSessionStore.getState().select(childIds);
+          this.renderer.requestRender();
+        }
+      }
       return;
     }
   }
@@ -720,6 +753,9 @@ export class Engine {
       }
       return;
     }
+
+    // Note: Ctrl+G and Ctrl+Shift+G are handled in handleGlobalKeyDown
+    // to intercept browser defaults
   }
 
   private handleWheel(event: WheelEvent, screenPoint: Vec2): void {

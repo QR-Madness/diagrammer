@@ -109,7 +109,7 @@ implementation phase as defined in Specification.Readme.md.
 
 #### Grouping
 
-- [ ] Group/ungroup shapes
+- [X] Group/ungroup shapes
     - Ctrl+G to group selected shapes
     - Ctrl+Shift+G to ungroup
     - Transform group as single unit
@@ -175,7 +175,22 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Connector labels
 - [ ] Shape libraries (presets, templates)
 - [ ] Custom shape definitions
+
+### Phase 11: Enhanced Persistence
+- [ ] Git integration for version control
+
+### Phase 12: Advanced Export
 - [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
+
+### Phase 13: Diagram Patterns
+- [ ] Basic flowchart patterns
+- [ ] Basic UML class diagram patterns
+- [ ] Basic ERD diagram patterns
+
+### Phase 14: Advanced Diagram Patterns
+- [ ] Sequence diagram patterns
+- [ ] Activity diagram patterns
+- [ ] Swimlane customization
 
 ---
 

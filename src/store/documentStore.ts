@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Shape } from '../shapes/Shape';
+import { Shape, GroupShape, isGroup } from '../shapes/Shape';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
+import { Box } from '../math/Box';
 
 /**
  * Document state containing all shape data.
@@ -47,6 +49,11 @@ export interface DocumentActions {
   getShape: (id: string) => Shape | undefined;
   getShapesInOrder: () => Shape[];
   clear: () => void;
+
+  // Group operations
+  groupShapes: (ids: string[], groupId: string) => void;
+  ungroupShape: (groupId: string) => void;
+  getParentGroup: (shapeId: string) => string | null;
 }
 
 /**
@@ -299,6 +306,111 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
         state.shapes = {};
         state.shapeOrder = [];
       });
+    },
+
+    // Group operations
+    groupShapes: (ids: string[], groupId: string) => {
+      set((state) => {
+        // Validate all shapes exist and are in shapeOrder
+        const validIds = ids.filter(
+          (id) => state.shapes[id] && state.shapeOrder.includes(id)
+        );
+        if (validIds.length < 2) {
+          console.warn('Need at least 2 shapes to group');
+          return;
+        }
+
+        // Calculate combined bounds to get group center
+        let combinedBounds: Box | null = null;
+        for (const id of validIds) {
+          const shape = state.shapes[id];
+          if (shape) {
+            const handler = shapeRegistry.getHandler(shape.type);
+            const bounds = handler.getBounds(shape);
+            combinedBounds = combinedBounds ? combinedBounds.union(bounds) : bounds;
+          }
+        }
+
+        const center = combinedBounds?.center ?? { x: 0, y: 0 };
+
+        // Find the highest z-index among the shapes being grouped
+        let highestIndex = -1;
+        for (const id of validIds) {
+          const index = state.shapeOrder.indexOf(id);
+          if (index > highestIndex) {
+            highestIndex = index;
+          }
+        }
+
+        // Create the group shape
+        const group: GroupShape = {
+          id: groupId,
+          type: 'group',
+          x: center.x,
+          y: center.y,
+          rotation: 0,
+          opacity: 1,
+          locked: false,
+          visible: true,
+          fill: null,
+          stroke: null,
+          strokeWidth: 0,
+          childIds: validIds,
+        };
+
+        // Add group to shapes
+        state.shapes[groupId] = group;
+
+        // Remove child IDs from shapeOrder (they will render via the group)
+        state.shapeOrder = state.shapeOrder.filter((id) => !validIds.includes(id));
+
+        // Insert group at the highest child's former position
+        // Since we removed items, we need to recalculate the position
+        const insertIndex = Math.min(highestIndex, state.shapeOrder.length);
+        state.shapeOrder.splice(insertIndex, 0, groupId);
+      });
+    },
+
+    ungroupShape: (groupId: string) => {
+      set((state) => {
+        const group = state.shapes[groupId];
+        if (!group || !isGroup(group)) {
+          console.warn(`Shape ${groupId} is not a group`);
+          return;
+        }
+
+        // Get the group's position in shapeOrder
+        const groupIndex = state.shapeOrder.indexOf(groupId);
+        if (groupIndex === -1) {
+          return;
+        }
+
+        // Get child IDs
+        const childIds = group.childIds;
+
+        // Remove group from shapes and shapeOrder
+        delete state.shapes[groupId];
+        state.shapeOrder.splice(groupIndex, 1);
+
+        // Insert children at the group's former position
+        // Insert in reverse order so they end up in their original relative order
+        for (let i = childIds.length - 1; i >= 0; i--) {
+          const childId = childIds[i]!;
+          if (childId && state.shapes[childId]) {
+            state.shapeOrder.splice(groupIndex, 0, childId);
+          }
+        }
+      });
+    },
+
+    getParentGroup: (shapeId: string): string | null => {
+      const state = get();
+      for (const shape of Object.values(state.shapes)) {
+        if (isGroup(shape) && shape.childIds.includes(shapeId)) {
+          return shape.id;
+        }
+      }
+      return null;
     },
   }))
 );

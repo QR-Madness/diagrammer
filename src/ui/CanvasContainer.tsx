@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { Engine } from '../engine/Engine';
 import { Camera } from '../engine/Camera';
 import { TextEditor } from './TextEditor';
+import { ContextMenu } from './ContextMenu';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -50,6 +51,9 @@ export function CanvasContainer({
 
   // Track canvas focus state for visual indicator
   const [isFocused, setIsFocused] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   /**
    * Update canvas size to match container, accounting for DPI.
@@ -217,6 +221,18 @@ export function CanvasContainer({
     setIsFocused(false);
   }, []);
 
+  /**
+   * Handle right-click to show context menu.
+   */
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -234,6 +250,7 @@ export function CanvasContainer({
         onClick={handleCanvasClick}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        onContextMenu={handleContextMenu}
         style={{
           display: 'block',
           outline: 'none',
@@ -253,6 +270,13 @@ export function CanvasContainer({
         />
       )}
       <TextEditor camera={camera} />
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={handleCloseContextMenu}
+        />
+      )}
     </div>
   );
 }
