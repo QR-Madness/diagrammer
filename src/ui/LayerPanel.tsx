@@ -3,6 +3,7 @@ import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
+import { nanoid } from 'nanoid';
 import './LayerPanel.css';
 
 /** Height constraints for resizable panel */
@@ -45,11 +46,18 @@ export function LayerPanel() {
   const shapeOrder = useDocumentStore((state) => state.shapeOrder);
   const reorderShapes = useDocumentStore((state) => state.reorderShapes);
   const updateShape = useDocumentStore((state) => state.updateShape);
+  const groupShapes = useDocumentStore((state) => state.groupShapes);
+  const ungroupShape = useDocumentStore((state) => state.ungroupShape);
+  const deleteShapes = useDocumentStore((state) => state.deleteShapes);
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const select = useSessionStore((state) => state.select);
   const addToSelection = useSessionStore((state) => state.addToSelection);
+  const clearSelection = useSessionStore((state) => state.clearSelection);
   const focusOnShape = useSessionStore((state) => state.focusOnShape);
   const push = useHistoryStore((state) => state.push);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
 
   // Collapse state (collapsed by default)
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -210,6 +218,66 @@ export function LayerPanel() {
     });
   }, []);
 
+  // Group selected shapes
+  const handleGroupSelected = useCallback(() => {
+    const selectedArray = Array.from(selectedIds);
+    if (selectedArray.length >= 2) {
+      push('Group shapes');
+      const groupId = nanoid();
+      groupShapes(selectedArray, groupId);
+      select([groupId]);
+    }
+    setContextMenu(null);
+  }, [selectedIds, push, groupShapes, select]);
+
+  // Ungroup a specific group
+  const handleUngroup = useCallback((groupId: string) => {
+    const shape = shapes[groupId];
+    if (shape && isGroup(shape)) {
+      push('Ungroup shapes');
+      const childIds = [...shape.childIds];
+      ungroupShape(groupId);
+      select(childIds);
+    }
+    setContextMenu(null);
+  }, [shapes, push, ungroupShape, select]);
+
+  // Delete a shape
+  const handleDelete = useCallback((id: string) => {
+    push('Delete shape');
+    deleteShapes([id]);
+    clearSelection();
+    setContextMenu(null);
+  }, [push, deleteShapes, clearSelection]);
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, shapeId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, shapeId });
+  }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const handleClick = () => setContextMenu(null);
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setContextMenu(null);
+    };
+
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClick);
+      document.addEventListener('keydown', handleEscape);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [contextMenu]);
+
   /**
    * Render a layer item (shape or group child).
    */
@@ -236,6 +304,7 @@ export function LayerPanel() {
           onDrop={isChild ? undefined : (e) => handleDrop(e, index)}
           onDragEnd={isChild ? undefined : handleDragEnd}
           onClick={(e) => handleSelectShape(e, id)}
+          onContextMenu={(e) => handleContextMenu(e, id)}
         >
           {/* Expand/collapse toggle for groups */}
           {isGroupShape ? (
@@ -324,7 +393,7 @@ export function LayerPanel() {
     selectedIds, draggedId, dragOverIndex, expandedGroups, shapes,
     handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd,
     handleSelectShape, handleToggleExpand, handleToggleVisibility, handleToggleLock,
-    handleMoveToFront, handleMoveToBack
+    handleMoveToFront, handleMoveToBack, handleContextMenu
   ]);
 
   if (displayOrder.length === 0) {
@@ -366,12 +435,71 @@ export function LayerPanel() {
         <span>Layers ({displayOrder.length})</span>
       </div>
       {!isCollapsed && (
-        <div className="layer-panel-list">
-          {displayOrder.map((id, index) => {
-            const shape = shapes[id];
-            if (!shape) return null;
-            return renderLayerItem(shape, index);
-          })}
+        <>
+          {/* Group button when 2+ shapes selected */}
+          {selectedIds.size >= 2 && (
+            <div className="layer-panel-actions">
+              <button
+                className="layer-panel-action-btn"
+                onClick={handleGroupSelected}
+                title="Group selected shapes (Ctrl+G)"
+              >
+                <GroupIcon /> Group Selected
+              </button>
+            </div>
+          )}
+          <div className="layer-panel-list">
+            {displayOrder.map((id, index) => {
+              const shape = shapes[id];
+              if (!shape) return null;
+              return renderLayerItem(shape, index);
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Context menu */}
+      {contextMenu && (
+        <div
+          className="layer-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {shapes[contextMenu.shapeId] && isGroup(shapes[contextMenu.shapeId]!) && (
+            <button
+              className="layer-context-menu-item"
+              onClick={() => handleUngroup(contextMenu.shapeId)}
+            >
+              Ungroup
+            </button>
+          )}
+          {selectedIds.size >= 2 && (
+            <button
+              className="layer-context-menu-item"
+              onClick={handleGroupSelected}
+            >
+              Group Selected
+            </button>
+          )}
+          <button
+            className="layer-context-menu-item"
+            onClick={() => handleMoveToFront(contextMenu.shapeId)}
+          >
+            Bring to Front
+          </button>
+          <button
+            className="layer-context-menu-item"
+            onClick={() => handleMoveToBack(contextMenu.shapeId)}
+          >
+            Send to Back
+          </button>
+          <div className="layer-context-menu-separator" />
+          <button
+            className="layer-context-menu-item danger"
+            onClick={() => handleDelete(contextMenu.shapeId)}
+          >
+            Delete
+          </button>
         </div>
       )}
     </div>
@@ -460,6 +588,16 @@ function MoveDownIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M7 2v10M3 9l4 4 4-4" />
+    </svg>
+  );
+}
+
+function GroupIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="1" y="1" width="5" height="5" rx="1" />
+      <rect x="8" y="8" width="5" height="5" rx="1" />
+      <path d="M6 4h2M4 6v2M8 10h-2M10 8v-2" strokeDasharray="2 1" />
     </svg>
   );
 }

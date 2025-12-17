@@ -129,10 +129,7 @@ implementation phase as defined in Specification.Readme.md.
 
 #### UI Polish
 
-- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
-- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
-- [ ] Status bar with cursor position and zoom level
-- [ ] Context menu (right-click)
+- [X] Context menu (right-click)
     - Show relevant actions based on selection (cut, copy, paste, delete)
     - Display keyboard shortcuts next to each action (e.g., "Delete  Del")
     - Shape-specific actions (bring to front, send to back, group, ungroup)
@@ -149,12 +146,18 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Offline-first with localStorage persistence
 - [ ] Auto-save functionality
 - [ ] Export/import document JSON
+- [ ] Local path for saving documents (optional)
 
-### Phase 8: Collaboration
+### Phase 8: Collaboration & UI Improvements
 
 - [ ] Real-time collaboration (CRDT integration)
 - [ ] Presence indicators (who's viewing where)
 - [ ] Collaborative cursors
+
+#### UI Improvements
+- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
+- [ ] Status bar with cursor position and zoom level
+- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
 
 ### Phase 9: Rich Documentation
 

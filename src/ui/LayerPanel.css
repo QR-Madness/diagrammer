@@ -267,3 +267,109 @@
 [data-theme="dark"] .layer-item.child.selected {
   background: var(--bg-selected, #1e3a5f);
 }
+
+/* Layer panel actions bar */
+.layer-panel-actions {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.layer-panel-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #495057);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.layer-panel-action-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--accent-color, #2196f3);
+}
+
+/* Layer context menu */
+.layer-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 150px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.layer-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #495057);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.layer-context-menu-item:hover {
+  background: var(--bg-hover, #f8f9fa);
+}
+
+.layer-context-menu-item.danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.layer-context-menu-separator {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-color, #dee2e6);
+}
+
+/* Dark mode for layer panel actions and context menu */
+[data-theme="dark"] .layer-panel-actions {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-panel-action-btn {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #3d3d3d);
+  color: var(--text-primary, #e0e0e0);
+}
+
+[data-theme="dark"] .layer-panel-action-btn:hover {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+[data-theme="dark"] .layer-context-menu {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #3d3d3d);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .layer-context-menu-item {
+  color: var(--text-primary, #e0e0e0);
+}
+
+[data-theme="dark"] .layer-context-menu-item:hover {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+[data-theme="dark"] .layer-context-menu-item.danger:hover {
+  background: #450a0a;
+  color: #f87171;
+}
+
+[data-theme="dark"] .layer-context-menu-separator {
+  background: var(--border-color, #3d3d3d);
+}

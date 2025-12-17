@@ -379,26 +379,48 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
           return;
         }
 
-        // Get the group's position in shapeOrder
-        const groupIndex = state.shapeOrder.indexOf(groupId);
-        if (groupIndex === -1) {
-          return;
-        }
-
         // Get child IDs
         const childIds = group.childIds;
 
-        // Remove group from shapes and shapeOrder
-        delete state.shapes[groupId];
-        state.shapeOrder.splice(groupIndex, 1);
+        // Check if this group is in shapeOrder (top-level) or nested inside another group
+        const groupIndex = state.shapeOrder.indexOf(groupId);
 
-        // Insert children at the group's former position
-        // Insert in reverse order so they end up in their original relative order
-        for (let i = childIds.length - 1; i >= 0; i--) {
-          const childId = childIds[i]!;
-          if (childId && state.shapes[childId]) {
-            state.shapeOrder.splice(groupIndex, 0, childId);
+        if (groupIndex !== -1) {
+          // Top-level group: remove from shapeOrder and insert children
+          delete state.shapes[groupId];
+          state.shapeOrder.splice(groupIndex, 1);
+
+          // Insert children at the group's former position
+          // Insert in reverse order so they end up in their original relative order
+          for (let i = childIds.length - 1; i >= 0; i--) {
+            const childId = childIds[i]!;
+            if (childId && state.shapes[childId]) {
+              state.shapeOrder.splice(groupIndex, 0, childId);
+            }
           }
+        } else {
+          // Nested group: find parent group and replace this group with its children
+          let parentGroup: GroupShape | null = null;
+          for (const shape of Object.values(state.shapes)) {
+            if (isGroup(shape) && shape.childIds.includes(groupId)) {
+              parentGroup = shape as GroupShape;
+              break;
+            }
+          }
+
+          if (parentGroup) {
+            // Replace the group ID with its children in the parent's childIds
+            const parentChildIds = [...parentGroup.childIds];
+            const indexInParent = parentChildIds.indexOf(groupId);
+            if (indexInParent !== -1) {
+              // Remove the group from parent's children and insert its children
+              parentChildIds.splice(indexInParent, 1, ...childIds);
+              (state.shapes[parentGroup.id] as GroupShape).childIds = parentChildIds;
+            }
+          }
+
+          // Remove the group shape
+          delete state.shapes[groupId];
         }
       });
     },
