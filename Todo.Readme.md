@@ -56,10 +56,6 @@ implementation phase as defined in Specification.Readme.md.
 - [x] Dark mode with system detection
 - [x] Immersive controls (WASD/Arrow pan, Q/E zoom)
 
----
-
-## Current Work: Phase 6 - Polish & Advanced
-
 ### High Priority - Core Improvements
 
 #### Text Editing
@@ -131,14 +127,10 @@ implementation phase as defined in Specification.Readme.md.
 
 - [X] Context menu (right-click)
     - Show relevant actions based on selection (cut, copy, paste, delete)
-    - Display keyboard shortcuts next to each action (e.g., "Delete  Del")
+    - Display keyboard shortcuts next to each action (e.g., "Delete Del")
     - Shape-specific actions (bring to front, send to back, group, ungroup)
     - Tool-specific options when no selection
     - Styled to match dark/light theme
-
----
-
-## Future Phases
 
 ### Phase 7: Multi-Page & Persistence
 
@@ -155,6 +147,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Collaborative cursors
 
 #### UI Improvements
+
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
 - [ ] Status bar with cursor position and zoom level
 - [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
@@ -180,20 +173,51 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Custom shape definitions
 
 ### Phase 11: Enhanced Persistence
+
 - [ ] Git integration for version control
 
 ### Phase 12: Advanced Export
+
 - [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
 
 ### Phase 13: Diagram Patterns
+
 - [ ] Basic flowchart patterns
 - [ ] Basic UML class diagram patterns
 - [ ] Basic ERD diagram patterns
 
-### Phase 14: Advanced Diagram Patterns
+### Phase 14: UI Improvements
+
+- [ ] 
+
+### Phase 15: Version 1.0
+
+- [ ] Workflow for GitHub releases (CI/CD pipeline)
+- [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
+  in README)
+
+### Phase 16: Advanced Diagram Patterns – Version 1.1
+
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns
 - [ ] Swimlane customization
+
+### Phase ??: Comprehensive Local Help System - Version ?.?
+
+- [ ] Implement a local help documentation system with integrated search and navigation
+- [ ] Create a comprehensive help guide for the application
+
+### Phase ??: Canvas Code Integration with Git – Version ?.?
+
+- [ ] Implement a composable VCS pattern which allows interfacing with Git for version control, and others in the future
+- [ ] Implement Git file viewing and linking to shapes by adding a 'view code' button to a shape which opens a new tab with the relevant file
+- [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is /diagrammer/*.json)
+
+### Phase ??: FUTURE: AI Model Integration (Epic - Large Task with Multiple Components) – Version ?.?
+
+- [ ] Implement a pipeline for model usage and integration with the application
+- [ ] Implement AI-powered diagram analysis
+- [ ] Generate insights and suggested edits
 
 ---
 
