@@ -140,25 +140,13 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase 7: Multi-Page & Persistence
 
-- [ ] Multi-page documents
-- [ ] Offline-first with localStorage persistence
-- [ ] Auto-save functionality
-- [ ] Export/import document JSON
-- [ ] Local path for saving documents (optional)
+- [X] Multi-page documents
+- [X] Offline-first with localStorage persistence
+- [X] Auto-save functionality
+- [X] Export/import document JSON
+- [X] Local path for saving documents (optional)
 
-### Phase 8: Collaboration & UI Improvements
-
-- [ ] Real-time collaboration (CRDT integration)
-- [ ] Presence indicators (who's viewing where)
-- [ ] Collaborative cursors
-
-#### UI Improvements
-
-- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
-- [ ] Status bar with cursor position and zoom level
-- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
-
-### Phase 9: Rich Documentation
+### Phase 8: Rich Documentation
 
 - [ ] RTF document editor (similar to Eraser.io)
     - Headings, paragraphs, bold, italic
@@ -169,6 +157,18 @@ implementation phase as defined in Specification.Readme.md.
     - Embedded diagrams (link canvas content into documents)
     - Markdown import/export
     - Document outline/table of contents
+
+### Phase 9: Collaboration & UI Improvements
+
+- [ ] Real-time collaboration (CRDT integration)
+- [ ] Presence indicators (who's viewing where)
+- [ ] Collaborative cursors
+
+#### UI Improvements
+
+- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
+- [ ] Status bar with cursor position and zoom level
+- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
 
 ### Phase 10: Advanced Diagramming
 
@@ -216,8 +216,10 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase ??: Canvas Code Integration with Git – Version ?.?
 
 - [ ] Implement a composable VCS pattern which allows interfacing with Git for version control, and others in the future
-- [ ] Implement Git file viewing and linking to shapes by adding a 'view code' button to a shape which opens a new tab with the relevant file
-- [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is /diagrammer/*.json)
+- [ ] Implement Git file viewing and linking to shapes by adding a 'view code' button to a shape which opens a new tab
+  with the relevant file
+- [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is
+  /diagrammer/*.json)
 - [ ] Feat: Spawn a VS Code instance with access to Git repo
 
 ### Phase ??: FUTURE: AI Model Integration (Epic - Large Task with Multiple Components) – Version ?.?

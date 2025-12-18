@@ -2,6 +2,9 @@
 
 A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API.
 
+> **Note:** This project is currently in development.
+> See the complete roadmap [here](Todo.Readme.md).
+
 ## Quick Start
 
 ```bash
