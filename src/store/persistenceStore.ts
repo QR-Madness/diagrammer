@@ -15,6 +15,7 @@ import {
   getDocumentMetadata,
 } from '../types/Document';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
+import { useRichTextStore } from './richTextStore';
 
 /**
  * Auto-save debounce time in milliseconds.
@@ -132,6 +133,7 @@ function createDocumentFromPageStore(
   existingDoc?: DiagramDocument
 ): DiagramDocument {
   const pageSnapshot = usePageStore.getState().getSnapshot();
+  const richTextContent = useRichTextStore.getState().getContent();
 
   return {
     id,
@@ -142,11 +144,12 @@ function createDocumentFromPageStore(
     createdAt: existingDoc?.createdAt ?? Date.now(),
     modifiedAt: Date.now(),
     version: 1,
+    richTextContent,
   };
 }
 
 /**
- * Load a DiagramDocument into the page store.
+ * Load a DiagramDocument into the page store and rich text store.
  */
 function loadDocumentToPageStore(doc: DiagramDocument): void {
   const snapshot: PageStoreSnapshot = {
@@ -155,6 +158,9 @@ function loadDocumentToPageStore(doc: DiagramDocument): void {
     activePageId: doc.activePageId,
   };
   usePageStore.getState().loadSnapshot(snapshot);
+
+  // Load rich text content (or reset if not present for backwards compatibility)
+  useRichTextStore.getState().loadContent(doc.richTextContent);
 }
 
 /**
@@ -187,6 +193,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         // Reset page store to empty
         usePageStore.getState().reset();
         usePageStore.getState().initializeDefault();
+
+        // Reset rich text store to empty
+        useRichTextStore.getState().reset();
 
         set({
           currentDocumentId: null,

@@ -1,0 +1,99 @@
+.document-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  flex-wrap: wrap;
+}
+
+.document-editor-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.document-editor-toolbar-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.document-editor-toolbar-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color-input);
+}
+
+.document-editor-toolbar-btn.active {
+  background: var(--bg-active);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.document-editor-toolbar-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+.document-editor-toolbar-btn strong {
+  font-weight: 700;
+}
+
+.document-editor-toolbar-btn em {
+  font-style: italic;
+}
+
+.document-editor-toolbar-btn code {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.document-editor-toolbar-btn .toolbar-icon {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.document-editor-toolbar-select {
+  height: 32px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  outline: none;
+  min-width: 100px;
+}
+
+.document-editor-toolbar-select:hover {
+  border-color: var(--color-primary);
+}
+
+.document-editor-toolbar-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.document-editor-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+  margin: 0 0.25rem;
+}
+
+/* Dark mode */
+[data-theme="dark"] .document-editor-toolbar-select {
+  background: var(--bg-tertiary);
+}

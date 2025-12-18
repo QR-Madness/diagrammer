@@ -8,6 +8,8 @@ import { FileMenu } from './FileMenu';
 import { PageTabs } from './PageTabs';
 import { DocumentManager } from './DocumentManager';
 import { SaveStatusIndicator } from './SaveStatusIndicator';
+import { SplitPane } from './SplitPane';
+import { DocumentEditorPanel } from './DocumentEditorPanel';
 import { useDocumentStore } from '../store/documentStore';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -124,6 +126,9 @@ function App() {
   // Document manager modal state
   const [isDocumentManagerOpen, setIsDocumentManagerOpen] = useState(false);
 
+  // Split pane collapse state
+  const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
+
   // Theme state
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
   const toggleTheme = useThemeStore((state) => state.toggle);
@@ -138,6 +143,15 @@ function App() {
 
   const handleCloseDocumentManager = useCallback(() => {
     setIsDocumentManagerOpen(false);
+  }, []);
+
+  // Collapse handler for document editor panel
+  const handleCollapseEditor = useCallback(() => {
+    setIsEditorCollapsed(true);
+  }, []);
+
+  const handleCollapseChange = useCallback((collapsed: boolean) => {
+    setIsEditorCollapsed(collapsed);
   }, []);
 
   // Initialize persistence on mount
@@ -209,13 +223,22 @@ function App() {
       <Toolbar />
       <PageTabs />
       <main className="app-main">
-        <CanvasContainer
-          className="canvas-area"
-          showGrid={true}
-          showFps={true}
+        <SplitPane
+          leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
+          rightPanel={
+            <>
+              <CanvasContainer
+                className="canvas-area"
+                showGrid={true}
+                showFps={true}
+              />
+              <PropertyPanel />
+              <LayerPanel />
+            </>
+          }
+          collapsed={isEditorCollapsed}
+          onCollapseChange={handleCollapseChange}
         />
-        <PropertyPanel />
-        <LayerPanel />
       </main>
 
       {/* Document Manager Modal */}

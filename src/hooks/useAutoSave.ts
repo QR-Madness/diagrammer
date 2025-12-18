@@ -9,6 +9,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { usePageStore } from '../store/pageStore';
 import { usePersistenceStore, AUTO_SAVE_DEBOUNCE } from '../store/persistenceStore';
+import { useRichTextStore } from '../store/richTextStore';
 
 /**
  * Auto-save status for UI feedback.
@@ -75,6 +76,10 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveResult
     try {
       statusRef.current = 'saving';
       usePersistenceStore.getState().saveDocument();
+
+      // Clear rich text store dirty flag after successful save
+      useRichTextStore.getState().clearDirty();
+
       statusRef.current = 'saved';
       onSave?.();
 
@@ -144,6 +149,23 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveResult
       const orderChanged = state.pageOrder !== prevState.pageOrder;
 
       if (pagesChanged || orderChanged) {
+        usePersistenceStore.getState().markDirty();
+        debouncedSave();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [enabled, autoSaveEnabled, debouncedSave]);
+
+  // Subscribe to rich text store changes
+  useEffect(() => {
+    if (!enabled || !autoSaveEnabled) return;
+
+    const unsubscribe = useRichTextStore.subscribe((state, prevState) => {
+      // Only trigger save when content changes (isDirty becomes true)
+      if (state.isDirty && !prevState.isDirty) {
         usePersistenceStore.getState().markDirty();
         debouncedSave();
       }

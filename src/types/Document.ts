@@ -3,6 +3,7 @@
  */
 
 import { Shape } from '../shapes/Shape';
+import { RichTextContent } from './RichText';
 
 /**
  * A single page within a document.
@@ -43,6 +44,8 @@ export interface DiagramDocument {
   modifiedAt: number;
   /** Schema version for migration support */
   version: number;
+  /** Rich text document content (optional for backwards compatibility) */
+  richTextContent?: RichTextContent;
 }
 
 /**
