@@ -148,7 +148,7 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase 8: Rich Documentation
 
-- [ ] RTF document editor (similar to Eraser.io)
+- [X] RTF document editor (similar to Eraser.io)
     - Headings, paragraphs, bold, italic
     - Bullet lists and numbered lists
     - Code blocks with syntax highlighting
