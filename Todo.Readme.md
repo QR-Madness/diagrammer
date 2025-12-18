@@ -158,32 +158,32 @@ implementation phase as defined in Specification.Readme.md.
     - Markdown import/export
     - Document outline/table of contents
 
-### Phase 9: UI Improvements
+### Phase 9: UI Improvements - COMPLETE
 
 #### Enhanced Color Palette
-- [ ] Recent colors tracking (last 8 used, persisted to localStorage)
-- [ ] Custom color input with hex support
-- [ ] Color palette organized by color family (grayscale, warm, cool, accent)
-- [ ] Native color picker integration
+- [x] Recent colors tracking (last 8 used, persisted to localStorage)
+- [x] Custom color input with hex support
+- [x] Color palette organized by color family (grayscale, warm, cool, accent)
+- [x] Native color picker integration
 
 #### Property Panel Redesign
-- [ ] Collapsible property sections with chevron headers
-- [ ] Section state persistence (remember expanded/collapsed)
-- [ ] Compact color input (inline picker + hex)
-- [ ] Default collapse Position/Size sections (less commonly edited)
-- [ ] More compact, vibrant styling
+- [x] Collapsible property sections with chevron headers
+- [x] Section state persistence (remember expanded/collapsed)
+- [x] Compact color input (inline picker + hex)
+- [x] Default collapse Position/Size sections (less commonly edited)
+- [x] More compact, vibrant styling
 
 #### Unified Toolbar (Notion/Linear Style)
-- [ ] Single consolidated toolbar (~44px) replacing header + toolbar + page tabs
-- [ ] Compact tool buttons (28px) with hover tooltips showing shortcuts
-- [ ] Inline page tabs with horizontal scroll
-- [ ] Minimal, keyboard-first aesthetic
+- [x] Single consolidated toolbar (~44px) replacing header + toolbar + page tabs
+- [x] Compact tool buttons (32px) with hover tooltips showing shortcuts
+- [x] Inline page tabs with horizontal scroll
+- [x] Minimal, keyboard-first aesthetic
 
 #### Status Bar
-- [ ] Cursor world coordinates display
-- [ ] Zoom level with quick controls (-, +, Fit, 100%)
-- [ ] Shape count indicator
-- [ ] Current tool display
+- [x] Camera position display (X, Y coordinates)
+- [x] Zoom level with quick controls (-, +, Fit, 100%)
+- [x] Shape count indicator
+- [x] Current tool display
 
 ### Phase 10: Advanced Diagramming
 
@@ -212,8 +212,6 @@ implementation phase as defined in Specification.Readme.md.
 #### UI Improvements
 
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
-- [ ] Status bar with cursor position and zoom level
-- [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
 
 ### Phase 14: Version 1.0
 
@@ -254,7 +252,7 @@ implementation phase as defined in Specification.Readme.md.
 - Update this file as new tasks are discovered
 - Each task should be small enough to complete in one session
 - Test each component before moving to the next phase
-- Total tests: 596 passing
+- Total tests: 633 passing
 
 ## Test Coverage by Module
 

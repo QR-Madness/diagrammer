@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import './App.css';
 import { CanvasContainer } from './CanvasContainer';
-import { Toolbar } from './Toolbar';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
-import { FileMenu } from './FileMenu';
-import { PageTabs } from './PageTabs';
 import { DocumentManager } from './DocumentManager';
-import { SaveStatusIndicator } from './SaveStatusIndicator';
 import { SplitPane } from './SplitPane';
 import { DocumentEditorPanel } from './DocumentEditorPanel';
+import { UnifiedToolbar } from './UnifiedToolbar';
+import { StatusBar } from './StatusBar';
 import { useDocumentStore } from '../store/documentStore';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
-import { useThemeStore } from '../store/themeStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
@@ -129,10 +126,6 @@ function App() {
   // Split pane collapse state
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
 
-  // Theme state
-  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
-  const toggleTheme = useThemeStore((state) => state.toggle);
-
   // Auto-save hook
   useAutoSave();
 
@@ -202,26 +195,7 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="app-header-left">
-          <FileMenu onOpenDocumentManager={handleOpenDocumentManager} />
-          <div className="app-header-title">
-            <SaveStatusIndicator />
-          </div>
-        </div>
-        <div className="app-header-actions">
-          <button
-            className="theme-toggle"
-            onClick={toggleTheme}
-            title={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
-            aria-label={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {resolvedTheme === 'light' ? '\u263E' : '\u2600'}
-          </button>
-        </div>
-      </header>
-      <Toolbar />
-      <PageTabs />
+      <UnifiedToolbar onOpenDocumentManager={handleOpenDocumentManager} />
       <main className="app-main">
         <SplitPane
           leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
@@ -240,6 +214,7 @@ function App() {
           onCollapseChange={handleCollapseChange}
         />
       </main>
+      <StatusBar />
 
       {/* Document Manager Modal */}
       <DocumentManager

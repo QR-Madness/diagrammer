@@ -1,53 +1,159 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
-import { Shape, isRectangle, isEllipse, isLine, isText, isGroup, GroupShape, TextAlign, VerticalAlign } from '../shapes/Shape';
-import { ColorPalette } from './ColorPalette';
+import { useUIPreferencesStore } from '../store/uiPreferencesStore';
+import {
+  Shape,
+  isRectangle,
+  isEllipse,
+  isLine,
+  isText,
+  isGroup,
+  GroupShape,
+  TextAlign,
+  VerticalAlign,
+} from '../shapes/Shape';
+import { PropertySection } from './PropertySection';
+import { CompactColorInput } from './CompactColorInput';
 import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import './PropertyPanel.css';
 
-/** Default and constraints for panel width */
-const DEFAULT_WIDTH = 240;
+/** Constraints for panel width */
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
 
 /**
+ * Compact number input component.
+ */
+function CompactNumberInput({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  suffix,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+}) {
+  return (
+    <div className="compact-number-row">
+      <label className="compact-number-label">{label}</label>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="compact-number-input"
+        min={min}
+        max={max}
+        step={step}
+      />
+      {suffix && <span className="compact-number-suffix">{suffix}</span>}
+    </div>
+  );
+}
+
+/**
+ * Compact slider input component.
+ */
+function CompactSliderInput({
+  label,
+  value,
+  onChange,
+  min = 0,
+  max = 1,
+  step = 0.05,
+  formatValue,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  formatValue?: (value: number) => string;
+}) {
+  const displayValue = formatValue ? formatValue(value) : value.toString();
+
+  return (
+    <div className="compact-slider-row">
+      <label className="compact-slider-label">{label}</label>
+      <input
+        type="range"
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="compact-slider"
+        min={min}
+        max={max}
+        step={step}
+      />
+      <span className="compact-slider-value">{displayValue}</span>
+    </div>
+  );
+}
+
+/**
+ * Info row for read-only values.
+ */
+function InfoRow({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="info-row">
+      <span className="info-label">{label}</span>
+      <span className="info-value">{value}</span>
+    </div>
+  );
+}
+
+/**
  * PropertyPanel component for editing selected shape properties.
  *
- * Shows and allows editing of:
- * - Fill color
- * - Stroke color
- * - Stroke width
- * - Opacity
- * - Shape-specific properties (corner radius, font size, etc.)
+ * Features:
+ * - Collapsible sections with persisted state
+ * - Compact color inputs with palette dropdown
+ * - Organized property grouping
+ * - Multi-selection support
  */
 export function PropertyPanel() {
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const shapes = useDocumentStore((state) => state.shapes);
   const updateShape = useDocumentStore((state) => state.updateShape);
+  const { propertyPanelWidth, setPropertyPanelWidth } = useUIPreferencesStore();
 
   // Resize state
-  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [width, setWidth] = useState(propertyPanelWidth);
   const [isResizing, setIsResizing] = useState(false);
   const startXRef = useRef(0);
-  const startWidthRef = useRef(DEFAULT_WIDTH);
+  const startWidthRef = useRef(propertyPanelWidth);
+
+  // Sync width with store
+  useEffect(() => {
+    setWidth(propertyPanelWidth);
+  }, [propertyPanelWidth]);
 
   // Handle resize start
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    startXRef.current = e.clientX;
-    startWidthRef.current = width;
-  }, [width]);
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsResizing(true);
+      startXRef.current = e.clientX;
+      startWidthRef.current = width;
+    },
+    [width]
+  );
 
   // Handle resize move and end
   useEffect(() => {
     if (!isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      // Dragging left edge: moving left increases width, moving right decreases
       const delta = startXRef.current - e.clientX;
       const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current + delta));
       setWidth(newWidth);
@@ -55,6 +161,7 @@ export function PropertyPanel() {
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      setPropertyPanelWidth(width);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -64,27 +171,34 @@ export function PropertyPanel() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing]);
+  }, [isResizing, width, setPropertyPanelWidth]);
 
   // Get selected shapes
   const selectedShapes = Array.from(selectedIds)
     .map((id) => shapes[id])
     .filter((s): s is Shape => s !== undefined);
 
-  // Get first selected shape for display (multi-selection shows first)
+  // Get first selected shape for display
   const shape = selectedShapes[0];
   const isMultiple = selectedShapes.length > 1;
   const isGroupSelected = shape ? isGroup(shape) : false;
 
-  // Calculate group bounds if a group is selected
-  // Must be called before any early returns to maintain hook order
+  // Calculate group bounds
   const groupBounds = useMemo(() => {
     if (!shape || !isGroupSelected) return null;
     const handler = shapeRegistry.getHandler('group');
     return handler.getBounds(shape as GroupShape);
   }, [isGroupSelected, shape]);
 
-  // No selection
+  // Update handlers
+  const handleBulkUpdate = useCallback(
+    (updates: Partial<Shape>) => {
+      selectedShapes.forEach((s) => updateShape(s.id, updates));
+    },
+    [selectedShapes, updateShape]
+  );
+
+  // No selection state
   if (!shape) {
     return (
       <div className="property-panel" style={{ width }}>
@@ -99,72 +213,6 @@ export function PropertyPanel() {
     );
   }
 
-  const handleFillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    selectedShapes.forEach((s) => updateShape(s.id, { fill: value }));
-  };
-
-  const handleStrokeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    selectedShapes.forEach((s) => updateShape(s.id, { stroke: value }));
-  };
-
-  const handleStrokeWidthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 0;
-    selectedShapes.forEach((s) => updateShape(s.id, { strokeWidth: value }));
-  };
-
-  const handleOpacityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value);
-    selectedShapes.forEach((s) => updateShape(s.id, { opacity: value }));
-  };
-
-  const handleCornerRadiusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 0;
-    selectedShapes.forEach((s) => {
-      if (isRectangle(s)) {
-        updateShape(s.id, { cornerRadius: value });
-      }
-    });
-  };
-
-  const handleFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 16;
-    selectedShapes.forEach((s) => {
-      if (isText(s)) {
-        updateShape(s.id, { fontSize: value });
-      }
-    });
-  };
-
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    selectedShapes.forEach((s) => {
-      if (isText(s)) {
-        updateShape(s.id, { text: value });
-      }
-    });
-  };
-
-  const handleLabelChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    selectedShapes.forEach((s) => {
-      if (isRectangle(s) || isEllipse(s)) {
-        // Use empty string check instead of undefined for TypeScript compatibility
-        updateShape(s.id, value ? { label: value } : { label: '' });
-      }
-    });
-  };
-
-  const handleLabelFontSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseFloat(e.target.value) || 14;
-    selectedShapes.forEach((s) => {
-      if (isRectangle(s) || isEllipse(s)) {
-        updateShape(s.id, { labelFontSize: value });
-      }
-    });
-  };
-
   return (
     <div className="property-panel" style={{ width }}>
       <div
@@ -172,335 +220,225 @@ export function PropertyPanel() {
         onMouseDown={handleResizeStart}
       />
       <div className="property-panel-header">
-        Properties {isMultiple && `(${selectedShapes.length} shapes)`}
+        Properties{isMultiple && ` (${selectedShapes.length})`}
       </div>
 
-      {/* Alignment tools for multiple selection */}
+      {/* Alignment Panel for multi-selection */}
       <AlignmentPanel />
 
       <div className="property-panel-content">
-        {/* Shape Type */}
-        <div className="property-row">
-          <label className="property-label">Type</label>
-          <span className="property-value">{isGroupSelected ? 'Group' : shape.type}</span>
+        {/* Shape Type Badge */}
+        <div className="property-type-badge">
+          {isGroupSelected ? 'Group' : shape.type}
+          {isGroupSelected && ` (${(shape as GroupShape).childIds.length})`}
         </div>
 
         {/* Group-specific properties */}
         {isGroupSelected && (
-          <>
-            <div className="property-row">
-              <label className="property-label">Children</label>
-              <span className="property-value">{(shape as GroupShape).childIds.length} shapes</span>
-            </div>
-
-            {/* Group Opacity */}
-            <div className="property-row">
-              <label className="property-label">Opacity</label>
-              <div className="property-input-group">
-                <input
-                  type="range"
-                  value={shape.opacity}
-                  onChange={handleOpacityChange}
-                  className="property-slider"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                />
-                <span className="property-value">{Math.round(shape.opacity * 100)}%</span>
-              </div>
-            </div>
-
-            {/* Group Bounds */}
+          <PropertySection id="group" title="Group" defaultExpanded>
+            <CompactSliderInput
+              label="Opacity"
+              value={shape.opacity}
+              onChange={(val) => handleBulkUpdate({ opacity: val })}
+              formatValue={(v) => `${Math.round(v * 100)}%`}
+            />
             {groupBounds && (
               <>
-                <div className="property-section">Bounds</div>
-                <div className="property-row">
-                  <label className="property-label">Width</label>
-                  <span className="property-value">{Math.round(groupBounds.width)}</span>
-                </div>
-                <div className="property-row">
-                  <label className="property-label">Height</label>
-                  <span className="property-value">{Math.round(groupBounds.height)}</span>
-                </div>
-                <div className="property-row">
-                  <label className="property-label">Position</label>
-                  <span className="property-value">({Math.round(groupBounds.minX)}, {Math.round(groupBounds.minY)})</span>
-                </div>
+                <InfoRow label="Size" value={`${Math.round(groupBounds.width)} × ${Math.round(groupBounds.height)}`} />
+                <InfoRow label="Position" value={`${Math.round(groupBounds.minX)}, ${Math.round(groupBounds.minY)}`} />
               </>
             )}
-
-            <div className="property-group-hint">
-              <span>Press Ctrl+Shift+G to ungroup</span>
-            </div>
-          </>
+            <div className="property-hint">Ctrl+Shift+G to ungroup</div>
+          </PropertySection>
         )}
 
-        {/* Fill Color - only for non-group shapes */}
-        {!isGroupSelected && shape.fill !== null && (
-          <>
-            <div className="property-row">
-              <label className="property-label">Fill</label>
-              <div className="property-input-group">
-                <input
-                  type="color"
-                  value={shape.fill || '#000000'}
-                  onChange={handleFillChange}
-                  className="property-color"
-                />
-                <input
-                  type="text"
-                  value={shape.fill || ''}
-                  onChange={(e) => handleFillChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
-                  className="property-text"
-                  placeholder="#000000"
-                />
-              </div>
-            </div>
-            <ColorPalette
-              value={shape.fill || ''}
-              onChange={(color) => selectedShapes.forEach((s) => updateShape(s.id, { fill: color }))}
-              showNoFill={true}
-            />
-          </>
-        )}
+        {/* Appearance Section - only for non-group shapes */}
+        {!isGroupSelected && (
+          <PropertySection id="appearance" title="Appearance" defaultExpanded>
+            {/* Fill Color */}
+            {shape.fill !== null && (
+              <CompactColorInput
+                label="Fill"
+                value={shape.fill || ''}
+                onChange={(color) => handleBulkUpdate({ fill: color })}
+                showNoFill
+              />
+            )}
 
-        {/* Stroke Color - only for non-group shapes */}
-        {!isGroupSelected && shape.stroke !== null && (
-          <>
-            <div className="property-row">
-              <label className="property-label">Stroke</label>
-              <div className="property-input-group">
-                <input
-                  type="color"
-                  value={shape.stroke || '#000000'}
-                  onChange={handleStrokeChange}
-                  className="property-color"
-                />
-                <input
-                  type="text"
+            {/* Stroke Color & Width */}
+            {shape.stroke !== null && (
+              <div className="stroke-row">
+                <CompactColorInput
+                  label="Stroke"
                   value={shape.stroke || ''}
-                  onChange={(e) => handleStrokeChange(e as unknown as React.ChangeEvent<HTMLInputElement>)}
-                  className="property-text"
-                  placeholder="#000000"
+                  onChange={(color) => handleBulkUpdate({ stroke: color })}
+                />
+                <CompactNumberInput
+                  label="W"
+                  value={shape.strokeWidth}
+                  onChange={(val) => handleBulkUpdate({ strokeWidth: val })}
+                  min={0}
+                  max={50}
                 />
               </div>
-            </div>
-            <ColorPalette
-              value={shape.stroke || ''}
-              onChange={(color) => selectedShapes.forEach((s) => updateShape(s.id, { stroke: color }))}
-            />
-          </>
-        )}
+            )}
 
-        {/* Stroke Width - only for non-group shapes */}
-        {!isGroupSelected && (
-          <div className="property-row">
-            <label className="property-label">Stroke Width</label>
-            <input
-              type="number"
-              value={shape.strokeWidth}
-              onChange={handleStrokeWidthChange}
-              className="property-number"
-              min={0}
-              max={50}
-              step={1}
+            {/* Opacity */}
+            <CompactSliderInput
+              label="Opacity"
+              value={shape.opacity}
+              onChange={(val) => handleBulkUpdate({ opacity: val })}
+              formatValue={(v) => `${Math.round(v * 100)}%`}
             />
-          </div>
-        )}
 
-        {/* Opacity - only for non-group shapes (groups have their own opacity above) */}
-        {!isGroupSelected && (
-          <div className="property-row">
-            <label className="property-label">Opacity</label>
-            <div className="property-input-group">
-              <input
-                type="range"
-                value={shape.opacity}
-                onChange={handleOpacityChange}
-                className="property-slider"
+            {/* Corner Radius for rectangles */}
+            {isRectangle(shape) && (
+              <CompactNumberInput
+                label="Radius"
+                value={shape.cornerRadius}
+                onChange={(val) => {
+                  selectedShapes.forEach((s) => {
+                    if (isRectangle(s)) updateShape(s.id, { cornerRadius: val });
+                  });
+                }}
                 min={0}
-                max={1}
-                step={0.05}
-              />
-              <span className="property-value">{Math.round(shape.opacity * 100)}%</span>
-            </div>
-          </div>
-        )}
-
-        {/* Rectangle-specific: Corner Radius */}
-        {isRectangle(shape) && (
-          <div className="property-row">
-            <label className="property-label">Corner Radius</label>
-            <input
-              type="number"
-              value={shape.cornerRadius}
-              onChange={handleCornerRadiusChange}
-              className="property-number"
-              min={0}
-              max={100}
-              step={1}
-            />
-          </div>
-        )}
-
-        {/* Label properties for Rectangle and Ellipse */}
-        {(isRectangle(shape) || isEllipse(shape)) && (
-          <>
-            <div className="property-section">Label</div>
-            <div className="property-row">
-              <label className="property-label">Text</label>
-              <input
-                type="text"
-                value={shape.label || ''}
-                onChange={handleLabelChange}
-                className="property-text"
-                placeholder="Enter label..."
-                style={{ flex: 1 }}
-              />
-            </div>
-            <div className="property-row">
-              <label className="property-label">Font Size</label>
-              <input
-                type="number"
-                value={shape.labelFontSize || 14}
-                onChange={handleLabelFontSizeChange}
-                className="property-number"
-                min={8}
                 max={100}
-                step={1}
               />
-            </div>
-          </>
+            )}
+          </PropertySection>
         )}
 
-        {/* Text-specific properties */}
-        {isText(shape) && (
-          <>
-            <div className="property-row">
-              <label className="property-label">Font Size</label>
-              <input
-                type="number"
-                value={shape.fontSize}
-                onChange={handleFontSizeChange}
-                className="property-number"
-                min={8}
-                max={200}
-                step={1}
-              />
-            </div>
-            <div className="property-row">
-              <label className="property-label">H. Align</label>
-              <select
-                value={shape.textAlign}
-                onChange={(e) => {
-                  const value = e.target.value as TextAlign;
-                  selectedShapes.forEach((s) => {
-                    if (isText(s)) {
-                      updateShape(s.id, { textAlign: value });
-                    }
-                  });
-                }}
-                className="property-select"
-              >
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
-              </select>
-            </div>
-            <div className="property-row">
-              <label className="property-label">V. Align</label>
-              <select
-                value={shape.verticalAlign}
-                onChange={(e) => {
-                  const value = e.target.value as VerticalAlign;
-                  selectedShapes.forEach((s) => {
-                    if (isText(s)) {
-                      updateShape(s.id, { verticalAlign: value });
-                    }
-                  });
-                }}
-                className="property-select"
-              >
-                <option value="top">Top</option>
-                <option value="middle">Middle</option>
-                <option value="bottom">Bottom</option>
-              </select>
-            </div>
-            <div className="property-row property-row-full">
-              <label className="property-label">Text</label>
-              <textarea
-                value={shape.text}
-                onChange={handleTextChange}
-                className="property-textarea"
-                rows={3}
-              />
-            </div>
-          </>
-        )}
-
-        {/* Position (read-only for now) - hide for groups as they show bounds instead */}
-        {!isGroupSelected && (
-          <>
-            <div className="property-section">Position</div>
-            <div className="property-row">
-              <label className="property-label">X</label>
-              <span className="property-value">{Math.round(shape.x)}</span>
-            </div>
-            <div className="property-row">
-              <label className="property-label">Y</label>
-              <span className="property-value">{Math.round(shape.y)}</span>
-            </div>
-            <div className="property-row">
-              <label className="property-label">Rotation</label>
-              <span className="property-value">{Math.round((shape.rotation * 180) / Math.PI)}°</span>
-            </div>
-          </>
-        )}
-
-        {/* Size info for shapes with dimensions */}
+        {/* Label Section for Rectangle and Ellipse */}
         {(isRectangle(shape) || isEllipse(shape)) && (
-          <>
-            <div className="property-section">Size</div>
+          <PropertySection id="label" title="Label" defaultExpanded>
+            <input
+              type="text"
+              value={shape.label || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                selectedShapes.forEach((s) => {
+                  if (isRectangle(s) || isEllipse(s)) {
+                    updateShape(s.id, { label: val || '' });
+                  }
+                });
+              }}
+              className="property-text-input"
+              placeholder="Enter label..."
+            />
+            <CompactNumberInput
+              label="Font Size"
+              value={shape.labelFontSize || 14}
+              onChange={(val) => {
+                selectedShapes.forEach((s) => {
+                  if (isRectangle(s) || isEllipse(s)) {
+                    updateShape(s.id, { labelFontSize: val });
+                  }
+                });
+              }}
+              min={8}
+              max={100}
+              suffix="px"
+            />
+          </PropertySection>
+        )}
+
+        {/* Text Shape Properties */}
+        {isText(shape) && (
+          <PropertySection id="text" title="Text" defaultExpanded>
+            <textarea
+              value={shape.text}
+              onChange={(e) => {
+                const val = e.target.value;
+                selectedShapes.forEach((s) => {
+                  if (isText(s)) updateShape(s.id, { text: val });
+                });
+              }}
+              className="property-textarea"
+              rows={3}
+            />
+            <CompactNumberInput
+              label="Font Size"
+              value={shape.fontSize}
+              onChange={(val) => {
+                selectedShapes.forEach((s) => {
+                  if (isText(s)) updateShape(s.id, { fontSize: val });
+                });
+              }}
+              min={8}
+              max={200}
+              suffix="px"
+            />
+            <div className="align-row">
+              <label className="align-label">Align</label>
+              <div className="align-buttons">
+                {(['left', 'center', 'right'] as TextAlign[]).map((align) => (
+                  <button
+                    key={align}
+                    className={`align-button ${shape.textAlign === align ? 'active' : ''}`}
+                    onClick={() => {
+                      selectedShapes.forEach((s) => {
+                        if (isText(s)) updateShape(s.id, { textAlign: align });
+                      });
+                    }}
+                    title={align}
+                  >
+                    {align === 'left' ? '\u2190' : align === 'center' ? '\u2194' : '\u2192'}
+                  </button>
+                ))}
+              </div>
+              <div className="align-buttons">
+                {(['top', 'middle', 'bottom'] as VerticalAlign[]).map((align) => (
+                  <button
+                    key={align}
+                    className={`align-button ${shape.verticalAlign === align ? 'active' : ''}`}
+                    onClick={() => {
+                      selectedShapes.forEach((s) => {
+                        if (isText(s)) updateShape(s.id, { verticalAlign: align });
+                      });
+                    }}
+                    title={align}
+                  >
+                    {align === 'top' ? '\u2191' : align === 'middle' ? '\u2195' : '\u2193'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </PropertySection>
+        )}
+
+        {/* Position Section - collapsed by default */}
+        {!isGroupSelected && (
+          <PropertySection id="position" title="Position" defaultExpanded={false}>
+            <InfoRow label="X" value={Math.round(shape.x)} />
+            <InfoRow label="Y" value={Math.round(shape.y)} />
+            <InfoRow label="Rotation" value={`${Math.round((shape.rotation * 180) / Math.PI)}°`} />
+          </PropertySection>
+        )}
+
+        {/* Size Section - collapsed by default */}
+        {(isRectangle(shape) || isEllipse(shape)) && (
+          <PropertySection id="size" title="Size" defaultExpanded={false}>
             {isRectangle(shape) && (
               <>
-                <div className="property-row">
-                  <label className="property-label">Width</label>
-                  <span className="property-value">{Math.round(shape.width)}</span>
-                </div>
-                <div className="property-row">
-                  <label className="property-label">Height</label>
-                  <span className="property-value">{Math.round(shape.height)}</span>
-                </div>
+                <InfoRow label="Width" value={Math.round(shape.width)} />
+                <InfoRow label="Height" value={Math.round(shape.height)} />
               </>
             )}
             {isEllipse(shape) && (
               <>
-                <div className="property-row">
-                  <label className="property-label">Radius X</label>
-                  <span className="property-value">{Math.round(shape.radiusX)}</span>
-                </div>
-                <div className="property-row">
-                  <label className="property-label">Radius Y</label>
-                  <span className="property-value">{Math.round(shape.radiusY)}</span>
-                </div>
+                <InfoRow label="Radius X" value={Math.round(shape.radiusX)} />
+                <InfoRow label="Radius Y" value={Math.round(shape.radiusY)} />
               </>
             )}
-          </>
+          </PropertySection>
         )}
 
-        {/* Line endpoints */}
+        {/* Line Endpoints - collapsed by default */}
         {isLine(shape) && (
-          <>
-            <div className="property-section">Endpoints</div>
-            <div className="property-row">
-              <label className="property-label">Start</label>
-              <span className="property-value">({Math.round(shape.x)}, {Math.round(shape.y)})</span>
-            </div>
-            <div className="property-row">
-              <label className="property-label">End</label>
-              <span className="property-value">({Math.round(shape.x2)}, {Math.round(shape.y2)})</span>
-            </div>
-          </>
+          <PropertySection id="endpoints" title="Endpoints" defaultExpanded={false}>
+            <InfoRow label="Start" value={`(${Math.round(shape.x)}, ${Math.round(shape.y)})`} />
+            <InfoRow label="End" value={`(${Math.round(shape.x2)}, ${Math.round(shape.y2)})`} />
+          </PropertySection>
         )}
       </div>
 

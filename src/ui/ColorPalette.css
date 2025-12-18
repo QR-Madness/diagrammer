@@ -1,18 +1,54 @@
-.color-palette {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 4px;
+/* Color Palette Container */
+.color-palette-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 4px 0;
 }
 
+.color-palette-container.compact {
+  gap: 4px;
+}
+
+/* Section */
+.color-palette-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.color-palette-section:last-child {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Section Labels */
+.color-palette-label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--text-secondary, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Color Row */
+.color-palette-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Individual Swatches */
 .color-swatch {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: 1px solid var(--border-color, #dee2e6);
   border-radius: 4px;
   cursor: pointer;
   padding: 0;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
+  flex-shrink: 0;
 }
 
 .color-swatch:hover {
@@ -20,11 +56,17 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.color-swatch.selected {
-  border: 2px solid var(--selection-color, #2196f3);
+.color-swatch:focus {
+  outline: none;
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
 }
 
+.color-swatch.selected {
+  border: 2px solid var(--color-primary, #2196f3);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.3);
+}
+
+/* No Fill Swatch */
 .color-swatch.no-fill {
   background: repeating-linear-gradient(
     45deg,
@@ -41,9 +83,98 @@
 
 .no-fill-icon {
   color: #cc0000;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
   line-height: 1;
+}
+
+.color-palette-nofill-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+/* Custom Color Section */
+.color-palette-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-palette-picker {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.color-palette-picker::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.color-palette-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
+}
+
+.color-palette-custom-toggle {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  color: var(--text-primary, #495057);
+  background: var(--bg-secondary, #f8f9fa);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.color-palette-custom-toggle:hover {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--color-primary, #2196f3);
+}
+
+.color-palette-custom-input-group {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.color-palette-custom-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  color: var(--text-primary, #495057);
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--color-primary, #2196f3);
+  border-radius: 4px;
+  outline: none;
+}
+
+.color-palette-custom-input:focus {
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.color-palette-custom-apply {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--color-primary, #2196f3);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.color-palette-custom-apply:hover {
+  background: var(--color-primary-dark, #1976d2);
 }
 
 /* Dark mode adjustments */
@@ -59,4 +190,30 @@
     #444 4px,
     #444 8px
   );
+}
+
+[data-theme="dark"] .color-palette-picker {
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .color-palette-custom-toggle {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .color-palette-custom-toggle:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .color-palette-custom-input {
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #cccccc);
+}
+
+/* Legacy .color-palette support for backwards compatibility */
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 4px 0;
 }

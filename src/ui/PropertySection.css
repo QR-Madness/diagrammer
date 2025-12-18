@@ -1,0 +1,98 @@
+/* Property Section Container */
+.property-section-container {
+  border-bottom: 1px solid var(--border-color-light, #e9ecef);
+}
+
+.property-section-container:last-child {
+  border-bottom: none;
+}
+
+/* Section Header */
+.property-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.property-section-header:hover {
+  background-color: var(--bg-hover, #e9ecef);
+  margin: 0 -8px;
+  padding: 8px 8px;
+}
+
+.property-section-header:focus {
+  outline: none;
+  background-color: var(--bg-hover, #e9ecef);
+  margin: 0 -8px;
+  padding: 8px 8px;
+}
+
+/* Chevron */
+.property-section-chevron {
+  font-size: 0.625rem;
+  color: var(--text-secondary, #6c757d);
+  transition: transform 0.15s ease;
+  width: 12px;
+  text-align: center;
+}
+
+/* Title */
+.property-section-title {
+  flex: 1;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary, #6c757d);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Badge */
+.property-section-badge {
+  font-size: 0.625rem;
+  padding: 1px 6px;
+  background-color: var(--bg-tertiary, #e9ecef);
+  color: var(--text-secondary, #6c757d);
+  border-radius: 10px;
+}
+
+/* Content */
+.property-section-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  overflow: hidden;
+  transition: max-height 0.2s ease, opacity 0.15s ease, padding 0.2s ease;
+}
+
+/* Collapsed State */
+.property-section-container.collapsed .property-section-content {
+  max-height: 0;
+  opacity: 0;
+  padding-bottom: 0;
+  pointer-events: none;
+}
+
+/* Expanded State */
+.property-section-container.expanded .property-section-content {
+  max-height: 500px;
+  opacity: 1;
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .property-section-container {
+  border-bottom-color: var(--border-color-light, #333333);
+}
+
+[data-theme="dark"] .property-section-header:hover,
+[data-theme="dark"] .property-section-header:focus {
+  background-color: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .property-section-badge {
+  background-color: var(--bg-tertiary, #333333);
+}

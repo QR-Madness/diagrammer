@@ -1,0 +1,393 @@
+/* Unified Toolbar */
+.unified-toolbar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  gap: 8px;
+}
+
+/* Sections */
+.unified-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unified-toolbar-center {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unified-toolbar-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Divider */
+.toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color, #dee2e6);
+}
+
+/* Tool Buttons */
+.tool-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+.tool-button-wrapper {
+  position: relative;
+}
+
+.tool-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tool-button:hover {
+  background: var(--bg-hover, #e9ecef);
+}
+
+.tool-button.active {
+  background: var(--color-primary-light, #e7f1ff);
+  border-color: var(--color-primary, #2196f3);
+  color: var(--color-primary, #2196f3);
+}
+
+.tool-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.tool-button-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Tool Tooltip */
+.tool-button-tooltip {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary, #333);
+  color: var(--text-primary, #fff);
+  font-size: 0.75rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tool-button-tooltip-shortcut {
+  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+/* File Menu */
+.file-menu-button {
+  position: relative;
+}
+
+.file-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.file-menu-trigger:hover,
+.file-menu-trigger.open {
+  background: var(--bg-hover, #e9ecef);
+}
+
+.file-menu-arrow {
+  font-size: 0.5rem;
+  opacity: 0.6;
+}
+
+.file-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+}
+
+.file-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.8125rem;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.file-menu-dropdown button:hover {
+  background: var(--bg-hover, #e9ecef);
+}
+
+.file-menu-shortcut {
+  font-size: 0.6875rem;
+  color: var(--text-secondary, #6c757d);
+}
+
+.file-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-color, #dee2e6);
+}
+
+/* Document Info */
+.document-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.document-name-button {
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-name-button:hover {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--border-color, #dee2e6);
+}
+
+.document-name-input {
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary, #495057);
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--color-primary, #2196f3);
+  border-radius: 4px;
+  outline: none;
+  max-width: 200px;
+}
+
+.document-status {
+  font-size: 0.875rem;
+  cursor: default;
+}
+
+.document-status.dirty {
+  color: #f59e0b;
+  cursor: pointer;
+}
+
+.document-status.saved {
+  color: #10b981;
+}
+
+/* Inline Page Tabs */
+.inline-page-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 300px;
+  min-width: 0;
+}
+
+.inline-tabs-scroll {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.inline-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.inline-tab {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #6c757d);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.inline-tab:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--text-primary, #495057);
+}
+
+.inline-tab.active {
+  background: var(--color-primary-light, #e7f1ff);
+  color: var(--color-primary, #2196f3);
+  border-color: var(--color-primary, #2196f3);
+  font-weight: 500;
+}
+
+.inline-tab-add {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 1rem;
+  color: var(--text-secondary, #6c757d);
+  background: transparent;
+  border: 1px dashed var(--border-color, #dee2e6);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.inline-tab-add:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--color-primary, #2196f3);
+  border-color: var(--color-primary, #2196f3);
+}
+
+/* Action Buttons */
+.toolbar-action-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-secondary, #6c757d);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-action-button:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--text-primary, #495057);
+}
+
+.toolbar-action-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+/* Dark Mode */
+[data-theme="dark"] .unified-toolbar {
+  background: var(--bg-secondary, #252526);
+  border-bottom-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .tool-button:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .tool-button.active {
+  background: var(--color-primary-light, #0d3868);
+}
+
+[data-theme="dark"] .tool-button-tooltip {
+  background: var(--bg-tertiary, #1e1e1e);
+  color: var(--text-primary, #cccccc);
+}
+
+[data-theme="dark"] .file-menu-trigger:hover,
+[data-theme="dark"] .file-menu-trigger.open {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .file-menu-dropdown {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #404040);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .file-menu-dropdown button:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .document-name-button:hover {
+  background: var(--bg-hover, #3c3c3c);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .document-name-input {
+  background: var(--bg-primary, #1e1e1e);
+}
+
+[data-theme="dark"] .inline-tab:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .inline-tab.active {
+  background: var(--color-primary-light, #0d3868);
+}
+
+[data-theme="dark"] .inline-tab-add:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .toolbar-action-button:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
