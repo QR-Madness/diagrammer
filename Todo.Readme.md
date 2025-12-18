@@ -158,7 +158,52 @@ implementation phase as defined in Specification.Readme.md.
     - Markdown import/export
     - Document outline/table of contents
 
-### Phase 9: Collaboration & UI Improvements
+### Phase 9: UI Improvements
+
+#### Enhanced Color Palette
+- [ ] Recent colors tracking (last 8 used, persisted to localStorage)
+- [ ] Custom color input with hex support
+- [ ] Color palette organized by color family (grayscale, warm, cool, accent)
+- [ ] Native color picker integration
+
+#### Property Panel Redesign
+- [ ] Collapsible property sections with chevron headers
+- [ ] Section state persistence (remember expanded/collapsed)
+- [ ] Compact color input (inline picker + hex)
+- [ ] Default collapse Position/Size sections (less commonly edited)
+- [ ] More compact, vibrant styling
+
+#### Unified Toolbar (Notion/Linear Style)
+- [ ] Single consolidated toolbar (~44px) replacing header + toolbar + page tabs
+- [ ] Compact tool buttons (28px) with hover tooltips showing shortcuts
+- [ ] Inline page tabs with horizontal scroll
+- [ ] Minimal, keyboard-first aesthetic
+
+#### Status Bar
+- [ ] Cursor world coordinates display
+- [ ] Zoom level with quick controls (-, +, Fit, 100%)
+- [ ] Shape count indicator
+- [ ] Current tool display
+
+### Phase 10: Advanced Diagramming
+
+- [ ] Smart connectors with routing (avoid shapes)
+- [ ] Shape icons (similar to Eraser.io) + customizable icon library
+- [ ] Connector labels
+- [ ] Shape libraries (presets, templates)
+- [ ] Custom shape definitions
+
+### Phase 11: Advanced Export
+
+- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
+
+### Phase 12: Diagram Patterns
+
+- [ ] Basic flowchart patterns
+- [ ] Basic UML class diagram patterns
+- [ ] Basic ERD diagram patterns
+
+### Phase 13: Collaboration & UI Improvements
 
 - [ ] Real-time collaboration (CRDT integration)
 - [ ] Presence indicators (who's viewing where)
@@ -170,39 +215,13 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Status bar with cursor position and zoom level
 - [ ] Zoom controls in the toolbar (zoom in, out, fit, 100%)
 
-### Phase 10: Advanced Diagramming
-
-- [ ] Smart connectors with routing (avoid shapes)
-- [ ] Shape icons (similar to Eraser.io) + customizable icon library
-- [ ] Connector labels
-- [ ] Shape libraries (presets, templates)
-- [ ] Custom shape definitions
-
-### Phase 11: Enhanced Persistence
-
-- [ ] Git integration for version control
-
-### Phase 12: Advanced Export
-
-- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
-
-### Phase 13: Diagram Patterns
-
-- [ ] Basic flowchart patterns
-- [ ] Basic UML class diagram patterns
-- [ ] Basic ERD diagram patterns
-
-### Phase 14: UI Improvements
-
-- [ ] 
-
-### Phase 15: Version 1.0
+### Phase 14: Version 1.0
 
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
   in README)
 
-### Phase 16: Advanced Diagram Patterns – Version 1.1
+### Phase 15: Advanced Diagram Patterns – Version 1.1
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns
@@ -215,9 +234,8 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase ??: Canvas Code Integration with Git – Version ?.?
 
-- [ ] Implement a composable VCS pattern which allows interfacing with Git for version control, and others in the future
-- [ ] Implement Git file viewing and linking to shapes by adding a 'view code' button to a shape which opens a new tab
-  with the relevant file
+- [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and others in the future
+- [ ] Implement file(s) linking to a shape which can be viewed in the property panel
 - [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is
   /diagrammer/*.json)
 - [ ] Feat: Spawn a VS Code instance with access to Git repo

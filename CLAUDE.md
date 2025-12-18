@@ -13,6 +13,7 @@ A high-performance diagramming and whiteboard application built with TypeScript,
 - **UI Framework**: React 18+ (for UI chrome only, not canvas rendering)
 - **State Management**: Zustand with Immer middleware
 - **Rendering**: Canvas 2D API (no abstraction libraries)
+- **Rich Text Editor**: Tiptap (ProseMirror wrapper)
 - **Spatial Indexing**: RBush (R-tree implementation)
 - **Build Tool**: Vite
 - **Testing**: Vitest + Playwright for e2e
@@ -63,11 +64,14 @@ Store Layer (DocumentStore, SessionStore, HistoryStore)
 
 ### Store Separation
 
-Three independent Zustand stores with distinct responsibilities:
+Six independent Zustand stores with distinct responsibilities:
 
 1. **DocumentStore** (`/store/documentStore.ts`): Shape data, connections, groups. All persistent document state.
 2. **SessionStore** (`/store/sessionStore.ts`): Selection, camera state, active tool, interaction state, cursor. Ephemeral UI state.
 3. **HistoryStore** (`/store/historyStore.ts`): Undo/redo stack with complete document snapshots.
+4. **PageStore** (`/store/pageStore.ts`): Multi-page document structure, page ordering, active page.
+5. **PersistenceStore** (`/store/persistenceStore.ts`): Document save/load, auto-save, localStorage management.
+6. **RichTextStore** (`/store/richTextStore.ts`): Tiptap editor content for the document editor panel.
 
 ### Coordinate System Flow
 
@@ -135,20 +139,12 @@ Shapes are plain data objects. Behavior is implemented via the **ShapeRegistry p
 
 ## Implementation Status
 
-Phase 1 (Core Foundation) complete:
-- Math utilities (Vec2, Mat3, Box, geometry)
-- Camera system with coordinate transforms
-- Renderer with DPI scaling and grid
-- InputHandler with normalized events
-- CanvasContainer React bridge
+Completed phases:
+- **Phase 1-6**: Core foundation, shape system, tools, UI, extended features, export
+- **Phase 7**: Multi-page documents, offline persistence, auto-save
+- **Phase 8**: Rich text document editor (Tiptap-based split-screen editor)
 
-Phase 2 (Shape System) in progress:
-- Shape types and ShapeRegistry pattern complete
-- Rectangle shape handler complete
-- Shape utilities (bounds, transforms) complete
-- DocumentStore and SessionStore complete
-- SpatialIndex and HitTester complete
-- Remaining: Renderer integration with stores
+Current: Phase 9 (UI improvements) and beyond.
 
 See Todo.Readme.md for detailed task tracking.
 
@@ -176,3 +172,24 @@ Uniform handling of mouse, touch, and pen. Simplifies tool implementation.
 - Responsive input handling
 - Fast hit testing via spatial indexing
 - Viewport culling for off-screen shapes
+
+## UI Layout Structure
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Header (FileMenu, SaveStatusIndicator, Theme)      │
+├─────────────────────────────────────────────────────┤
+│  Toolbar (tool buttons, keyboard shortcuts)         │
+├─────────────────────────────────────────────────────┤
+│  PageTabs (multi-page navigation)                   │
+├──────────────────┬──────────────────────────────────┤
+│  Document Editor │  Canvas Area                     │
+│  (resizable)     │                      PropertyPanel│
+│  ┌──────────────┐│                                  │
+│  │Toolbar       ││                                  │
+│  │Tiptap Editor ││                      LayerPanel  │
+│  └──────────────┘│                                  │
+└──────────────────┴──────────────────────────────────┘
+```
+
+The SplitPane component provides resizable left/right panels with the document editor on the left and the canvas with property/layer panels on the right.
