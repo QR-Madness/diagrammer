@@ -68,6 +68,8 @@ export interface SessionState {
   selectedIds: Set<string>;
   /** Camera/viewport state */
   camera: CameraState;
+  /** Per-page camera states (for restoring when switching pages) */
+  pageCameras: Record<string, CameraState>;
   /** Currently active tool */
   activeTool: ToolType;
   /** Current cursor style */
@@ -130,6 +132,12 @@ export interface SessionActions {
   /** Clear the emphasis animation */
   clearEmphasis: () => void;
 
+  // Page Camera
+  /** Save current camera state for a page */
+  savePageCamera: (pageId: string) => void;
+  /** Restore camera state for a page (if saved) */
+  restorePageCamera: (pageId: string) => void;
+
   // Utilities
   isSelected: (id: string) => boolean;
   getSelectedIds: () => string[];
@@ -162,6 +170,7 @@ const DEFAULT_SNAP_SETTINGS: SnapSettings = {
 const initialState: SessionState = {
   selectedIds: new Set(),
   camera: { ...DEFAULT_CAMERA },
+  pageCameras: {},
   activeTool: 'select',
   cursor: 'default',
   isInteracting: false,
@@ -345,6 +354,26 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
     set({ emphasizedShapeId: null });
   },
 
+  // Page Camera
+  savePageCamera: (pageId: string) => {
+    set((state) => ({
+      pageCameras: {
+        ...state.pageCameras,
+        [pageId]: { ...state.camera },
+      },
+    }));
+  },
+
+  restorePageCamera: (pageId: string) => {
+    const savedCamera = get().pageCameras[pageId];
+    if (savedCamera) {
+      set({ camera: { ...savedCamera } });
+    } else {
+      // Reset to default if no saved camera for this page
+      set({ camera: { ...DEFAULT_CAMERA } });
+    }
+  },
+
   // Utilities
   isSelected: (id: string): boolean => {
     return get().selectedIds.has(id);
@@ -359,7 +388,13 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   },
 
   reset: () => {
-    set({ ...initialState, selectedIds: new Set(), snapSettings: { ...DEFAULT_SNAP_SETTINGS }, snapGuides: {} });
+    set({
+      ...initialState,
+      selectedIds: new Set(),
+      pageCameras: {},
+      snapSettings: { ...DEFAULT_SNAP_SETTINGS },
+      snapGuides: {},
+    });
   },
 }));
 

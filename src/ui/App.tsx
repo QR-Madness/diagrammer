@@ -1,12 +1,19 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import './App.css';
 import { CanvasContainer } from './CanvasContainer';
 import { Toolbar } from './Toolbar';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
 import { FileMenu } from './FileMenu';
+import { PageTabs } from './PageTabs';
+import { DocumentManager } from './DocumentManager';
+import { SaveStatusIndicator } from './SaveStatusIndicator';
 import { useDocumentStore } from '../store/documentStore';
+import { usePageStore } from '../store/pageStore';
+import { useHistoryStore } from '../store/historyStore';
 import { useThemeStore } from '../store/themeStore';
+import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
+import { useAutoSave } from '../hooks/useAutoSave';
 import { RectangleShape, DEFAULT_RECTANGLE } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 
@@ -109,30 +116,83 @@ function createExampleShapes(): RectangleShape[] {
 function App() {
   const addShapes = useDocumentStore((state) => state.addShapes);
   const shapeCount = useDocumentStore((state) => state.shapeOrder.length);
+  const activePageId = usePageStore((state) => state.activePageId);
+  const initializeDefault = usePageStore((state) => state.initializeDefault);
   const initializedRef = useRef(false);
+  const persistenceInitializedRef = useRef(false);
+
+  // Document manager modal state
+  const [isDocumentManagerOpen, setIsDocumentManagerOpen] = useState(false);
 
   // Theme state
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
   const toggleTheme = useThemeStore((state) => state.toggle);
 
-  // Add example shapes on first render only
+  // Auto-save hook
+  useAutoSave();
+
+  // Open document manager callback
+  const handleOpenDocumentManager = useCallback(() => {
+    setIsDocumentManagerOpen(true);
+  }, []);
+
+  const handleCloseDocumentManager = useCallback(() => {
+    setIsDocumentManagerOpen(false);
+  }, []);
+
+  // Initialize persistence on mount
   useEffect(() => {
-    // Only add shapes if not already initialized and no shapes exist
-    if (initializedRef.current || shapeCount > 0) return;
+    if (persistenceInitializedRef.current) return;
+    persistenceInitializedRef.current = true;
+
+    // Check if we have any saved documents
+    const documents = usePersistenceStore.getState().documents;
+    const hasDocuments = Object.keys(documents).length > 0;
+
+    if (hasDocuments) {
+      // Initialize from persistence (loads last document or creates new)
+      initializePersistence();
+    } else {
+      // First time use: create default page and add example shapes
+      initializeDefault();
+
+      // Set history active page
+      const pageId = usePageStore.getState().activePageId;
+      if (pageId) {
+        useHistoryStore.getState().setActivePage(pageId);
+      }
+    }
+  }, [initializeDefault]);
+
+  // Add example shapes on first run (when no documents exist)
+  useEffect(() => {
+    // Only add shapes if:
+    // 1. Not already initialized
+    // 2. We have an active page
+    // 3. No shapes exist yet
+    // 4. This is a fresh start (first time user)
+    if (initializedRef.current) return;
+    if (!activePageId) return;
+    if (shapeCount > 0) return;
+
+    // Check if this is first time use (no saved documents)
+    const documents = usePersistenceStore.getState().documents;
+    const hasDocuments = Object.keys(documents).length > 0;
+    if (hasDocuments) return; // Don't add example shapes if user has saved docs
+
     initializedRef.current = true;
 
     const shapes = createExampleShapes();
     addShapes(shapes);
-  }, [addShapes, shapeCount]);
+  }, [addShapes, shapeCount, activePageId]);
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="app-header-left">
-          <FileMenu />
+          <FileMenu onOpenDocumentManager={handleOpenDocumentManager} />
           <div className="app-header-title">
-            <h1>Diagrammer</h1>
-            <p>Whiteboard Foundation - Interactive Demo</p>
+            <SaveStatusIndicator />
           </div>
         </div>
         <div className="app-header-actions">
@@ -147,6 +207,7 @@ function App() {
         </div>
       </header>
       <Toolbar />
+      <PageTabs />
       <main className="app-main">
         <CanvasContainer
           className="canvas-area"
@@ -156,6 +217,12 @@ function App() {
         <PropertyPanel />
         <LayerPanel />
       </main>
+
+      {/* Document Manager Modal */}
+      <DocumentManager
+        isOpen={isDocumentManagerOpen}
+        onClose={handleCloseDocumentManager}
+      />
     </div>
   );
 }

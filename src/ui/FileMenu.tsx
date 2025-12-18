@@ -1,13 +1,22 @@
 /**
- * File menu component with export options.
+ * File menu component with document and export options.
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSessionStore } from '../store/sessionStore';
+import {
+  usePersistenceStore,
+  downloadDocument,
+  uploadDocument,
+} from '../store/persistenceStore';
 import { ExportDialog } from './ExportDialog';
 import './FileMenu.css';
 
-export function FileMenu() {
+interface FileMenuProps {
+  onOpenDocumentManager?: () => void;
+}
+
+export function FileMenu({ onOpenDocumentManager }: FileMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportScope, setExportScope] = useState<'all' | 'selection'>('all');
@@ -15,6 +24,11 @@ export function FileMenu() {
 
   const selectedIds = useSessionStore((s) => s.selectedIds);
   const hasSelection = selectedIds.size > 0;
+
+  const isDirty = usePersistenceStore((s) => s.isDirty);
+  const newDocument = usePersistenceStore((s) => s.newDocument);
+  const saveDocument = usePersistenceStore((s) => s.saveDocument);
+  const currentDocumentName = usePersistenceStore((s) => s.currentDocumentName);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -52,6 +66,72 @@ export function FileMenu() {
     setExportDialogOpen(false);
   }, []);
 
+  // Document operations
+  const handleNew = useCallback(() => {
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Do you want to save before creating a new document?'
+      );
+      if (confirmed) {
+        saveDocument();
+      }
+    }
+    newDocument();
+    setIsMenuOpen(false);
+  }, [isDirty, saveDocument, newDocument]);
+
+  const handleOpen = useCallback(() => {
+    setIsMenuOpen(false);
+    onOpenDocumentManager?.();
+  }, [onOpenDocumentManager]);
+
+  const handleSave = useCallback(() => {
+    saveDocument();
+    setIsMenuOpen(false);
+  }, [saveDocument]);
+
+  const handleExportDocument = useCallback(() => {
+    downloadDocument(`${currentDocumentName}.json`);
+    setIsMenuOpen(false);
+  }, [currentDocumentName]);
+
+  const handleImportDocument = useCallback(async () => {
+    if (isDirty) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Do you want to save before importing?'
+      );
+      if (confirmed) {
+        saveDocument();
+      }
+    }
+    await uploadDocument();
+    setIsMenuOpen(false);
+  }, [isDirty, saveDocument]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      // Ctrl+N - New document
+      if (event.ctrlKey && event.key === 'n') {
+        event.preventDefault();
+        handleNew();
+      }
+      // Ctrl+O - Open documents
+      if (event.ctrlKey && event.key === 'o') {
+        event.preventDefault();
+        handleOpen();
+      }
+      // Ctrl+S - Save
+      if (event.ctrlKey && !event.shiftKey && event.key === 's') {
+        event.preventDefault();
+        handleSave();
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleNew, handleOpen, handleSave]);
+
   return (
     <>
       <div className="file-menu" ref={menuRef}>
@@ -69,6 +149,33 @@ export function FileMenu() {
 
         {isMenuOpen && (
           <div className="file-menu-dropdown">
+            {/* Document operations */}
+            <button className="file-menu-item" onClick={handleNew}>
+              <span className="file-menu-item-label">New Document</span>
+              <span className="file-menu-item-shortcut">Ctrl+N</span>
+            </button>
+            <button className="file-menu-item" onClick={handleOpen}>
+              <span className="file-menu-item-label">Open...</span>
+              <span className="file-menu-item-shortcut">Ctrl+O</span>
+            </button>
+            <button className="file-menu-item" onClick={handleSave}>
+              <span className="file-menu-item-label">Save</span>
+              <span className="file-menu-item-shortcut">Ctrl+S</span>
+            </button>
+
+            <div className="file-menu-separator" />
+
+            {/* Import/Export document */}
+            <button className="file-menu-item" onClick={handleImportDocument}>
+              <span className="file-menu-item-label">Import Document...</span>
+            </button>
+            <button className="file-menu-item" onClick={handleExportDocument}>
+              <span className="file-menu-item-label">Export Document...</span>
+            </button>
+
+            <div className="file-menu-separator" />
+
+            {/* Image export */}
             <button
               className="file-menu-item"
               onClick={() => handleExport('all')}

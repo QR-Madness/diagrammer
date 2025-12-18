@@ -25,14 +25,15 @@ function createTestRect(id: string, x = 0, y = 0): RectangleShape {
   };
 }
 
+const TEST_PAGE_ID = 'test-page-1';
+
 describe('History Store', () => {
   beforeEach(() => {
     // Reset stores before each test
     useHistoryStore.setState({
-      past: [],
-      future: [],
+      pageHistory: {},
+      activePageId: TEST_PAGE_ID,
       isTracking: true,
-      lastPushTime: 0,
     });
     useDocumentStore.setState({
       shapes: {},
@@ -110,6 +111,15 @@ describe('History Store', () => {
       store.push('should be recorded');
 
       expect(store.getUndoCount()).toBe(1);
+    });
+
+    it('does nothing without active page', () => {
+      useHistoryStore.setState({ activePageId: null });
+      const store = useHistoryStore.getState();
+
+      store.push('should not be recorded');
+
+      expect(store.getUndoCount()).toBe(0);
     });
   });
 
@@ -235,7 +245,7 @@ describe('History Store', () => {
   });
 
   describe('clear', () => {
-    it('clears both past and future stacks', async () => {
+    it('clears all page history', async () => {
       const store = useHistoryStore.getState();
       const docStore = useDocumentStore.getState();
 
@@ -259,6 +269,51 @@ describe('History Store', () => {
     });
   });
 
+  describe('clearPage', () => {
+    it('clears history for specific page', async () => {
+      const store = useHistoryStore.getState();
+
+      // Add history for test page
+      useDocumentStore.getState().addShape(createTestRect('rect1'));
+      store.push();
+
+      expect(store.getUndoCount()).toBe(1);
+
+      store.clearPage(TEST_PAGE_ID);
+
+      expect(store.getUndoCount()).toBe(0);
+    });
+  });
+
+  describe('setActivePage', () => {
+    it('switches active page for history', async () => {
+      const store = useHistoryStore.getState();
+
+      // Add history for page 1
+      useDocumentStore.getState().addShape(createTestRect('rect1'));
+      store.push();
+
+      await new Promise((r) => setTimeout(r, 350));
+
+      useDocumentStore.getState().addShape(createTestRect('rect2'));
+      store.push();
+
+      expect(store.getUndoCount()).toBe(2);
+
+      // Switch to page 2
+      store.setActivePage('test-page-2');
+
+      // Page 2 has no history
+      expect(store.getUndoCount()).toBe(0);
+
+      // Switch back to page 1
+      store.setActivePage(TEST_PAGE_ID);
+
+      // History should still be there
+      expect(store.getUndoCount()).toBe(2);
+    });
+  });
+
   describe('canUndo / canRedo', () => {
     it('returns correct values', async () => {
       const store = useHistoryStore.getState();
@@ -276,6 +331,13 @@ describe('History Store', () => {
       store.undo();
 
       expect(store.canRedo()).toBe(true);
+    });
+
+    it('returns false without active page', () => {
+      useHistoryStore.setState({ activePageId: null });
+
+      expect(useHistoryStore.getState().canUndo()).toBe(false);
+      expect(useHistoryStore.getState().canRedo()).toBe(false);
     });
   });
 
@@ -304,6 +366,13 @@ describe('History Store', () => {
 
       expect(store.getUndoCount()).toBe(0);
       expect(store.getRedoCount()).toBe(2);
+    });
+
+    it('returns 0 without active page', () => {
+      useHistoryStore.setState({ activePageId: null });
+
+      expect(useHistoryStore.getState().getUndoCount()).toBe(0);
+      expect(useHistoryStore.getState().getRedoCount()).toBe(0);
     });
   });
 

@@ -1,0 +1,398 @@
+/**
+ * Page store for managing multiple pages within a document.
+ *
+ * Coordinates with documentStore to load/save page content when switching pages.
+ */
+
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import { nanoid } from 'nanoid';
+import { Page, createPage } from '../types/Document';
+import { useDocumentStore } from './documentStore';
+import { useSessionStore } from './sessionStore';
+import { useHistoryStore } from './historyStore';
+
+/**
+ * Page state.
+ */
+export interface PageState {
+  /** All pages in the current document, keyed by ID */
+  pages: Record<string, Page>;
+  /** Order of pages (for tab display) */
+  pageOrder: string[];
+  /** Currently active page ID */
+  activePageId: string | null;
+}
+
+/**
+ * Page actions.
+ */
+export interface PageActions {
+  // Page CRUD
+  createPage: (name?: string) => string;
+  deletePage: (id: string) => void;
+  renamePage: (id: string, name: string) => void;
+  duplicatePage: (id: string) => string | null;
+
+  // Page ordering
+  reorderPages: (newOrder: string[]) => void;
+
+  // Navigation
+  setActivePage: (id: string) => void;
+
+  // Utilities
+  getPage: (id: string) => Page | undefined;
+  getActivePage: () => Page | undefined;
+  getPageCount: () => number;
+
+  // Synchronization with documentStore
+  syncCurrentPageFromDocument: () => void;
+  syncDocumentToCurrentPage: () => void;
+
+  // Serialization for persistence
+  getSnapshot: () => PageStoreSnapshot;
+  loadSnapshot: (snapshot: PageStoreSnapshot) => void;
+
+  // Reset
+  reset: () => void;
+  initializeDefault: () => void;
+}
+
+/**
+ * Snapshot of entire page store for persistence.
+ */
+export interface PageStoreSnapshot {
+  pages: Record<string, Page>;
+  pageOrder: string[];
+  activePageId: string | null;
+}
+
+/**
+ * Initial empty state.
+ */
+const initialState: PageState = {
+  pages: {},
+  pageOrder: [],
+  activePageId: null,
+};
+
+/**
+ * Page store for managing document pages.
+ *
+ * Usage:
+ * ```typescript
+ * const { pages, createPage, setActivePage } = usePageStore();
+ *
+ * // Create a new page
+ * const newPageId = createPage('My Page');
+ *
+ * // Switch to a page
+ * setActivePage(pageId);
+ * ```
+ */
+export const usePageStore = create<PageState & PageActions>()(
+  immer((set, get) => ({
+    // State
+    ...initialState,
+
+    // Create a new page
+    createPage: (name?: string): string => {
+      const pageId = nanoid();
+      const pageName = name || `Page ${get().pageOrder.length + 1}`;
+
+      set((state) => {
+        const newPage = createPage(pageName, pageId);
+        state.pages[pageId] = newPage;
+        state.pageOrder.push(pageId);
+
+        // If this is the first page, make it active
+        if (state.activePageId === null) {
+          state.activePageId = pageId;
+        }
+      });
+
+      return pageId;
+    },
+
+    // Delete a page
+    deletePage: (id: string) => {
+      const state = get();
+
+      // Can't delete the last page
+      if (state.pageOrder.length <= 1) {
+        console.warn('Cannot delete the last page');
+        return;
+      }
+
+      // Can't delete non-existent page
+      if (!state.pages[id]) {
+        return;
+      }
+
+      const wasActive = state.activePageId === id;
+      const currentIndex = state.pageOrder.indexOf(id);
+
+      set((draft) => {
+        // Remove from pages and order
+        delete draft.pages[id];
+        draft.pageOrder = draft.pageOrder.filter((pageId) => pageId !== id);
+
+        // If we deleted the active page, switch to adjacent page
+        if (wasActive && draft.pageOrder.length > 0) {
+          // Prefer the next page, or previous if we deleted the last one
+          const newIndex = Math.min(currentIndex, draft.pageOrder.length - 1);
+          draft.activePageId = draft.pageOrder[newIndex] ?? draft.pageOrder[0] ?? null;
+        }
+      });
+
+      // If we switched pages, load the new active page content
+      if (wasActive) {
+        const newState = get();
+        if (newState.activePageId) {
+          get().syncDocumentToCurrentPage();
+          // Update history active page (clears page history if switching)
+          useHistoryStore.getState().setActivePage(newState.activePageId);
+        }
+      }
+    },
+
+    // Rename a page
+    renamePage: (id: string, name: string) => {
+      set((state) => {
+        const page = state.pages[id];
+        if (page) {
+          page.name = name;
+          page.modifiedAt = Date.now();
+        }
+      });
+    },
+
+    // Duplicate a page
+    duplicatePage: (id: string): string | null => {
+      const state = get();
+      const sourcePage = state.pages[id];
+      if (!sourcePage) {
+        return null;
+      }
+
+      const newPageId = nanoid();
+      const currentIndex = state.pageOrder.indexOf(id);
+
+      set((draft) => {
+        // Deep copy the page
+        const newPage: Page = {
+          ...JSON.parse(JSON.stringify(sourcePage)),
+          id: newPageId,
+          name: `${sourcePage.name} (Copy)`,
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+        };
+
+        // Generate new IDs for all shapes
+        const oldToNewId: Record<string, string> = {};
+        const newShapes: Record<string, typeof newPage.shapes[string]> = {};
+        const newShapeOrder: string[] = [];
+
+        for (const oldId of newPage.shapeOrder) {
+          const shape = newPage.shapes[oldId];
+          if (shape) {
+            const newId = nanoid();
+            oldToNewId[oldId] = newId;
+            newShapes[newId] = { ...shape, id: newId };
+            newShapeOrder.push(newId);
+          }
+        }
+
+        // Update group childIds to use new IDs
+        for (const shape of Object.values(newShapes)) {
+          if (shape.type === 'group' && 'childIds' in shape) {
+            (shape as { childIds: string[] }).childIds = (
+              shape as { childIds: string[] }
+            ).childIds.map((childId) => oldToNewId[childId] ?? childId);
+          }
+          // Update connector references
+          if (shape.type === 'connector' && 'startShapeId' in shape) {
+            const connector = shape as { startShapeId?: string; endShapeId?: string };
+            if (connector.startShapeId) {
+              const newStartId = oldToNewId[connector.startShapeId];
+              if (newStartId) {
+                connector.startShapeId = newStartId;
+              }
+            }
+            if (connector.endShapeId) {
+              const newEndId = oldToNewId[connector.endShapeId];
+              if (newEndId) {
+                connector.endShapeId = newEndId;
+              }
+            }
+          }
+        }
+
+        newPage.shapes = newShapes;
+        newPage.shapeOrder = newShapeOrder;
+
+        draft.pages[newPageId] = newPage;
+        // Insert after the source page
+        draft.pageOrder.splice(currentIndex + 1, 0, newPageId);
+      });
+
+      return newPageId;
+    },
+
+    // Reorder pages
+    reorderPages: (newOrder: string[]) => {
+      set((state) => {
+        // Validate all IDs exist
+        const existingIds = new Set(Object.keys(state.pages));
+        const validOrder = newOrder.filter((id) => existingIds.has(id));
+
+        if (validOrder.length === state.pageOrder.length) {
+          state.pageOrder = validOrder;
+        }
+      });
+    },
+
+    // Set active page
+    setActivePage: (id: string) => {
+      const state = get();
+
+      // Don't switch if already active or page doesn't exist
+      if (state.activePageId === id || !state.pages[id]) {
+        return;
+      }
+
+      // Save current page camera state before switching
+      if (state.activePageId) {
+        useSessionStore.getState().savePageCamera(state.activePageId);
+      }
+
+      // Save current page content from documentStore
+      get().syncCurrentPageFromDocument();
+
+      // Update active page
+      set((draft) => {
+        draft.activePageId = id;
+      });
+
+      // Load new page content to documentStore
+      get().syncDocumentToCurrentPage();
+
+      // Restore camera state for new page
+      useSessionStore.getState().restorePageCamera(id);
+
+      // Clear selection and update history active page
+      useSessionStore.getState().clearSelection();
+      useHistoryStore.getState().setActivePage(id);
+    },
+
+    // Get a page by ID
+    getPage: (id: string): Page | undefined => {
+      return get().pages[id];
+    },
+
+    // Get the active page
+    getActivePage: (): Page | undefined => {
+      const state = get();
+      return state.activePageId ? state.pages[state.activePageId] : undefined;
+    },
+
+    // Get page count
+    getPageCount: (): number => {
+      return get().pageOrder.length;
+    },
+
+    // Sync current documentStore content to the active page
+    syncCurrentPageFromDocument: () => {
+      const state = get();
+      if (!state.activePageId) return;
+
+      const docState = useDocumentStore.getState();
+
+      set((draft) => {
+        const page = draft.pages[draft.activePageId!];
+        if (page) {
+          page.shapes = JSON.parse(JSON.stringify(docState.shapes));
+          page.shapeOrder = [...docState.shapeOrder];
+          page.modifiedAt = Date.now();
+        }
+      });
+    },
+
+    // Load active page content into documentStore
+    syncDocumentToCurrentPage: () => {
+      const state = get();
+      const activePage = state.activePageId ? state.pages[state.activePageId] : null;
+
+      if (activePage) {
+        useDocumentStore.getState().loadSnapshot({
+          shapes: activePage.shapes,
+          shapeOrder: activePage.shapeOrder,
+          version: 1,
+        });
+      }
+    },
+
+    // Get snapshot for persistence
+    getSnapshot: (): PageStoreSnapshot => {
+      // First sync current page from document
+      get().syncCurrentPageFromDocument();
+
+      const state = get();
+      return {
+        pages: JSON.parse(JSON.stringify(state.pages)),
+        pageOrder: [...state.pageOrder],
+        activePageId: state.activePageId,
+      };
+    },
+
+    // Load from snapshot
+    loadSnapshot: (snapshot: PageStoreSnapshot) => {
+      set((state) => {
+        state.pages = JSON.parse(JSON.stringify(snapshot.pages));
+        state.pageOrder = [...snapshot.pageOrder];
+        state.activePageId = snapshot.activePageId;
+      });
+
+      // Load active page into documentStore
+      get().syncDocumentToCurrentPage();
+
+      // Clear session state and set history active page
+      useSessionStore.getState().clearSelection();
+      useHistoryStore.getState().clear();
+      if (snapshot.activePageId) {
+        useHistoryStore.getState().setActivePage(snapshot.activePageId);
+      }
+    },
+
+    // Reset to empty state
+    reset: () => {
+      set((state) => {
+        state.pages = {};
+        state.pageOrder = [];
+        state.activePageId = null;
+      });
+    },
+
+    // Initialize with a default page
+    initializeDefault: () => {
+      const state = get();
+      if (state.pageOrder.length === 0) {
+        get().createPage('Page 1');
+      }
+    },
+  }))
+);
+
+/**
+ * Get the active page ID.
+ */
+export function getActivePageId(): string | null {
+  return usePageStore.getState().activePageId;
+}
+
+/**
+ * Check if a page exists.
+ */
+export function pageExists(id: string): boolean {
+  return usePageStore.getState().pages[id] !== undefined;
+}

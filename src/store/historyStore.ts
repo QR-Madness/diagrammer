@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { useDocumentStore, DocumentSnapshot } from './documentStore';
 
 /**
- * Maximum number of history entries to keep.
+ * Maximum number of history entries to keep per page.
  */
 const MAX_HISTORY_SIZE = 100;
 
@@ -24,17 +24,28 @@ export interface HistoryEntry {
 }
 
 /**
- * History state for undo/redo functionality.
+ * Per-page history data.
  */
-export interface HistoryState {
+export interface PageHistory {
   /** Past states (undo stack) */
   past: HistoryEntry[];
   /** Future states (redo stack) */
   future: HistoryEntry[];
-  /** Whether history tracking is enabled */
-  isTracking: boolean;
   /** Last push timestamp for debouncing */
   lastPushTime: number;
+}
+
+/**
+ * History state for undo/redo functionality.
+ * History is tracked per-page to maintain separate undo stacks.
+ */
+export interface HistoryState {
+  /** History data per page, keyed by page ID */
+  pageHistory: Record<string, PageHistory>;
+  /** Currently active page ID for history operations */
+  activePageId: string | null;
+  /** Whether history tracking is enabled */
+  isTracking: boolean;
 }
 
 /**
@@ -42,25 +53,35 @@ export interface HistoryState {
  */
 export interface HistoryActions {
   /**
-   * Push the current document state onto the history stack.
+   * Push the current document state onto the history stack for the active page.
    * @param description Optional description of the change
    */
   push: (description?: string) => void;
 
   /**
-   * Undo the last change.
+   * Undo the last change on the active page.
    */
   undo: () => void;
 
   /**
-   * Redo the last undone change.
+   * Redo the last undone change on the active page.
    */
   redo: () => void;
 
   /**
-   * Clear all history.
+   * Clear all history (all pages).
    */
   clear: () => void;
+
+  /**
+   * Clear history for a specific page.
+   */
+  clearPage: (pageId: string) => void;
+
+  /**
+   * Set the active page for history operations.
+   */
+  setActivePage: (pageId: string | null) => void;
 
   /**
    * Enable or disable history tracking.
@@ -68,22 +89,22 @@ export interface HistoryActions {
   setTracking: (enabled: boolean) => void;
 
   /**
-   * Check if undo is available.
+   * Check if undo is available for the active page.
    */
   canUndo: () => boolean;
 
   /**
-   * Check if redo is available.
+   * Check if redo is available for the active page.
    */
   canRedo: () => boolean;
 
   /**
-   * Get the number of undo steps available.
+   * Get the number of undo steps available for the active page.
    */
   getUndoCount: () => number;
 
   /**
-   * Get the number of redo steps available.
+   * Get the number of redo steps available for the active page.
    */
   getRedoCount: () => number;
 }
@@ -92,11 +113,21 @@ export interface HistoryActions {
  * Initial history state.
  */
 const initialState: HistoryState = {
-  past: [],
-  future: [],
+  pageHistory: {},
+  activePageId: null,
   isTracking: true,
-  lastPushTime: 0,
 };
+
+/**
+ * Create empty page history.
+ */
+function createEmptyPageHistory(): PageHistory {
+  return {
+    past: [],
+    future: [],
+    lastPushTime: 0,
+  };
+}
 
 /**
  * Create a snapshot of the current document state.
@@ -115,12 +146,15 @@ function restoreSnapshot(snapshot: DocumentSnapshot): void {
 /**
  * History store for undo/redo functionality.
  *
- * The history system stores complete document snapshots for simplicity.
- * For large documents, structural sharing could be implemented later.
+ * The history system stores complete document snapshots per page.
+ * Each page has its own undo/redo stack for independent history.
  *
  * Usage:
  * ```typescript
- * const { undo, redo, canUndo, canRedo } = useHistoryStore();
+ * const { undo, redo, canUndo, canRedo, setActivePage } = useHistoryStore();
+ *
+ * // Set active page when switching
+ * setActivePage(pageId);
  *
  * // Push state before making changes
  * push('Move shapes');
@@ -137,12 +171,16 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
   // Actions
   push: (description?: string) => {
     const state = get();
+    const { activePageId, isTracking } = state;
 
-    if (!state.isTracking) return;
+    if (!isTracking || !activePageId) return;
+
+    // Get or create page history
+    const pageHist = state.pageHistory[activePageId] ?? createEmptyPageHistory();
 
     // Debounce rapid pushes
     const now = Date.now();
-    if (now - state.lastPushTime < DEBOUNCE_TIME) {
+    if (now - pageHist.lastPushTime < DEBOUNCE_TIME) {
       return;
     }
 
@@ -154,8 +192,10 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     };
 
     set((state) => {
+      const currentPageHist = state.pageHistory[activePageId] ?? createEmptyPageHistory();
+
       // Add to past, clear future (new branch)
-      const newPast = [...state.past, entry];
+      const newPast = [...currentPageHist.past, entry];
 
       // Trim if exceeds max size
       if (newPast.length > MAX_HISTORY_SIZE) {
@@ -163,20 +203,29 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
       }
 
       return {
-        past: newPast,
-        future: [],
-        lastPushTime: now,
+        pageHistory: {
+          ...state.pageHistory,
+          [activePageId]: {
+            past: newPast,
+            future: [],
+            lastPushTime: now,
+          },
+        },
       };
     });
   },
 
   undo: () => {
     const state = get();
+    const { activePageId } = state;
 
-    if (state.past.length === 0) return;
+    if (!activePageId) return;
+
+    const pageHist = state.pageHistory[activePageId];
+    if (!pageHist || pageHist.past.length === 0) return;
 
     // Get the last entry from past
-    const lastEntry = state.past[state.past.length - 1];
+    const lastEntry = pageHist.past[pageHist.past.length - 1];
     if (!lastEntry) return;
 
     // Save current state to future before restoring
@@ -193,20 +242,34 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     restoreSnapshot(lastEntry.snapshot);
 
     // Update history stacks
-    set((state) => ({
-      past: state.past.slice(0, -1),
-      future: [currentEntry, ...state.future],
-      isTracking: true,
-    }));
+    set((state) => {
+      const currentPageHist = state.pageHistory[activePageId] ?? createEmptyPageHistory();
+
+      return {
+        pageHistory: {
+          ...state.pageHistory,
+          [activePageId]: {
+            past: currentPageHist.past.slice(0, -1),
+            future: [currentEntry, ...currentPageHist.future],
+            lastPushTime: currentPageHist.lastPushTime,
+          },
+        },
+        isTracking: true,
+      };
+    });
   },
 
   redo: () => {
     const state = get();
+    const { activePageId } = state;
 
-    if (state.future.length === 0) return;
+    if (!activePageId) return;
+
+    const pageHist = state.pageHistory[activePageId];
+    if (!pageHist || pageHist.future.length === 0) return;
 
     // Get the first entry from future
-    const nextEntry = state.future[0];
+    const nextEntry = pageHist.future[0];
     if (!nextEntry) return;
 
     // Save current state to past before restoring
@@ -223,19 +286,39 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     restoreSnapshot(nextEntry.snapshot);
 
     // Update history stacks
-    set((state) => ({
-      past: [...state.past, currentEntry],
-      future: state.future.slice(1),
-      isTracking: true,
-    }));
+    set((state) => {
+      const currentPageHist = state.pageHistory[activePageId] ?? createEmptyPageHistory();
+
+      return {
+        pageHistory: {
+          ...state.pageHistory,
+          [activePageId]: {
+            past: [...currentPageHist.past, currentEntry],
+            future: currentPageHist.future.slice(1),
+            lastPushTime: currentPageHist.lastPushTime,
+          },
+        },
+        isTracking: true,
+      };
+    });
   },
 
   clear: () => {
     set({
-      past: [],
-      future: [],
-      lastPushTime: 0,
+      pageHistory: {},
     });
+  },
+
+  clearPage: (pageId: string) => {
+    set((state) => {
+      const newPageHistory = { ...state.pageHistory };
+      delete newPageHistory[pageId];
+      return { pageHistory: newPageHistory };
+    });
+  },
+
+  setActivePage: (pageId: string | null) => {
+    set({ activePageId: pageId });
   },
 
   setTracking: (enabled: boolean) => {
@@ -243,19 +326,31 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
   },
 
   canUndo: () => {
-    return get().past.length > 0;
+    const state = get();
+    if (!state.activePageId) return false;
+    const pageHist = state.pageHistory[state.activePageId];
+    return pageHist ? pageHist.past.length > 0 : false;
   },
 
   canRedo: () => {
-    return get().future.length > 0;
+    const state = get();
+    if (!state.activePageId) return false;
+    const pageHist = state.pageHistory[state.activePageId];
+    return pageHist ? pageHist.future.length > 0 : false;
   },
 
   getUndoCount: () => {
-    return get().past.length;
+    const state = get();
+    if (!state.activePageId) return 0;
+    const pageHist = state.pageHistory[state.activePageId];
+    return pageHist ? pageHist.past.length : 0;
   },
 
   getRedoCount: () => {
-    return get().future.length;
+    const state = get();
+    if (!state.activePageId) return 0;
+    const pageHist = state.pageHistory[state.activePageId];
+    return pageHist ? pageHist.future.length : 0;
   },
 }));
 
@@ -271,10 +366,7 @@ export function pushHistory(description?: string): void {
  * Perform an action with history tracking.
  * Pushes history before the action and optionally after if successful.
  */
-export function withHistory<T>(
-  action: () => T,
-  description?: string
-): T {
+export function withHistory<T>(action: () => T, description?: string): T {
   pushHistory(description);
   return action();
 }

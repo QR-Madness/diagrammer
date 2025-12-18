@@ -1,0 +1,119 @@
+.save-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.save-status-name {
+  display: flex;
+  align-items: center;
+}
+
+.save-status-name-button {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-status-name-button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-color-input);
+}
+
+.save-status-dirty-dot {
+  color: var(--color-warning, #f59e0b);
+  font-size: 0.625rem;
+  margin-left: 0.125rem;
+}
+
+.save-status-input {
+  width: 180px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--color-primary);
+  border-radius: 4px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.save-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.save-status-badge.saving {
+  color: var(--color-primary);
+}
+
+.save-status-badge.saving .save-status-icon {
+  animation: spin 1s linear infinite;
+}
+
+.save-status-badge.dirty {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--color-warning, #f59e0b);
+}
+
+.save-status-badge.saved {
+  color: var(--color-success, #10b981);
+}
+
+.save-status-icon {
+  font-size: 0.75rem;
+}
+
+.save-status-text {
+  font-weight: 500;
+}
+
+.save-status-save-button {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.save-status-save-button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--color-primary);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark mode adjustments */
+:root.dark .save-status-badge.dirty {
+  background-color: rgba(245, 158, 11, 0.15);
+}
