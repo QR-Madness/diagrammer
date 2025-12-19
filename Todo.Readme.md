@@ -161,12 +161,14 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 9: UI Improvements - COMPLETE
 
 #### Enhanced Color Palette
+
 - [x] Recent colors tracking (last 8 used, persisted to localStorage)
 - [x] Custom color input with hex support
 - [x] Color palette organized by color family (grayscale, warm, cool, accent)
 - [x] Native color picker integration
 
 #### Property Panel Redesign
+
 - [x] Collapsible property sections with chevron headers
 - [x] Section state persistence (remember expanded/collapsed)
 - [x] Compact color input (inline picker + hex)
@@ -174,12 +176,14 @@ implementation phase as defined in Specification.Readme.md.
 - [x] More compact, vibrant styling
 
 #### Unified Toolbar (Notion/Linear Style)
+
 - [x] Single consolidated toolbar (~44px) replacing header + toolbar + page tabs
 - [x] Compact tool buttons (32px) with hover tooltips showing shortcuts
 - [x] Inline page tabs with horizontal scroll
 - [x] Minimal, keyboard-first aesthetic
 
 #### Status Bar
+
 - [x] Camera position display (X, Y coordinates)
 - [x] Zoom level with quick controls (-, +, Fit, 100%)
 - [x] Shape count indicator
@@ -190,8 +194,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Smart connectors with routing (avoid shapes)
 - [ ] Shape icons (similar to Eraser.io) + customizable icon library
 - [ ] Connector labels
-- [ ] Shape libraries (presets, templates)
-- [ ] Custom shape definitions
+- [ ] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
 
 ### Phase 11: Advanced Export
 
@@ -212,6 +215,7 @@ implementation phase as defined in Specification.Readme.md.
 #### UI Improvements
 
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
+- [ ] Context menu for style profiles (overwrite with current, delete, rename)
 
 ### Phase 14: Version 1.0
 
@@ -232,10 +236,11 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase ??: Canvas Code Integration with Git – Version ?.?
 
-- [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and others in the future
+- [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and
+  others in the future
 - [ ] Implement file(s) linking to a shape which can be viewed in the property panel
 - [ ] Integrate with existing Git integration for version control (save changes to Git repo; default directory is
-  /diagrammer/*.json)
+  /docs/diagrammer.json)
 - [ ] Feat: Spawn a VS Code instance with access to Git repo
 
 ### Phase ??: FUTURE: AI Model Integration (Epic - Large Task with Multiple Components) – Version ?.?

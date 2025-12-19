@@ -483,6 +483,12 @@ export class Engine {
   }
 
   private handlePointerEvent(event: NormalizedPointerEvent): void {
+    // Update cursor world position for status bar display
+    useSessionStore.getState().setCursorWorldPosition({
+      x: event.worldPoint.x,
+      y: event.worldPoint.y,
+    });
+
     this.toolManager.handlePointerEvent(event);
   }
 

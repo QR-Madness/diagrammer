@@ -86,6 +86,8 @@ export interface SessionState {
   snapGuides: SnapGuides;
   /** ID of shape that should be visually emphasized (for focus animation) */
   emphasizedShapeId: string | null;
+  /** Current cursor position in world coordinates (for status bar display) */
+  cursorWorldPosition: { x: number; y: number } | null;
 }
 
 /**
@@ -131,6 +133,10 @@ export interface SessionActions {
   focusOnShape: (id: string) => void;
   /** Clear the emphasis animation */
   clearEmphasis: () => void;
+
+  // Cursor Position
+  /** Set cursor world position (for status bar display) */
+  setCursorWorldPosition: (pos: { x: number; y: number } | null) => void;
 
   // Page Camera
   /** Save current camera state for a page */
@@ -179,6 +185,7 @@ const initialState: SessionState = {
   snapSettings: { ...DEFAULT_SNAP_SETTINGS },
   snapGuides: {},
   emphasizedShapeId: null,
+  cursorWorldPosition: null,
 };
 
 /**
@@ -354,6 +361,11 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
     set({ emphasizedShapeId: null });
   },
 
+  // Cursor Position
+  setCursorWorldPosition: (pos: { x: number; y: number } | null) => {
+    set({ cursorWorldPosition: pos });
+  },
+
   // Page Camera
   savePageCamera: (pageId: string) => {
     set((state) => ({
@@ -394,6 +406,7 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
       pageCameras: {},
       snapSettings: { ...DEFAULT_SNAP_SETTINGS },
       snapGuides: {},
+      cursorWorldPosition: null,
     });
   },
 }));

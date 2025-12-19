@@ -1,4 +1,4 @@
-# Diagrammer - Whiteboard Foundation
+# Diagrammer – Whiteboard Foundation
 
 A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API.
 

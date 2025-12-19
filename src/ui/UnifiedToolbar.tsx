@@ -32,7 +32,7 @@ interface ToolDef {
  * Available tools.
  */
 const TOOLS: ToolDef[] = [
-  { type: 'select', name: 'Select', icon: '\u2B1C', shortcut: 'V' },
+  { type: 'select', name: 'Select', icon: '\u2197', shortcut: 'V' },
   { type: 'pan', name: 'Pan', icon: '\u270B', shortcut: 'H' },
   { type: 'rectangle', name: 'Rectangle', icon: '\u25AD', shortcut: 'R' },
   { type: 'ellipse', name: 'Ellipse', icon: '\u25EF', shortcut: 'O' },
@@ -264,23 +264,50 @@ function DocumentInfo() {
 }
 
 /**
- * Inline page tabs with horizontal scroll.
+ * Context menu state for page tabs.
+ */
+interface PageContextMenu {
+  visible: boolean;
+  x: number;
+  y: number;
+  pageId: string;
+}
+
+/**
+ * Inline page tabs with horizontal scroll and context menu.
  */
 function InlinePageTabs() {
   const pages = usePageStore((state) => state.pages);
   const pageOrder = usePageStore((state) => state.pageOrder);
   const activePageId = usePageStore((state) => state.activePageId);
   const createPage = usePageStore((state) => state.createPage);
+  const deletePage = usePageStore((state) => state.deletePage);
+  const renamePage = usePageStore((state) => state.renamePage);
+  const duplicatePage = usePageStore((state) => state.duplicatePage);
   const setActivePage = usePageStore((state) => state.setActivePage);
 
   const tabsRef = useRef<HTMLDivElement>(null);
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<PageContextMenu>({
+    visible: false,
+    x: 0,
+    y: 0,
+    pageId: '',
+  });
+
+  // Editing state
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+
   const handleTabClick = useCallback(
     (pageId: string) => {
+      if (editingPageId) return;
       setActivePage(pageId);
       useHistoryStore.getState().setActivePage(pageId);
     },
-    [setActivePage]
+    [setActivePage, editingPageId]
   );
 
   const handleAddPage = useCallback(() => {
@@ -288,6 +315,73 @@ function InlinePageTabs() {
     setActivePage(newPageId);
     useHistoryStore.getState().setActivePage(newPageId);
   }, [createPage, setActivePage]);
+
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, pageId: string) => {
+    e.preventDefault();
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, pageId });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, visible: false }));
+  }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    if (!contextMenu.visible) return;
+    const handleClick = () => closeContextMenu();
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [contextMenu.visible, closeContextMenu]);
+
+  const handleContextRename = useCallback(() => {
+    const page = pages[contextMenu.pageId];
+    if (page) {
+      setEditingPageId(contextMenu.pageId);
+      setEditValue(page.name);
+    }
+    closeContextMenu();
+  }, [contextMenu.pageId, pages, closeContextMenu]);
+
+  const handleContextDuplicate = useCallback(() => {
+    duplicatePage(contextMenu.pageId);
+    closeContextMenu();
+  }, [contextMenu.pageId, duplicatePage, closeContextMenu]);
+
+  const handleContextDelete = useCallback(() => {
+    if (pageOrder.length > 1) {
+      deletePage(contextMenu.pageId);
+    }
+    closeContextMenu();
+  }, [contextMenu.pageId, pageOrder.length, deletePage, closeContextMenu]);
+
+  // Edit handlers
+  const handleEditSubmit = useCallback(() => {
+    if (editingPageId && editValue.trim()) {
+      renamePage(editingPageId, editValue.trim());
+    }
+    setEditingPageId(null);
+    setEditValue('');
+  }, [editingPageId, editValue, renamePage]);
+
+  const handleEditKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') handleEditSubmit();
+      else if (e.key === 'Escape') {
+        setEditingPageId(null);
+        setEditValue('');
+      }
+    },
+    [handleEditSubmit]
+  );
+
+  // Focus input when editing
+  useEffect(() => {
+    if (editingPageId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingPageId]);
 
   // Scroll active tab into view
   useEffect(() => {
@@ -304,15 +398,30 @@ function InlinePageTabs() {
         {pageOrder.map((pageId) => {
           const page = pages[pageId];
           if (!page) return null;
+          const isEditing = pageId === editingPageId;
 
           return (
             <button
               key={pageId}
               className={`inline-tab ${pageId === activePageId ? 'active' : ''}`}
               onClick={() => handleTabClick(pageId)}
+              onContextMenu={(e) => handleContextMenu(e, pageId)}
               title={page.name}
             >
-              {page.name}
+              {isEditing ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  className="inline-tab-input"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleEditSubmit}
+                  onKeyDown={handleEditKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                page.name
+              )}
             </button>
           );
         })}
@@ -320,6 +429,24 @@ function InlinePageTabs() {
       <button className="inline-tab-add" onClick={handleAddPage} title="Add page">
         +
       </button>
+
+      {/* Context Menu */}
+      {contextMenu.visible && (
+        <div
+          className="inline-tab-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button onClick={handleContextRename}>Rename</button>
+          <button onClick={handleContextDuplicate}>Duplicate</button>
+          <button
+            onClick={handleContextDelete}
+            disabled={pageOrder.length <= 1}
+            className={pageOrder.length <= 1 ? 'disabled' : ''}
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -81,6 +81,7 @@
 .tool-button-icon {
   font-size: 1rem;
   line-height: 1;
+  color: var(--text-primary, #495057);
 }
 
 /* Tool Tooltip */
@@ -245,8 +246,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  max-width: 300px;
-  min-width: 0;
+  max-width: 400px;
+  min-width: 150px;
+  position: relative;
 }
 
 .inline-tabs-scroll {
@@ -339,6 +341,14 @@
   border-bottom-color: var(--border-color, #404040);
 }
 
+[data-theme="dark"] .tool-button {
+  color: var(--text-primary, #cccccc);
+}
+
+[data-theme="dark"] .tool-button-icon {
+  color: var(--text-primary, #cccccc);
+}
+
 [data-theme="dark"] .tool-button:hover {
   background: var(--bg-hover, #3c3c3c);
 }
@@ -390,4 +400,69 @@
 
 [data-theme="dark"] .toolbar-action-button:hover {
   background: var(--bg-hover, #3c3c3c);
+}
+
+/* Inline Tab Context Menu */
+.inline-tab-context-menu {
+  position: fixed;
+  min-width: 120px;
+  padding: 4px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2000;
+}
+
+.inline-tab-context-menu button {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.inline-tab-context-menu button:hover {
+  background: var(--bg-hover, #e9ecef);
+}
+
+.inline-tab-context-menu button.disabled {
+  color: var(--text-muted, #adb5bd);
+  cursor: not-allowed;
+}
+
+.inline-tab-context-menu button.disabled:hover {
+  background: transparent;
+}
+
+/* Inline Tab Input */
+.inline-tab-input {
+  width: 60px;
+  padding: 2px 4px;
+  font-size: 0.75rem;
+  color: var(--text-primary, #495057);
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--color-primary, #2196f3);
+  border-radius: 3px;
+  outline: none;
+}
+
+[data-theme="dark"] .inline-tab-context-menu {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #404040);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .inline-tab-context-menu button:hover {
+  background: var(--bg-hover, #3c3c3c);
+}
+
+[data-theme="dark"] .inline-tab-input {
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #cccccc);
 }

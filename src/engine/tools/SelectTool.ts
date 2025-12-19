@@ -4,7 +4,7 @@ import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
 import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
-import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup } from '../../shapes/Shape';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup, isConnector, Anchor, AnchorPosition } from '../../shapes/Shape';
 import { useDocumentStore } from '../../store/documentStore';
 import { snapBounds, SnapResult } from '../Snapping';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
@@ -34,6 +34,11 @@ const DOUBLE_CLICK_THRESHOLD = 600;
  * Maximum distance between clicks for a double-click (pixels).
  */
 const DOUBLE_CLICK_DISTANCE = 15;
+
+/**
+ * Distance threshold for snapping to anchors (in screen pixels).
+ */
+const ANCHOR_SNAP_DISTANCE = 15;
 
 /**
  * Select tool for selecting and moving shapes.
@@ -93,6 +98,9 @@ export class SelectTool extends BaseTool {
 
   // Snapping
   private currentSnapResult: SnapResult | null = null;
+
+  // Connector anchor snapping (when resizing connector endpoints)
+  private connectorHoveredAnchor: { shapeId: string; anchor: Anchor } | null = null;
 
   /**
    * Resolve a hit shape ID to the appropriate selection target.
@@ -422,6 +430,11 @@ export class SelectTool extends BaseTool {
       ctx2d.restore();
     }
 
+    // Draw anchor points when resizing a connector
+    if (this.state === 'resizing' && this.resizeOriginalShape && isConnector(this.resizeOriginalShape)) {
+      this.drawConnectorAnchorPoints(ctx2d, toolCtx);
+    }
+
     // Draw marquee selection box
     if (this.state === 'marquee' && this.marqueeStart && this.marqueeEnd) {
       // Convert world points to screen points
@@ -747,6 +760,7 @@ export class SelectTool extends BaseTool {
     this.rotateStartAngle = 0;
     this.rotateShapeCenter = null;
     this.currentSnapResult = null;
+    this.connectorHoveredAnchor = null;
     this.panHandler.reset();
     // Note: Don't reset click tracking here, it persists across interactions
   }
@@ -803,7 +817,18 @@ export class SelectTool extends BaseTool {
 
     const original = this.resizeOriginalShape;
     const handleType = this.activeHandle.type;
-    const currentPoint = event.worldPoint;
+    let currentPoint = event.worldPoint;
+
+    // For connectors, check for anchor snapping
+    if (isConnector(original)) {
+      const anchorResult = this.findNearestAnchor(event.worldPoint, event.screenPoint, ctx, this.resizeShapeId);
+      if (anchorResult) {
+        this.connectorHoveredAnchor = anchorResult;
+        currentPoint = new Vec2(anchorResult.anchor.x, anchorResult.anchor.y);
+      } else {
+        this.connectorHoveredAnchor = null;
+      }
+    }
 
     // Calculate new shape properties based on handle type and original shape
     const updates = this.calculateResize(
@@ -815,9 +840,109 @@ export class SelectTool extends BaseTool {
     );
 
     if (updates) {
+      // For connectors, add anchor connection info
+      if (isConnector(original) && this.connectorHoveredAnchor) {
+        if (handleType === 'left') {
+          (updates as Partial<Shape> & { startShapeId?: string; startAnchor?: AnchorPosition }).startShapeId = this.connectorHoveredAnchor.shapeId;
+          (updates as Partial<Shape> & { startShapeId?: string; startAnchor?: AnchorPosition }).startAnchor = this.connectorHoveredAnchor.anchor.position;
+        } else {
+          (updates as Partial<Shape> & { endShapeId?: string; endAnchor?: AnchorPosition }).endShapeId = this.connectorHoveredAnchor.shapeId;
+          (updates as Partial<Shape> & { endShapeId?: string; endAnchor?: AnchorPosition }).endAnchor = this.connectorHoveredAnchor.anchor.position;
+        }
+      }
+
       ctx.updateShape(this.resizeShapeId, updates);
       ctx.requestRender();
     }
+  }
+
+  /**
+   * Draw anchor points on shapes when resizing a connector.
+   */
+  private drawConnectorAnchorPoints(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
+    const camera = toolCtx.camera;
+    const shapes = toolCtx.getShapes();
+
+    ctx2d.save();
+
+    for (const shapeId of toolCtx.getShapeOrder()) {
+      // Don't show anchors on the connector itself
+      if (shapeId === this.resizeShapeId) continue;
+
+      const shape = shapes[shapeId];
+      if (!shape || isConnector(shape)) continue;
+
+      const handler = shapeRegistry.getHandler(shape.type);
+      if (!handler.getAnchors) continue;
+
+      const anchors = handler.getAnchors(shape);
+      for (const anchor of anchors) {
+        const screenPos = camera.worldToScreen(new Vec2(anchor.x, anchor.y));
+
+        // Highlight hovered anchor
+        const isHovered =
+          this.connectorHoveredAnchor?.shapeId === shapeId &&
+          this.connectorHoveredAnchor?.anchor.position === anchor.position;
+
+        ctx2d.beginPath();
+        ctx2d.arc(screenPos.x, screenPos.y, isHovered ? 8 : 5, 0, Math.PI * 2);
+
+        if (isHovered) {
+          ctx2d.fillStyle = '#2196f3';
+          ctx2d.fill();
+          ctx2d.strokeStyle = '#ffffff';
+          ctx2d.lineWidth = 2;
+          ctx2d.stroke();
+        } else {
+          ctx2d.fillStyle = 'rgba(33, 150, 243, 0.3)';
+          ctx2d.fill();
+          ctx2d.strokeStyle = '#2196f3';
+          ctx2d.lineWidth = 1;
+          ctx2d.stroke();
+        }
+      }
+    }
+
+    ctx2d.restore();
+  }
+
+  /**
+   * Find the nearest anchor point on any shape (for connector snapping).
+   */
+  private findNearestAnchor(
+    _worldPoint: Vec2,
+    screenPoint: Vec2,
+    ctx: ToolContext,
+    excludeShapeId?: string
+  ): { shapeId: string; anchor: Anchor } | null {
+    const shapes = ctx.getShapes();
+    let bestResult: { shapeId: string; anchor: Anchor } | null = null;
+    let bestDistance = ANCHOR_SNAP_DISTANCE;
+
+    for (const shapeId of ctx.getShapeOrder()) {
+      // Don't snap to the connector itself or excluded shapes
+      if (shapeId === excludeShapeId) continue;
+
+      const shape = shapes[shapeId];
+      if (!shape || isConnector(shape)) continue;
+
+      const handler = shapeRegistry.getHandler(shape.type);
+      if (!handler.getAnchors) continue;
+
+      const anchors = handler.getAnchors(shape);
+      for (const anchor of anchors) {
+        // Calculate distance in screen pixels
+        const anchorScreen = ctx.camera.worldToScreen(new Vec2(anchor.x, anchor.y));
+        const screenDistance = Vec2.distance(anchorScreen, screenPoint);
+
+        if (screenDistance < bestDistance) {
+          bestDistance = screenDistance;
+          bestResult = { shapeId, anchor };
+        }
+      }
+    }
+
+    return bestResult;
   }
 
   /**
@@ -887,6 +1012,15 @@ export class SelectTool extends BaseTool {
       }
     }
 
+    if (isConnector(shape)) {
+      // For connectors, anchor is the other endpoint
+      if (handleType === 'left') {
+        return new Vec2(shape.x2, shape.y2);
+      } else {
+        return new Vec2(shape.x, shape.y);
+      }
+    }
+
     if (isText(shape)) {
       // For text, estimate height based on content (simplified)
       const lineHeight = shape.fontSize * 1.4;
@@ -936,6 +1070,10 @@ export class SelectTool extends BaseTool {
 
     if (isLine(original)) {
       return this.calculateLineResize(original, handleType, currentPoint);
+    }
+
+    if (isConnector(original)) {
+      return this.calculateConnectorResize(original, handleType, currentPoint);
     }
 
     if (isText(original)) {
@@ -1166,6 +1304,45 @@ export class SelectTool extends BaseTool {
         x2: currentPoint.x,
         y2: currentPoint.y,
       };
+    }
+  }
+
+  /**
+   * Calculate connector resize (moving endpoints).
+   * Connection info (startShapeId/endShapeId) is handled separately in handleResizingMove
+   * based on whether we're snapping to an anchor.
+   */
+  private calculateConnectorResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2
+  ): Partial<Shape> {
+    if (!isConnector(original)) return {};
+
+    // For connectors, 'left' handle moves start point, 'right' handle moves end point
+    // Connection clearing/setting is handled in handleResizingMove based on anchor snapping
+    if (handleType === 'left') {
+      const updates: Partial<Shape> = {
+        x: currentPoint.x,
+        y: currentPoint.y,
+      };
+      // Clear connection if not snapping to an anchor (will be set in handleResizingMove if snapping)
+      if (!this.connectorHoveredAnchor) {
+        (updates as { startShapeId?: string | null; startAnchor?: AnchorPosition | null }).startShapeId = null;
+        (updates as { startShapeId?: string | null; startAnchor?: AnchorPosition | null }).startAnchor = null;
+      }
+      return updates;
+    } else {
+      const updates: Partial<Shape> = {
+        x2: currentPoint.x,
+        y2: currentPoint.y,
+      };
+      // Clear connection if not snapping to an anchor
+      if (!this.connectorHoveredAnchor) {
+        (updates as { endShapeId?: string | null; endAnchor?: AnchorPosition | null }).endShapeId = null;
+        (updates as { endShapeId?: string | null; endAnchor?: AnchorPosition | null }).endAnchor = null;
+      }
+      return updates;
     }
   }
 

@@ -10,6 +10,7 @@
 import { useCallback } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
+import { calculateCombinedBounds } from '../shapes/utils/bounds';
 import './StatusBar.css';
 
 /**
@@ -24,6 +25,7 @@ export function StatusBar() {
   const camera = useSessionStore((state) => state.camera);
   const setCamera = useSessionStore((state) => state.setCamera);
   const activeTool = useSessionStore((state) => state.activeTool);
+  const cursorWorldPosition = useSessionStore((state) => state.cursorWorldPosition);
   const shapeCount = useDocumentStore((state) => state.shapeOrder.length);
 
   // Zoom controls
@@ -40,8 +42,42 @@ export function StatusBar() {
   }, [camera.zoom, setCamera]);
 
   const handleZoomFit = useCallback(() => {
-    // Reset to default view
-    setCamera({ x: 0, y: 0, zoom: 1 });
+    // Get all shapes and calculate combined bounds
+    const documentState = useDocumentStore.getState();
+    const shapes = Object.values(documentState.shapes);
+
+    if (shapes.length === 0) {
+      // No shapes, reset to default view
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+
+    const bounds = calculateCombinedBounds(shapes);
+    if (!bounds) {
+      setCamera({ x: 0, y: 0, zoom: 1 });
+      return;
+    }
+
+    // Get viewport size (approximate from document body or use defaults)
+    // StatusBar doesn't have direct access to viewport, so we use window
+    const viewportWidth = window.innerWidth * 0.7; // Approximate canvas width
+    const viewportHeight = window.innerHeight - 100; // Approximate canvas height
+
+    // Add padding (10% on each side)
+    const padding = 0.1;
+    const contentWidth = bounds.width * (1 + padding * 2);
+    const contentHeight = bounds.height * (1 + padding * 2);
+
+    // Calculate zoom to fit content
+    const zoomX = viewportWidth / contentWidth;
+    const zoomY = viewportHeight / contentHeight;
+    const zoom = Math.min(zoomX, zoomY, 2); // Cap at 2x zoom
+
+    // Center camera on content bounds center
+    const centerX = bounds.center.x;
+    const centerY = bounds.center.y;
+
+    setCamera({ x: centerX, y: centerY, zoom: Math.max(0.1, zoom) });
   }, [setCamera]);
 
   const handleZoom100 = useCallback(() => {
@@ -56,12 +92,12 @@ export function StatusBar() {
 
   return (
     <div className="status-bar">
-      {/* Left Section: Position (placeholder) */}
+      {/* Left Section: Cursor Position */}
       <div className="status-bar-section status-bar-left">
         <span className="status-bar-label">X:</span>
-        <span className="status-bar-value">{Math.round(camera.x)}</span>
+        <span className="status-bar-value">{cursorWorldPosition ? Math.round(cursorWorldPosition.x) : '—'}</span>
         <span className="status-bar-label">Y:</span>
-        <span className="status-bar-value">{Math.round(camera.y)}</span>
+        <span className="status-bar-value">{cursorWorldPosition ? Math.round(cursorWorldPosition.y) : '—'}</span>
       </div>
 
       {/* Center Section: Zoom Controls */}
