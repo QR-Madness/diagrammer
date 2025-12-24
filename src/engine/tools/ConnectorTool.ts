@@ -2,7 +2,7 @@ import { BaseTool, ToolContext } from './Tool';
 import { NormalizedPointerEvent } from '../InputHandler';
 import { Vec2 } from '../../math/Vec2';
 import { ToolType } from '../../store/sessionStore';
-import { ConnectorShape, DEFAULT_CONNECTOR, Anchor, AnchorPosition, isConnector } from '../../shapes/Shape';
+import { ConnectorShape, DEFAULT_CONNECTOR, Anchor, AnchorPosition, isConnector, isGroup } from '../../shapes/Shape';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
 import { nanoid } from 'nanoid';
 
@@ -248,15 +248,24 @@ export class ConnectorTool extends BaseTool {
     let bestResult: { shapeId: string; anchor: Anchor } | null = null;
     let bestDistance = ANCHOR_SNAP_DISTANCE;
 
-    for (const shapeId of ctx.getShapeOrder()) {
+    // Helper to recursively find anchors, including inside groups
+    const findAnchorsInShape = (shapeId: string) => {
       // Don't connect to the shape we're starting from (for end point)
-      if (this.state === 'drawing' && shapeId === this.startShapeId) continue;
+      if (this.state === 'drawing' && shapeId === this.startShapeId) return;
 
       const shape = shapes[shapeId];
-      if (!shape || isConnector(shape)) continue;
+      if (!shape || isConnector(shape)) return;
+
+      // For groups, recursively check children
+      if (isGroup(shape)) {
+        for (const childId of shape.childIds) {
+          findAnchorsInShape(childId);
+        }
+        return;
+      }
 
       const handler = shapeRegistry.getHandler(shape.type);
-      if (!handler.getAnchors) continue;
+      if (!handler.getAnchors) return;
 
       const anchors = handler.getAnchors(shape);
       for (const anchor of anchors) {
@@ -269,6 +278,10 @@ export class ConnectorTool extends BaseTool {
           bestResult = { shapeId, anchor };
         }
       }
+    };
+
+    for (const shapeId of ctx.getShapeOrder()) {
+      findAnchorsInShape(shapeId);
     }
 
     return bestResult;
@@ -280,12 +293,21 @@ export class ConnectorTool extends BaseTool {
 
     ctx2d.save();
 
-    for (const shapeId of toolCtx.getShapeOrder()) {
+    // Helper to recursively draw anchors, including inside groups
+    const drawAnchorsForShape = (shapeId: string) => {
       const shape = shapes[shapeId];
-      if (!shape || isConnector(shape)) continue;
+      if (!shape || isConnector(shape)) return;
+
+      // For groups, recursively draw children's anchors
+      if (isGroup(shape)) {
+        for (const childId of shape.childIds) {
+          drawAnchorsForShape(childId);
+        }
+        return;
+      }
 
       const handler = shapeRegistry.getHandler(shape.type);
-      if (!handler.getAnchors) continue;
+      if (!handler.getAnchors) return;
 
       const anchors = handler.getAnchors(shape);
       for (const anchor of anchors) {
@@ -313,6 +335,10 @@ export class ConnectorTool extends BaseTool {
           ctx2d.stroke();
         }
       }
+    };
+
+    for (const shapeId of toolCtx.getShapeOrder()) {
+      drawAnchorsForShape(shapeId);
     }
 
     ctx2d.restore();

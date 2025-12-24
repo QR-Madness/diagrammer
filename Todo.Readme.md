@@ -189,6 +189,11 @@ implementation phase as defined in Specification.Readme.md.
 - [x] Shape count indicator
 - [x] Current tool display
 
+### Phase 9.5: IndexedDb Storage
+
+- [ ] Implement an IndexedDb storage pattern for images and blobs
+- [ ] Plan for a local directory storage which allows documents to reside within their own directory
+
 ### Phase 10: Advanced Diagramming
 
 - [ ] Smart connectors with routing (avoid shapes)
@@ -216,6 +221,15 @@ implementation phase as defined in Specification.Readme.md.
 
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
 - [ ] Context menu for style profiles (overwrite with current, delete, rename)
+- [ ] Allow group click-through to shapes for trivial editing of shapes within groups
+- [ ] Smart-alignment for shape resize
+- [ ] Allow LaTeX equations for shape text by prepending `=` to the 
+
+##### Rich Document Editor Upgrades
+
+- [ ] Tables
+- [ ] LaTeX Equation Support
+- [ ] Interactive Tasks Lists
 
 ### Phase 14: Version 1.0
 

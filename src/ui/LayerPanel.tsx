@@ -27,7 +27,8 @@ function getShapeName(shape: Shape): string {
     case 'connector':
       return 'Connector';
     case 'group':
-      return `Group (${(shape as GroupShape).childIds.length})`;
+      const group = shape as GroupShape;
+      return group.name || `Group (${group.childIds.length})`;
     default:
       return 'Shape';
   }
@@ -58,6 +59,10 @@ export function LayerPanel() {
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
+
+  // Rename state
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   // Collapse state (collapsed by default)
   const [isCollapsed, setIsCollapsed] = useState(true);
@@ -250,6 +255,33 @@ export function LayerPanel() {
     setContextMenu(null);
   }, [push, deleteShapes, clearSelection]);
 
+  // Start renaming a group
+  const handleStartRename = useCallback((groupId: string) => {
+    const shape = shapes[groupId];
+    if (shape && isGroup(shape)) {
+      const currentName = shape.name || '';
+      setRenamingGroupId(groupId);
+      setRenameValue(currentName);
+      setContextMenu(null);
+    }
+  }, [shapes]);
+
+  // Finish renaming a group
+  const handleFinishRename = useCallback(() => {
+    if (renamingGroupId) {
+      push('Rename group');
+      updateShape(renamingGroupId, { name: renameValue.trim() || undefined } as Partial<Shape>);
+      setRenamingGroupId(null);
+      setRenameValue('');
+    }
+  }, [renamingGroupId, renameValue, push, updateShape]);
+
+  // Cancel renaming
+  const handleCancelRename = useCallback(() => {
+    setRenamingGroupId(null);
+    setRenameValue('');
+  }, []);
+
   // Context menu handlers
   const handleContextMenu = useCallback((e: React.MouseEvent, shapeId: string) => {
     e.preventDefault();
@@ -325,7 +357,24 @@ export function LayerPanel() {
           )}
 
           <div className="layer-item-info">
-            <span className="layer-item-type">{getShapeName(shape)}</span>
+            {renamingGroupId === id ? (
+              <input
+                type="text"
+                className="layer-item-rename-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                onBlur={handleFinishRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleFinishRename();
+                  if (e.key === 'Escape') handleCancelRename();
+                  e.stopPropagation();
+                }}
+                onClick={(e) => e.stopPropagation()}
+                autoFocus
+              />
+            ) : (
+              <span className="layer-item-type">{getShapeName(shape)}</span>
+            )}
             <span className="layer-item-id">{id.slice(0, 6)}</span>
           </div>
 
@@ -466,12 +515,20 @@ export function LayerPanel() {
           onClick={(e) => e.stopPropagation()}
         >
           {shapes[contextMenu.shapeId] && isGroup(shapes[contextMenu.shapeId]!) && (
-            <button
-              className="layer-context-menu-item"
-              onClick={() => handleUngroup(contextMenu.shapeId)}
-            >
-              Ungroup
-            </button>
+            <>
+              <button
+                className="layer-context-menu-item"
+                onClick={() => handleStartRename(contextMenu.shapeId)}
+              >
+                Rename
+              </button>
+              <button
+                className="layer-context-menu-item"
+                onClick={() => handleUngroup(contextMenu.shapeId)}
+              >
+                Ungroup
+              </button>
+            </>
           )}
           {selectedIds.size >= 2 && (
             <button

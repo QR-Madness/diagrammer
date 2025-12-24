@@ -130,6 +130,27 @@
   text-overflow: ellipsis;
 }
 
+.layer-item-rename-input {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #495057);
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--color-primary, #2196f3);
+  border-radius: 3px;
+  padding: 2px 4px;
+  width: 100%;
+  outline: none;
+}
+
+.layer-item-rename-input:focus {
+  border-color: var(--color-primary, #2196f3);
+}
+
+[data-theme="dark"] .layer-item-rename-input {
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #cccccc);
+}
+
 .layer-item-id {
   font-size: 10px;
   color: var(--text-secondary, #6c757d);

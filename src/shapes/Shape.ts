@@ -199,6 +199,8 @@ export interface GroupShape extends BaseShape {
   type: 'group';
   /** IDs of child shapes (can include other groups for nesting) */
   childIds: string[];
+  /** Optional name for the group (displayed in layer panel) */
+  name?: string;
 }
 
 /**
