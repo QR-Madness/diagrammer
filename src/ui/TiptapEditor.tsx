@@ -6,14 +6,57 @@
  * - Bold, italic, inline code
  * - Bullet and numbered lists
  * - Horizontal rules
+ * - Images (stored in IndexedDB with blob:// URLs)
  */
 
 import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
 import { useRichTextStore } from '../store/richTextStore';
+import { blobStorage } from '../storage/BlobStorage';
 import './TiptapEditor.css';
+
+/**
+ * Cache of object URLs for blob:// images.
+ * Maps blob ID to object URL.
+ */
+const blobObjectUrls = new Map<string, string>();
+
+/**
+ * Convert blob:// URL to object URL by loading from IndexedDB.
+ * Caches object URLs to avoid repeated loads.
+ */
+async function getBlobObjectUrl(blobUrl: string): Promise<string | null> {
+  // Check if it's a blob:// URL
+  if (!blobUrl.startsWith('blob://')) {
+    return blobUrl; // Return as-is for regular URLs
+  }
+
+  const blobId = blobUrl.replace('blob://', '');
+
+  // Check cache
+  if (blobObjectUrls.has(blobId)) {
+    return blobObjectUrls.get(blobId)!;
+  }
+
+  // Load from IndexedDB
+  try {
+    const blob = await blobStorage.loadBlob(blobId);
+    if (!blob) {
+      console.warn(`Blob not found: ${blobId}`);
+      return null;
+    }
+
+    const objectUrl = URL.createObjectURL(blob);
+    blobObjectUrls.set(blobId, objectUrl);
+    return objectUrl;
+  } catch (error) {
+    console.error(`Failed to load blob: ${blobId}`, error);
+    return null;
+  }
+}
 
 /**
  * Configure Tiptap extensions for initial scope.
@@ -30,6 +73,10 @@ const extensions = [
   }),
   Placeholder.configure({
     placeholder: 'Start writing your document...',
+  }),
+  Image.configure({
+    inline: true,
+    allowBase64: true,
   }),
 ];
 
@@ -75,6 +122,45 @@ export function TiptapEditor({ className }: TiptapEditorProps) {
     }
     return () => {
       delete (window as unknown as { __tiptapEditor?: typeof editor }).__tiptapEditor;
+    };
+  }, [editor]);
+
+  // Convert blob:// URLs to object URLs for rendering
+  useEffect(() => {
+    if (!editor) return;
+
+    const convertBlobUrls = async () => {
+      const editorElement = editor.view.dom;
+      const images = editorElement.querySelectorAll('img[src^="blob://"]');
+
+      for (const element of Array.from(images)) {
+        const img = element as HTMLImageElement;
+        const blobUrl = img.getAttribute('src');
+        if (!blobUrl) continue;
+
+        const objectUrl = await getBlobObjectUrl(blobUrl);
+        if (objectUrl && objectUrl !== blobUrl) {
+          img.setAttribute('src', objectUrl);
+        } else if (!objectUrl) {
+          // Show placeholder for missing blobs
+          img.setAttribute('alt', '(Image not found)');
+          img.style.border = '2px dashed var(--border-color)';
+          img.style.padding = '8px';
+        }
+      }
+    };
+
+    // Convert on initial load
+    convertBlobUrls();
+
+    // Convert whenever content updates
+    const handleUpdate = () => {
+      convertBlobUrls();
+    };
+
+    editor.on('update', handleUpdate);
+    return () => {
+      editor.off('update', handleUpdate);
     };
   }, [editor]);
 

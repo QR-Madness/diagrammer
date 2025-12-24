@@ -14,16 +14,17 @@
   },
   "dependencies": {
     "@tiptap/core": "^2.1.0",
+    "@tiptap/extension-image": "^2.1.0",
     "@tiptap/extension-placeholder": "^2.1.0",
     "@tiptap/pm": "^2.1.0",
     "@tiptap/react": "^2.1.0",
     "@tiptap/starter-kit": "^2.1.0",
+    "immer": "^10.0.3",
+    "nanoid": "^5.0.4",
+    "rbush": "^3.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zustand": "^4.4.7",
-    "immer": "^10.0.3",
-    "rbush": "^3.0.1",
-    "nanoid": "^5.0.4"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/jsdom": "^27.0.0",

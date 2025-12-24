@@ -46,6 +46,8 @@ export interface DiagramDocument {
   version: number;
   /** Rich text document content (optional for backwards compatibility) */
   richTextContent?: RichTextContent;
+  /** Blob IDs referenced by this document (for garbage collection) */
+  blobReferences?: string[];
 }
 
 /**

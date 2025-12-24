@@ -10,6 +10,7 @@ import {
   uploadDocument,
 } from '../store/persistenceStore';
 import { ExportDialog } from './ExportDialog';
+import { StorageManager } from './StorageManager';
 import './FileMenu.css';
 
 interface FileMenuProps {
@@ -19,6 +20,7 @@ interface FileMenuProps {
 export function FileMenu({ onOpenDocumentManager }: FileMenuProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [storageManagerOpen, setStorageManagerOpen] = useState(false);
   const [exportScope, setExportScope] = useState<'all' | 'selection'>('all');
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -64,6 +66,15 @@ export function FileMenu({ onOpenDocumentManager }: FileMenuProps) {
 
   const handleCloseExportDialog = useCallback(() => {
     setExportDialogOpen(false);
+  }, []);
+
+  const handleOpenStorageManager = useCallback(() => {
+    setStorageManagerOpen(true);
+    setIsMenuOpen(false);
+  }, []);
+
+  const handleCloseStorageManager = useCallback(() => {
+    setStorageManagerOpen(false);
   }, []);
 
   // Document operations
@@ -175,6 +186,13 @@ export function FileMenu({ onOpenDocumentManager }: FileMenuProps) {
 
             <div className="file-menu-separator" />
 
+            {/* Storage management */}
+            <button className="file-menu-item" onClick={handleOpenStorageManager}>
+              <span className="file-menu-item-label">Storage Manager...</span>
+            </button>
+
+            <div className="file-menu-separator" />
+
             {/* Image export */}
             <button
               className="file-menu-item"
@@ -216,6 +234,10 @@ export function FileMenu({ onOpenDocumentManager }: FileMenuProps) {
         scope={exportScope}
         defaultFilename="diagram"
       />
+
+      {storageManagerOpen && (
+        <StorageManager onClose={handleCloseStorageManager} />
+      )}
     </>
   );
 }

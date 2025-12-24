@@ -16,6 +16,7 @@ import {
 } from '../types/Document';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
+import { blobStorage } from '../storage/BlobStorage';
 
 /**
  * Auto-save debounce time in milliseconds.
@@ -87,7 +88,7 @@ const initialState: PersistenceState = {
 /**
  * Save a document to localStorage.
  */
-function saveDocumentToStorage(doc: DiagramDocument): void {
+export function saveDocumentToStorage(doc: DiagramDocument): void {
   try {
     const key = `${STORAGE_KEYS.DOCUMENT_PREFIX}${doc.id}`;
     localStorage.setItem(key, JSON.stringify(doc));
@@ -100,7 +101,7 @@ function saveDocumentToStorage(doc: DiagramDocument): void {
 /**
  * Load a document from localStorage.
  */
-function loadDocumentFromStorage(id: string): DiagramDocument | null {
+export function loadDocumentFromStorage(id: string): DiagramDocument | null {
   try {
     const key = `${STORAGE_KEYS.DOCUMENT_PREFIX}${id}`;
     const json = localStorage.getItem(key);
@@ -115,13 +116,45 @@ function loadDocumentFromStorage(id: string): DiagramDocument | null {
 /**
  * Delete a document from localStorage.
  */
-function deleteDocumentFromStorage(id: string): void {
+export function deleteDocumentFromStorage(id: string): void {
   try {
     const key = `${STORAGE_KEYS.DOCUMENT_PREFIX}${id}`;
     localStorage.removeItem(key);
   } catch (error) {
     console.error('Failed to delete document from localStorage:', error);
   }
+}
+
+/**
+ * Extract blob IDs from Tiptap rich text content.
+ * Looks for blob:// URLs in image nodes.
+ *
+ * @param content - Tiptap JSON content
+ * @returns Array of blob IDs
+ */
+function extractBlobIds(content: any): string[] {
+  const blobIds: string[] = [];
+
+  function traverse(node: any) {
+    if (!node) return;
+
+    // Check if this is an image node with blob:// URL
+    if (node.type === 'image' && node.attrs?.src) {
+      const src = node.attrs.src as string;
+      if (src.startsWith('blob://')) {
+        const blobId = src.replace('blob://', '');
+        blobIds.push(blobId);
+      }
+    }
+
+    // Recursively traverse children
+    if (node.content && Array.isArray(node.content)) {
+      node.content.forEach((child: any) => traverse(child));
+    }
+  }
+
+  traverse(content);
+  return blobIds;
 }
 
 /**
@@ -225,6 +258,11 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           existingDoc ?? undefined
         );
 
+        // Extract blob references from rich text content
+        if (doc.richTextContent) {
+          doc.blobReferences = extractBlobIds(doc.richTextContent);
+        }
+
         // Save to localStorage
         saveDocumentToStorage(doc);
 
@@ -251,6 +289,11 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         // Create document from current state
         const doc = createDocumentFromPageStore(newId, name);
+
+        // Extract blob references from rich text content
+        if (doc.richTextContent) {
+          doc.blobReferences = extractBlobIds(doc.richTextContent);
+        }
 
         // Save to localStorage
         saveDocumentToStorage(doc);
@@ -301,6 +344,17 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
       deleteDocument: (id: string) => {
         const state = get();
 
+        // Load document to get blob references
+        const doc = loadDocumentFromStorage(id);
+        if (doc && doc.blobReferences) {
+          // Decrement usage count for each referenced blob
+          doc.blobReferences.forEach((blobId) => {
+            blobStorage.decrementUsageCount(blobId).catch((error) => {
+              console.error(`Failed to decrement usage count for blob ${blobId}:`, error);
+            });
+          });
+        }
+
         // Delete from localStorage
         deleteDocumentFromStorage(id);
 
@@ -347,6 +401,11 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         const doc = createDocumentFromPageStore(docId, state.currentDocumentName);
 
+        // Extract blob references from rich text content
+        if (doc.richTextContent) {
+          doc.blobReferences = extractBlobIds(doc.richTextContent);
+        }
+
         return JSON.stringify(doc, null, 2);
       },
 
@@ -365,6 +424,15 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           const newId = nanoid();
           doc.id = newId;
           doc.modifiedAt = Date.now();
+
+          // Increment usage counts for referenced blobs
+          if (doc.blobReferences) {
+            doc.blobReferences.forEach((blobId) => {
+              blobStorage.incrementUsageCount(blobId).catch((error) => {
+                console.error(`Failed to increment usage count for blob ${blobId}:`, error);
+              });
+            });
+          }
 
           // Save to localStorage
           saveDocumentToStorage(doc);

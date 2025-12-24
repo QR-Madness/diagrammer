@@ -6,11 +6,13 @@
  * - Bold, italic, inline code
  * - Bullet and numbered lists
  * - Horizontal rule
+ * - Image upload
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Editor } from '@tiptap/core';
 import { getTiptapEditor } from './TiptapEditor';
+import { ImageUploadButton } from './ImageUploadButton';
 import './DocumentEditorToolbar.css';
 
 export function DocumentEditorToolbar() {
@@ -166,6 +168,13 @@ export function DocumentEditorToolbar() {
         >
           <span className="toolbar-icon">—</span>
         </button>
+      </div>
+
+      <div className="document-editor-toolbar-divider" />
+
+      {/* Image upload */}
+      <div className="document-editor-toolbar-group">
+        <ImageUploadButton className="document-editor-toolbar-btn" />
       </div>
     </div>
   );
