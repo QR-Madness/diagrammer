@@ -207,7 +207,8 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 10: Advanced Diagramming
 
 - [ ] Smart connectors with routing (avoid shapes)
-- [ ] Shape icons (similar to Eraser.io) + customizable icon library (use new indexeddb for this)
+- [ ] Custom icon library (use new indexeddb for this)
+- [ ] Shape icons (similar to Eraser.io)
 - [ ] Connector labels
 
 ### Phase 10.5: Shape Libraries
@@ -243,6 +244,9 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Tables
 - [ ] LaTeX Equation Support
 - [ ] Interactive Tasks Lists
+- [ ] Image resizing handles OR install a better image extension
+- [ ] Deeper headings (preferred up to 7 levels)
+- [ ] Additional tweaks
 
 ### Phase 14: Version 1.0
 

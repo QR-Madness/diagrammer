@@ -77,6 +77,64 @@ function ToolButton({
 }
 
 /**
+ * Tools menu dropdown.
+ */
+function ToolsMenuButton({ onOpenStorageManager }: { onOpenStorageManager: () => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
+
+  // Close on escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  const handleStorageManager = useCallback(() => {
+    onOpenStorageManager();
+    setIsOpen(false);
+  }, [onOpenStorageManager]);
+
+  return (
+    <div className="file-menu-button" ref={menuRef}>
+      <button
+        className={`file-menu-trigger ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        Tools
+        <span className="file-menu-arrow">{isOpen ? '\u25B2' : '\u25BC'}</span>
+      </button>
+      {isOpen && (
+        <div className="file-menu-dropdown">
+          <button onClick={handleStorageManager}>Storage Manager...</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Compact file menu dropdown.
  */
 function FileMenuButton({ onOpenDocumentManager }: { onOpenDocumentManager: () => void }) {
@@ -456,12 +514,13 @@ function InlinePageTabs() {
  */
 interface UnifiedToolbarProps {
   onOpenDocumentManager: () => void;
+  onOpenStorageManager: () => void;
 }
 
 /**
  * UnifiedToolbar component.
  */
-export function UnifiedToolbar({ onOpenDocumentManager }: UnifiedToolbarProps) {
+export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager }: UnifiedToolbarProps) {
   const activeTool = useSessionStore((state) => state.activeTool);
   const setActiveTool = useSessionStore((state) => state.setActiveTool);
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
@@ -472,6 +531,7 @@ export function UnifiedToolbar({ onOpenDocumentManager }: UnifiedToolbarProps) {
       {/* Left Section: File Menu + Tools */}
       <div className="unified-toolbar-left">
         <FileMenuButton onOpenDocumentManager={onOpenDocumentManager} />
+        <ToolsMenuButton onOpenStorageManager={onOpenStorageManager} />
         <div className="toolbar-divider" />
         <div className="tool-buttons">
           {TOOLS.map((tool) => (

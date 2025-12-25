@@ -4,6 +4,7 @@ import { CanvasContainer } from './CanvasContainer';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
 import { DocumentManager } from './DocumentManager';
+import { StorageManager } from './StorageManager';
 import { SplitPane } from './SplitPane';
 import { DocumentEditorPanel } from './DocumentEditorPanel';
 import { UnifiedToolbar } from './UnifiedToolbar';
@@ -20,6 +21,9 @@ function App() {
   // Document manager modal state
   const [isDocumentManagerOpen, setIsDocumentManagerOpen] = useState(false);
 
+  // Storage manager modal state
+  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
+
   // Split pane collapse state
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
 
@@ -33,6 +37,15 @@ function App() {
 
   const handleCloseDocumentManager = useCallback(() => {
     setIsDocumentManagerOpen(false);
+  }, []);
+
+  // Open storage manager callback
+  const handleOpenStorageManager = useCallback(() => {
+    setIsStorageManagerOpen(true);
+  }, []);
+
+  const handleCloseStorageManager = useCallback(() => {
+    setIsStorageManagerOpen(false);
   }, []);
 
   // Collapse handler for document editor panel
@@ -70,7 +83,10 @@ function App() {
 
   return (
     <div className="app">
-      <UnifiedToolbar onOpenDocumentManager={handleOpenDocumentManager} />
+      <UnifiedToolbar
+        onOpenDocumentManager={handleOpenDocumentManager}
+        onOpenStorageManager={handleOpenStorageManager}
+      />
       <main className="app-main">
         <SplitPane
           leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
@@ -96,6 +112,11 @@ function App() {
         isOpen={isDocumentManagerOpen}
         onClose={handleCloseDocumentManager}
       />
+
+      {/* Storage Manager Modal */}
+      {isStorageManagerOpen && (
+        <StorageManager onClose={handleCloseStorageManager} />
+      )}
     </div>
   );
 }

@@ -106,6 +106,22 @@
   margin: 1.5rem 0;
 }
 
+/* Images */
+.tiptap-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tiptap-editor .ProseMirror img[src^="blob://"] {
+  /* Placeholder styling for missing blobs */
+  min-width: 100px;
+  min-height: 100px;
+}
+
 /* Bold and italic */
 .tiptap-editor .ProseMirror strong {
   font-weight: 600;

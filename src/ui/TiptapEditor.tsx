@@ -75,8 +75,11 @@ const extensions = [
     placeholder: 'Start writing your document...',
   }),
   Image.configure({
-    inline: true,
+    inline: false,
     allowBase64: true,
+    HTMLAttributes: {
+      class: 'tiptap-image',
+    },
   }),
 ];
 
