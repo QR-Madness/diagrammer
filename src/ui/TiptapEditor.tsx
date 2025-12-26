@@ -113,6 +113,27 @@ export function TiptapEditor({ className }: TiptapEditorProps) {
       const newContent = JSON.stringify(content.content);
       if (currentContent !== newContent) {
         editor.commands.setContent(content.content);
+
+        // Convert blob:// URLs after content is set (slight delay for DOM update)
+        requestAnimationFrame(async () => {
+          const editorElement = editor.view.dom;
+          const images = editorElement.querySelectorAll('img[src^="blob://"]');
+
+          for (const element of Array.from(images)) {
+            const img = element as HTMLImageElement;
+            const blobUrl = img.getAttribute('src');
+            if (!blobUrl) continue;
+
+            const objectUrl = await getBlobObjectUrl(blobUrl);
+            if (objectUrl && objectUrl !== blobUrl) {
+              img.setAttribute('src', objectUrl);
+            } else if (!objectUrl) {
+              img.setAttribute('alt', '(Image not found)');
+              img.style.border = '2px dashed var(--border-color)';
+              img.style.padding = '8px';
+            }
+          }
+        });
       }
     }
   }, [editor, content.content]);

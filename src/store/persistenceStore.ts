@@ -248,8 +248,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           docId = nanoid();
         }
 
-        // Get existing document for createdAt timestamp
+        // Get existing document for createdAt timestamp and old blob references
         const existingDoc = docId ? loadDocumentFromStorage(docId) : undefined;
+        const oldBlobRefs = new Set(existingDoc?.blobReferences ?? []);
 
         // Create document from current state
         const doc = createDocumentFromPageStore(
@@ -261,6 +262,17 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         // Extract blob references from rich text content
         if (doc.richTextContent) {
           doc.blobReferences = extractBlobIds(doc.richTextContent);
+        }
+        const newBlobRefs = new Set(doc.blobReferences ?? []);
+
+        // Track blob reference changes and update usage counts
+        // Decrement usage for removed blobs (was in old, not in new)
+        for (const blobId of oldBlobRefs) {
+          if (!newBlobRefs.has(blobId)) {
+            blobStorage.decrementUsageCount(blobId).catch((error) => {
+              console.error(`Failed to decrement usage count for blob ${blobId}:`, error);
+            });
+          }
         }
 
         // Save to localStorage
