@@ -52,7 +52,9 @@ export function calculateOrthogonalPath(
   startAnchor?: AnchorPosition,
   endAnchor?: AnchorPosition,
   shapes?: Record<string, Shape>,
-  excludeIds?: Set<string>
+  excludeIds?: Set<string>,
+  startShapeId?: string,
+  endShapeId?: string
 ): Array<{ x: number; y: number }> {
   // Get exit and entry directions
   // For center anchor or no anchor, infer from relative position
@@ -77,34 +79,172 @@ export function calculateOrthogonalPath(
   const startHorizontal = Math.abs(startDir.x) > Math.abs(startDir.y);
   const endHorizontal = Math.abs(endDir.x) > Math.abs(endDir.y);
 
-  let middleWaypoints: Array<{ x: number; y: number }>;
-
-  // Calculate the path between the stubs (not the actual endpoints)
-  // Case 1: Both horizontal or both vertical - use Z-shape
-  if (startHorizontal === endHorizontal) {
-    middleWaypoints = calculateZPathWithStubs(startStub, endStub, startDir, endDir, startHorizontal);
-  } else {
-    // Case 2: Different orientations - try L-shape
-    middleWaypoints = calculateLPathWithStubs(startStub, endStub, startHorizontal);
-  }
-
-  // Build full waypoint list: startStub + middle + endStub
-  let waypoints: Array<{ x: number; y: number }> = [
-    { x: startStub.x, y: startStub.y },
-    ...middleWaypoints,
-    { x: endStub.x, y: endStub.y },
-  ];
-
-  // Remove redundant collinear points
-  waypoints = simplifyPath(waypoints);
-
-  // If shapes are provided, check for obstacle avoidance
+  // Get obstacles for validation
+  let obstacles: Box[] = [];
+  let connectedShapeObstacles: Box[] = [];
   if (shapes && excludeIds) {
-    const obstacles = getObstacles(shapes, excludeIds);
-    waypoints = avoidObstacles(startPoint, endPoint, waypoints, obstacles);
+    obstacles = getObstacles(shapes, excludeIds);
+    connectedShapeObstacles = getConnectedShapeObstacles(
+      shapes,
+      startShapeId,
+      endShapeId
+    );
   }
 
-  return waypoints;
+  // Generate multiple candidate paths and pick the shortest valid one
+  const candidates = generatePathCandidates(
+    startPoint,
+    endPoint,
+    startStub,
+    endStub,
+    startHorizontal,
+    endHorizontal
+  );
+
+  // Find the shortest path that doesn't intersect obstacles
+  let bestPath = candidates[0]!; // Default to first candidate
+  let bestLength = Infinity;
+
+  for (const candidate of candidates) {
+    const simplified = simplifyPath(candidate);
+
+    // Build full path: startPoint -> waypoints -> endPoint
+    const fullPath = [startPoint, ...simplified.map((wp) => new Vec2(wp.x, wp.y)), endPoint];
+
+    let valid = true;
+    for (let i = 0; i < fullPath.length - 1; i++) {
+      // First segment (start to first waypoint) and last segment (last waypoint to end)
+      // naturally exit/enter from connected shapes, so only check against regular obstacles
+      const isExitSegment = i === 0;
+      const isEntrySegment = i === fullPath.length - 2;
+
+      if (isExitSegment || isEntrySegment) {
+        // Only check against non-connected obstacles
+        if (segmentIntersectsObstacles(fullPath[i]!, fullPath[i + 1]!, obstacles)) {
+          valid = false;
+          break;
+        }
+      } else {
+        // Middle segments check against all obstacles including connected shapes
+        const allObstacles = [...obstacles, ...connectedShapeObstacles];
+        if (segmentIntersectsObstacles(fullPath[i]!, fullPath[i + 1]!, allObstacles)) {
+          valid = false;
+          break;
+        }
+      }
+    }
+
+    if (valid) {
+      // Calculate path length
+      let length = 0;
+      for (let i = 0; i < fullPath.length - 1; i++) {
+        length += Vec2.distance(fullPath[i]!, fullPath[i + 1]!);
+      }
+
+      if (length < bestLength) {
+        bestLength = length;
+        bestPath = simplified;
+      }
+    }
+  }
+
+  // If no valid path found, try obstacle avoidance on the first candidate
+  if (bestLength === Infinity && obstacles.length > 0) {
+    bestPath = avoidObstacles(startPoint, endPoint, simplifyPath(candidates[0]!), obstacles);
+  }
+
+  return bestPath;
+}
+
+/**
+ * Generate multiple candidate paths using different routing strategies.
+ * This allows us to pick the shortest valid path rather than relying on
+ * a single strategy that may create inefficient routes.
+ */
+function generatePathCandidates(
+  _startPoint: Vec2,
+  _endPoint: Vec2,
+  startStub: Vec2,
+  endStub: Vec2,
+  startHorizontal: boolean,
+  endHorizontal: boolean
+): Array<Array<{ x: number; y: number }>> {
+  const candidates: Array<Array<{ x: number; y: number }>> = [];
+
+  // Strategy 1: Standard path using anchor-directed stubs
+  if (startHorizontal === endHorizontal) {
+    // Both same orientation - Z-path
+    const middleZ = calculateZPathWithStubs(startStub, endStub, new Vec2(0, 0), new Vec2(0, 0), startHorizontal);
+    candidates.push([
+      { x: startStub.x, y: startStub.y },
+      ...middleZ,
+      { x: endStub.x, y: endStub.y },
+    ]);
+  } else {
+    // Different orientations - L-path
+    const middleL = calculateLPathWithStubs(startStub, endStub, startHorizontal);
+    candidates.push([
+      { x: startStub.x, y: startStub.y },
+      ...middleL,
+      { x: endStub.x, y: endStub.y },
+    ]);
+  }
+
+  // Strategy 2: Z-path with horizontal middle segment
+  const midX = (startStub.x + endStub.x) / 2;
+  candidates.push([
+    { x: startStub.x, y: startStub.y },
+    { x: midX, y: startStub.y },
+    { x: midX, y: endStub.y },
+    { x: endStub.x, y: endStub.y },
+  ]);
+
+  // Strategy 3: Z-path with vertical middle segment
+  const midY = (startStub.y + endStub.y) / 2;
+  candidates.push([
+    { x: startStub.x, y: startStub.y },
+    { x: startStub.x, y: midY },
+    { x: endStub.x, y: midY },
+    { x: endStub.x, y: endStub.y },
+  ]);
+
+  // Strategy 4: L-path corner at (endStub.x, startStub.y)
+  candidates.push([
+    { x: startStub.x, y: startStub.y },
+    { x: endStub.x, y: startStub.y },
+    { x: endStub.x, y: endStub.y },
+  ]);
+
+  // Strategy 5: L-path corner at (startStub.x, endStub.y)
+  candidates.push([
+    { x: startStub.x, y: startStub.y },
+    { x: startStub.x, y: endStub.y },
+    { x: endStub.x, y: endStub.y },
+  ]);
+
+  // Strategy 6: Direct approach - minimal stubs when stubs point toward each other
+  // Use when stubs would meet naturally
+  const dx = endStub.x - startStub.x;
+  const dy = endStub.y - startStub.y;
+
+  // If stubs are in line horizontally or vertically, try direct connection
+  if (Math.abs(dx) < 1) {
+    // Vertically aligned - single vertical segment
+    candidates.push([
+      { x: startStub.x, y: startStub.y },
+      { x: startStub.x, y: endStub.y },
+    ]);
+  }
+
+  if (Math.abs(dy) < 1) {
+    // Horizontally aligned - single horizontal segment
+    candidates.push([
+      { x: startStub.x, y: startStub.y },
+      { x: endStub.x, y: startStub.y },
+    ]);
+  }
+
+  return candidates;
 }
 
 /**
@@ -216,6 +356,40 @@ function getObstacles(shapes: Record<string, Shape>, excludeIds: Set<string>): B
         bounds.minY - OBSTACLE_PADDING,
         bounds.maxX + OBSTACLE_PADDING,
         bounds.maxY + OBSTACLE_PADDING
+      )
+    );
+  }
+
+  return obstacles;
+}
+
+/**
+ * Get bounding boxes for the connected shapes (start and end shapes).
+ * These are treated separately because we need to avoid routing through them
+ * but they were excluded from normal obstacle detection.
+ */
+function getConnectedShapeObstacles(
+  shapes: Record<string, Shape>,
+  startShapeId?: string,
+  endShapeId?: string
+): Box[] {
+  const obstacles: Box[] = [];
+
+  for (const shapeId of [startShapeId, endShapeId]) {
+    if (!shapeId) continue;
+    const shape = shapes[shapeId];
+    if (!shape || shape.type === 'connector') continue;
+
+    const handler = shapeRegistry.getHandler(shape.type);
+    const bounds = handler.getBounds(shape);
+
+    // Use smaller padding for connected shapes - just enough to detect intersection
+    obstacles.push(
+      new Box(
+        bounds.minX - 2,
+        bounds.minY - 2,
+        bounds.maxX + 2,
+        bounds.maxY + 2
       )
     );
   }
@@ -432,6 +606,8 @@ export function calculateConnectorWaypoints(
     connector.startAnchor,
     connector.endAnchor,
     shapes,
-    excludeIds
+    excludeIds,
+    connector.startShapeId ?? undefined,
+    connector.endShapeId ?? undefined
   );
 }

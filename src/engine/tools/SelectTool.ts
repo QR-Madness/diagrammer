@@ -68,8 +68,8 @@ export class SelectTool extends BaseTool {
   private pointerDownWorldPoint: Vec2 | null = null;
   private hitShapeId: string | null = null;
 
-  // For translating shapes
-  private dragStartPositions: Map<string, { x: number; y: number }> = new Map();
+  // For translating shapes (includes x2, y2 for connectors)
+  private dragStartPositions: Map<string, { x: number; y: number; x2?: number; y2?: number }> = new Map();
 
   // For marquee selection
   private marqueeStart: Vec2 | null = null;
@@ -587,16 +587,21 @@ export class SelectTool extends BaseTool {
     }
 
     // Update all selected shapes with the (possibly snapped) delta
-    const updates: Array<{ id: string; updates: { x: number; y: number } }> = [];
+    const updates: Array<{ id: string; updates: Partial<Shape> }> = [];
 
     for (const [id, startPos] of this.dragStartPositions) {
-      updates.push({
-        id,
-        updates: {
-          x: startPos.x + finalDelta.x,
-          y: startPos.y + finalDelta.y,
-        },
-      });
+      const shapeUpdates: Partial<Shape> = {
+        x: startPos.x + finalDelta.x,
+        y: startPos.y + finalDelta.y,
+      };
+
+      // For connectors, also update x2 and y2
+      if (startPos.x2 !== undefined && startPos.y2 !== undefined) {
+        (shapeUpdates as { x2: number; y2: number }).x2 = startPos.x2 + finalDelta.x;
+        (shapeUpdates as { x2: number; y2: number }).y2 = startPos.y2 + finalDelta.y;
+      }
+
+      updates.push({ id, updates: shapeUpdates });
     }
 
     ctx.updateShapes(updates);
@@ -684,7 +689,13 @@ export class SelectTool extends BaseTool {
     for (const id of idsToTranslate) {
       const shape = shapes[id];
       if (shape) {
-        this.dragStartPositions.set(id, { x: shape.x, y: shape.y });
+        const startPos: { x: number; y: number; x2?: number; y2?: number } = { x: shape.x, y: shape.y };
+        // For connectors, also store x2, y2
+        if (isConnector(shape)) {
+          startPos.x2 = shape.x2;
+          startPos.y2 = shape.y2;
+        }
+        this.dragStartPositions.set(id, startPos);
       }
     }
   }

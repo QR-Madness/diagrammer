@@ -420,3 +420,105 @@
   background: var(--danger-color, #ef4444);
   color: white;
 }
+
+/* Confirmation Modal */
+.storage-manager-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.storage-manager-modal {
+  background: var(--panel-bg, #1e1e1e);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.storage-manager-modal-title {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.storage-manager-modal-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.storage-manager-modal-preview {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 200px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.storage-manager-modal-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.storage-manager-modal-item:last-child {
+  border-bottom: none;
+}
+
+.storage-manager-modal-item-name {
+  font-size: 13px;
+  color: var(--text-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.storage-manager-modal-item-size {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.storage-manager-modal-total {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  text-align: right;
+}
+
+.storage-manager-modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.storage-manager-btn-danger {
+  background: var(--danger-color, #ef4444);
+  color: white;
+  border-color: var(--danger-color, #ef4444);
+}
+
+.storage-manager-btn-danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}

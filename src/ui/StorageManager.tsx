@@ -31,10 +31,11 @@ export function StorageManager({ onClose }: StorageManagerProps) {
   const [activeTab, setActiveTab] = useState<TabId>('images');
   const [blobs, setBlobs] = useState<BlobMetadata[]>([]);
   const [stats, setStats] = useState<StorageStats | null>(null);
-  const [orphanedCount, setOrphanedCount] = useState(0);
+  const [orphanedBlobs, setOrphanedBlobs] = useState<BlobMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCollecting, setIsCollecting] = useState(false);
   const [gcResult, setGcResult] = useState<GCStats | null>(null);
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
 
   // Icon state
   const [icons, setIcons] = useState<IconMetadata[]>([]);
@@ -62,7 +63,9 @@ export function StorageManager({ onClose }: StorageManagerProps) {
 
       setBlobs(blobList.sort((a, b) => b.createdAt - a.createdAt));
       setStats(storageStats);
-      setOrphanedCount(orphaned.length);
+      // Only consider truly orphaned blobs (not referenced AND zero usage)
+      const safeOrphans = orphaned.filter((b) => b.usageCount === 0);
+      setOrphanedBlobs(safeOrphans);
     } catch (error) {
       console.error('Failed to load storage data:', error);
     } finally {
@@ -104,14 +107,38 @@ export function StorageManager({ onClose }: StorageManagerProps) {
     loadIconData2();
   }, [loadIconData2]);
 
-  const handleGarbageCollect = async () => {
+  // Show confirmation dialog before cleanup
+  const handleCleanupClick = () => {
+    if (orphanedBlobs.length === 0) return;
+    setShowCleanupConfirm(true);
+  };
+
+  // Actually perform the cleanup after confirmation
+  const handleConfirmCleanup = async () => {
+    setShowCleanupConfirm(false);
     setIsCollecting(true);
     setGcResult(null);
 
     try {
-      const gc = new BlobGarbageCollector(blobStorage);
-      const result = await gc.collectGarbage();
-      setGcResult(result);
+      // Only delete blobs that are truly orphaned (no references AND zero usage)
+      let bytesFreed = 0;
+      let blobsDeleted = 0;
+
+      for (const blob of orphanedBlobs) {
+        try {
+          await blobStorage.deleteBlob(blob.id);
+          bytesFreed += blob.size;
+          blobsDeleted++;
+        } catch (error) {
+          console.error('Failed to delete blob:', blob.id, error);
+        }
+      }
+
+      setGcResult({
+        blobsDeleted,
+        bytesFreed,
+        durationMs: 0,
+      });
 
       // Reload data
       await loadBlobData();
@@ -119,8 +146,8 @@ export function StorageManager({ onClose }: StorageManagerProps) {
       // Clear result after 5 seconds
       setTimeout(() => setGcResult(null), 5000);
     } catch (error) {
-      console.error('Garbage collection failed:', error);
-      alert('Garbage collection failed. See console for details.');
+      console.error('Cleanup failed:', error);
+      alert('Cleanup failed. See console for details.');
     } finally {
       setIsCollecting(false);
     }
@@ -251,10 +278,10 @@ export function StorageManager({ onClose }: StorageManagerProps) {
                   <span className="storage-stat-label">Usage:</span>
                   <span className="storage-stat-value">{stats.percentUsed.toFixed(1)}%</span>
                 </div>
-                {orphanedCount > 0 && (
+                {orphanedBlobs.length > 0 && (
                   <div className="storage-stat storage-stat-warning">
                     <span className="storage-stat-label">Orphaned blobs:</span>
-                    <span className="storage-stat-value">{orphanedCount}</span>
+                    <span className="storage-stat-value">{orphanedBlobs.length}</span>
                   </div>
                 )}
               </div>
@@ -274,16 +301,16 @@ export function StorageManager({ onClose }: StorageManagerProps) {
             <div className="storage-manager-actions">
               <button
                 className="storage-manager-btn storage-manager-btn-primary"
-                onClick={handleGarbageCollect}
-                disabled={isCollecting || orphanedCount === 0}
+                onClick={handleCleanupClick}
+                disabled={isCollecting || orphanedBlobs.length === 0}
               >
-                {isCollecting ? 'Cleaning up...' : `Clean Up${orphanedCount > 0 ? ` (${orphanedCount})` : ''}`}
+                {isCollecting ? 'Cleaning up...' : `Clean Up${orphanedBlobs.length > 0 ? ` (${orphanedBlobs.length})` : ''}`}
               </button>
 
               {gcResult && (
                 <div className="storage-manager-gc-result">
                   Freed {formatFileSize(gcResult.bytesFreed)} ({gcResult.blobsDeleted} blob
-                  {gcResult.blobsDeleted !== 1 ? 's' : ''}) in {gcResult.durationMs}ms
+                  {gcResult.blobsDeleted !== 1 ? 's' : ''})
                 </div>
               )}
             </div>
@@ -421,6 +448,43 @@ export function StorageManager({ onClose }: StorageManagerProps) {
           </>
         )}
       </div>
+
+      {/* Cleanup confirmation modal */}
+      {showCleanupConfirm && (
+        <div className="storage-manager-modal-overlay" onClick={() => setShowCleanupConfirm(false)}>
+          <div className="storage-manager-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="storage-manager-modal-title">Confirm Cleanup</h3>
+            <p className="storage-manager-modal-text">
+              The following {orphanedBlobs.length} orphaned blob{orphanedBlobs.length !== 1 ? 's' : ''} will be permanently deleted:
+            </p>
+            <div className="storage-manager-modal-preview">
+              {orphanedBlobs.map((blob) => (
+                <div key={blob.id} className="storage-manager-modal-item">
+                  <span className="storage-manager-modal-item-name">{blob.name}</span>
+                  <span className="storage-manager-modal-item-size">{formatFileSize(blob.size)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="storage-manager-modal-total">
+              Total: {formatFileSize(orphanedBlobs.reduce((sum, b) => sum + b.size, 0))}
+            </p>
+            <div className="storage-manager-modal-actions">
+              <button
+                className="storage-manager-btn"
+                onClick={() => setShowCleanupConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="storage-manager-btn storage-manager-btn-danger"
+                onClick={handleConfirmCleanup}
+              >
+                Delete {orphanedBlobs.length} Blob{orphanedBlobs.length !== 1 ? 's' : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
