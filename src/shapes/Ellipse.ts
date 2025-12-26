@@ -10,6 +10,7 @@ import {
   DEFAULT_ELLIPSE,
 } from './Shape';
 import { renderWrappedText } from '../utils/textUtils';
+import { drawIcon } from '../utils/iconCache';
 
 /**
  * Transform a local point to world space.
@@ -82,6 +83,18 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
+    }
+
+    // Draw icon in top-left area if present
+    if (shape.iconId) {
+      const iconSize = shape.iconSize || 24;
+      const iconPadding = shape.iconPadding || 8;
+      // Position icon in the upper-left quadrant
+      const iconX = -radiusX + iconPadding;
+      const iconY = -radiusY + iconPadding;
+      // Use stroke color for icon, fallback to a dark color
+      const iconColor = stroke || '#333333';
+      drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
     }
 
     // Draw label if present

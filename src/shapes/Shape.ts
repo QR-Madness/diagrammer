@@ -103,6 +103,12 @@ export interface RectangleShape extends BaseShape {
   labelFontSize?: number;
   /** Label text color (default: inherits from stroke or '#000000') */
   labelColor?: string;
+  /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
+  iconId?: string;
+  /** Icon size in pixels (default: 24) */
+  iconSize?: number;
+  /** Icon padding from top-left corner (default: 8) */
+  iconPadding?: number;
 }
 
 /**
@@ -120,6 +126,12 @@ export interface EllipseShape extends BaseShape {
   labelFontSize?: number;
   /** Label text color (default: inherits from stroke or '#000000') */
   labelColor?: string;
+  /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
+  iconId?: string;
+  /** Icon size in pixels (default: 24) */
+  iconSize?: number;
+  /** Icon padding from top-left corner (default: 8) */
+  iconPadding?: number;
 }
 
 /**
@@ -136,6 +148,11 @@ export interface LineShape extends BaseShape {
   /** Whether to draw an arrow at the end point */
   endArrow: boolean;
 }
+
+/**
+ * Routing mode for connectors.
+ */
+export type RoutingMode = 'straight' | 'orthogonal';
 
 /**
  * Connector shape that connects two shapes.
@@ -158,6 +175,18 @@ export interface ConnectorShape extends BaseShape {
   startArrow: boolean;
   /** Whether to draw an arrow at the end point */
   endArrow: boolean;
+  /** Routing mode: straight line or orthogonal (right-angle) path */
+  routingMode?: RoutingMode;
+  /** Waypoints for orthogonal routing (intermediate points between start and end) */
+  waypoints?: Array<{ x: number; y: number }>;
+  /** Text label displayed on the connector */
+  label?: string;
+  /** Font size for the label (default: 12) */
+  labelFontSize?: number;
+  /** Color for the label (default: stroke color or black) */
+  labelColor?: string;
+  /** Position of label along the path, 0-1 (default: 0.5 = midpoint) */
+  labelPosition?: number;
 }
 
 /**
@@ -328,6 +357,7 @@ export const DEFAULT_CONNECTOR = {
   endAnchor: 'center' as AnchorPosition,
   startArrow: false,
   endArrow: true,
+  routingMode: 'orthogonal' as RoutingMode,
 } as const;
 
 /**

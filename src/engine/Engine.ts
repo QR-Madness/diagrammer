@@ -13,8 +13,9 @@ import { LineTool } from './tools/LineTool';
 import { TextTool } from './tools/TextTool';
 import { ConnectorTool } from './tools/ConnectorTool';
 import { Vec2 } from '../math/Vec2';
-import { Shape, isConnector, isGroup } from '../shapes/Shape';
+import { Shape, isConnector, isGroup, ConnectorShape } from '../shapes/Shape';
 import { updateConnectorEndpoints } from '../shapes/Connector';
+import { calculateConnectorWaypoints } from './OrthogonalRouter';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
 import { useHistoryStore, pushHistory } from '../store/historyStore';
@@ -63,6 +64,27 @@ const PAN_KEYS = new Set([
 
 /** Keys that trigger zooming */
 const ZOOM_KEYS = new Set(['q', 'Q', 'e', 'E']);
+
+/**
+ * Compare two waypoint arrays for equality.
+ */
+function areWaypointsEqual(
+  a: Array<{ x: number; y: number }> | undefined,
+  b: Array<{ x: number; y: number }> | undefined
+): boolean {
+  if (a === b) return true;
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    if (Math.abs(a[i]!.x - b[i]!.x) > 0.001 || Math.abs(a[i]!.y - b[i]!.y) > 0.001) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 /**
  * Main engine class that coordinates all components.
@@ -397,26 +419,57 @@ export class Engine {
   /**
    * Update connector endpoints based on connected shapes.
    * Called when shapes change to keep connectors attached.
+   * Also recalculates orthogonal routing waypoints.
    */
   private updateConnectors(shapes: Record<string, Shape>): void {
-    const updates: Array<{ id: string; updates: Partial<Shape> }> = [];
+    const updates: Array<{ id: string; updates: Partial<ConnectorShape> }> = [];
 
     for (const shape of Object.values(shapes)) {
       if (isConnector(shape)) {
+        const connectorUpdates: Partial<ConnectorShape> = {};
+        let hasChanges = false;
+
         // Check if this connector has any connected shapes
         if (shape.startShapeId || shape.endShapeId) {
           const endpointUpdates = updateConnectorEndpoints(shape, shapes);
 
           // Only include updates where positions actually changed
-          const hasRealChanges =
+          const hasEndpointChanges =
             (endpointUpdates.x !== undefined && Math.abs(endpointUpdates.x - shape.x) > 0.001) ||
             (endpointUpdates.y !== undefined && Math.abs(endpointUpdates.y - shape.y) > 0.001) ||
             (endpointUpdates.x2 !== undefined && Math.abs(endpointUpdates.x2 - shape.x2) > 0.001) ||
             (endpointUpdates.y2 !== undefined && Math.abs(endpointUpdates.y2 - shape.y2) > 0.001);
 
-          if (hasRealChanges) {
-            updates.push({ id: shape.id, updates: endpointUpdates });
+          if (hasEndpointChanges) {
+            Object.assign(connectorUpdates, endpointUpdates);
+            hasChanges = true;
           }
+        }
+
+        // Recalculate orthogonal routing waypoints if in orthogonal mode
+        if (shape.routingMode === 'orthogonal') {
+          // Use updated positions if available, otherwise use current
+          const currentConnector: ConnectorShape = {
+            ...shape,
+            x: connectorUpdates.x ?? shape.x,
+            y: connectorUpdates.y ?? shape.y,
+            x2: connectorUpdates.x2 ?? shape.x2,
+            y2: connectorUpdates.y2 ?? shape.y2,
+          };
+
+          const newWaypoints = calculateConnectorWaypoints(currentConnector, shapes) ?? [];
+
+          // Check if waypoints changed
+          const waypointsChanged = !areWaypointsEqual(shape.waypoints, newWaypoints);
+
+          if (waypointsChanged) {
+            connectorUpdates.waypoints = newWaypoints;
+            hasChanges = true;
+          }
+        }
+
+        if (hasChanges) {
+          updates.push({ id: shape.id, updates: connectorUpdates });
         }
       }
     }

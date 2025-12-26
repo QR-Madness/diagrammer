@@ -10,6 +10,7 @@ import {
   DEFAULT_RECTANGLE,
 } from './Shape';
 import { renderWrappedText } from '../utils/textUtils';
+import { drawIcon } from '../utils/iconCache';
 
 /**
  * Get the four corners of a rectangle in local space (before rotation).
@@ -108,6 +109,17 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
+    }
+
+    // Draw icon in top-left corner if present
+    if (shape.iconId) {
+      const iconSize = shape.iconSize || 24;
+      const iconPadding = shape.iconPadding || 8;
+      const iconX = -halfWidth + iconPadding;
+      const iconY = -halfHeight + iconPadding;
+      // Use stroke color for icon, fallback to a dark color
+      const iconColor = stroke || '#333333';
+      drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
     }
 
     // Draw label if present

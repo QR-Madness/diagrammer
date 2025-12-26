@@ -9,14 +9,17 @@ import {
   isLine,
   isText,
   isGroup,
+  isConnector,
   GroupShape,
   TextAlign,
   VerticalAlign,
+  RoutingMode,
 } from '../shapes/Shape';
 import { PropertySection } from './PropertySection';
 import { CompactColorInput } from './CompactColorInput';
 import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
+import { IconPicker } from './IconPicker';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import './PropertyPanel.css';
 
@@ -342,6 +345,55 @@ export function PropertyPanel() {
           </PropertySection>
         )}
 
+        {/* Icon Section for Rectangle and Ellipse */}
+        {(isRectangle(shape) || isEllipse(shape)) && (
+          <PropertySection id="icon" title="Icon" defaultExpanded={false}>
+            <IconPicker
+              value={shape.iconId}
+              onChange={(iconId: string | undefined) => {
+                selectedShapes.forEach((s) => {
+                  if (isRectangle(s) || isEllipse(s)) {
+                    // Use empty string to clear icon (falsy in render check)
+                    updateShape(s.id, { iconId: iconId || '' });
+                  }
+                });
+              }}
+            />
+            {shape.iconId && (
+              <>
+                <CompactNumberInput
+                  label="Size"
+                  value={shape.iconSize || 24}
+                  onChange={(val) => {
+                    selectedShapes.forEach((s) => {
+                      if (isRectangle(s) || isEllipse(s)) {
+                        updateShape(s.id, { iconSize: val });
+                      }
+                    });
+                  }}
+                  min={12}
+                  max={64}
+                  suffix="px"
+                />
+                <CompactNumberInput
+                  label="Padding"
+                  value={shape.iconPadding || 8}
+                  onChange={(val) => {
+                    selectedShapes.forEach((s) => {
+                      if (isRectangle(s) || isEllipse(s)) {
+                        updateShape(s.id, { iconPadding: val });
+                      }
+                    });
+                  }}
+                  min={0}
+                  max={32}
+                  suffix="px"
+                />
+              </>
+            )}
+          </PropertySection>
+        )}
+
         {/* Text Shape Properties */}
         {isText(shape) && (
           <PropertySection id="text" title="Text" defaultExpanded>
@@ -436,6 +488,88 @@ export function PropertyPanel() {
         {/* Line Endpoints - collapsed by default */}
         {isLine(shape) && (
           <PropertySection id="endpoints" title="Endpoints" defaultExpanded={false}>
+            <InfoRow label="Start" value={`(${Math.round(shape.x)}, ${Math.round(shape.y)})`} />
+            <InfoRow label="End" value={`(${Math.round(shape.x2)}, ${Math.round(shape.y2)})`} />
+          </PropertySection>
+        )}
+
+        {/* Connector Routing Section */}
+        {isConnector(shape) && (
+          <PropertySection id="connector-routing" title="Routing" defaultExpanded>
+            <div className="compact-select-row">
+              <label className="compact-select-label">Mode</label>
+              <select
+                value={shape.routingMode || 'straight'}
+                onChange={(e) => {
+                  const val = e.target.value as RoutingMode;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      // When switching to straight, clear waypoints by setting empty array
+                      // When switching to orthogonal, keep existing or set empty
+                      updateShape(s.id, {
+                        routingMode: val,
+                        waypoints: val === 'straight' ? [] : (s.waypoints || []),
+                      });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="straight">Straight</option>
+                <option value="orthogonal">Orthogonal</option>
+              </select>
+            </div>
+          </PropertySection>
+        )}
+
+        {/* Connector Label Section */}
+        {isConnector(shape) && (
+          <PropertySection id="connector-label" title="Label" defaultExpanded>
+            <input
+              type="text"
+              value={shape.label || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                selectedShapes.forEach((s) => {
+                  if (isConnector(s)) {
+                    // Use empty string instead of undefined for empty label
+                    updateShape(s.id, { label: val });
+                  }
+                });
+              }}
+              className="property-text-input"
+              placeholder="Enter label..."
+            />
+            <CompactNumberInput
+              label="Font Size"
+              value={shape.labelFontSize || 12}
+              onChange={(val) => {
+                selectedShapes.forEach((s) => {
+                  if (isConnector(s)) {
+                    updateShape(s.id, { labelFontSize: val });
+                  }
+                });
+              }}
+              min={8}
+              max={32}
+            />
+            <CompactColorInput
+              label="Color"
+              value={shape.labelColor || shape.stroke || '#000000'}
+              onChange={(color) => {
+                selectedShapes.forEach((s) => {
+                  if (isConnector(s)) {
+                    updateShape(s.id, { labelColor: color });
+                  }
+                });
+              }}
+            />
+          </PropertySection>
+        )}
+
+        {/* Connector Endpoints Section */}
+        {isConnector(shape) && (
+          <PropertySection id="connector-endpoints" title="Endpoints" defaultExpanded={false}>
             <InfoRow label="Start" value={`(${Math.round(shape.x)}, ${Math.round(shape.y)})`} />
             <InfoRow label="End" value={`(${Math.round(shape.x2)}, ${Math.round(shape.y2)})`} />
           </PropertySection>

@@ -204,12 +204,28 @@ implementation phase as defined in Specification.Readme.md.
   - Architecture designed with pluggable BlobStorageBackend interface
   - Future support for File System Access API planned
 
-### Phase 10: Advanced Diagramming
+### Phase 10: Advanced Diagramming - COMPLETE
 
-- [ ] Smart connectors with routing (avoid shapes)
-- [ ] Custom icon library (use new indexeddb for this)
-- [ ] Shape icons (similar to Eraser.io)
-- [ ] Connector labels
+- [x] Connector labels
+  - Label text, font size, color, position along path
+  - Background for readability
+  - PropertyPanel section for connector label editing
+- [x] Smart connectors with orthogonal routing
+  - OrthogonalRouter for L-shaped and Z-shaped Manhattan paths
+  - Waypoints for multi-segment polylines
+  - Automatic path recalculation when shapes move
+  - Routing mode selector in PropertyPanel (straight/orthogonal)
+- [x] Custom icon library with IndexedDB storage
+  - 30+ built-in SVG icons (arrows, shapes, symbols, tech, general)
+  - SVG sanitization and validation
+  - Content-addressed blob storage for custom icons
+  - IconPicker component with category filtering and search
+  - Upload custom SVG icons
+- [x] Shape icons for Rectangle and Ellipse
+  - Icon badge in top-left corner
+  - Configurable size and padding
+  - Icons rendered using cached HTMLImageElement for performance
+  - StorageManager updated with Icons tab for management
 
 ### Phase 10.5: Shape Libraries
 
@@ -288,7 +304,7 @@ implementation phase as defined in Specification.Readme.md.
 - Update this file as new tasks are discovered
 - Each task should be small enough to complete in one session
 - Test each component before moving to the next phase
-- Total tests: 633 passing
+- Total tests: 633 passing (18 test files)
 
 ## Test Coverage by Module
 
@@ -302,11 +318,12 @@ implementation phase as defined in Specification.Readme.md.
 | HitTester                        | 24      |
 | DocumentStore                    | 37      |
 | SessionStore                     | 37      |
-| HistoryStore                     | 14      |
+| PageStore                        | 32      |
+| HistoryStore                     | 19      |
 | Rectangle                        | 21      |
 | Ellipse                          | 25      |
 | Line                             | 23      |
 | Shape transforms                 | 31      |
 | Shape bounds                     | 24      |
 |                                  |         |
-| **Total**                        | **596** |
+| **Total**                        | **633** |
