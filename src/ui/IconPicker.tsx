@@ -7,9 +7,11 @@
  * - Search functionality
  * - Upload custom SVG icons
  * - Preview selected icon
+ * - Portal-based dropdown to avoid overflow clipping
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useIconLibraryStore, initializeIconLibrary } from '../store/iconLibraryStore';
 import type { IconMetadata, IconCategory } from '../storage/IconTypes';
 import { getIconCategories } from '../storage/builtinIcons';
@@ -47,7 +49,9 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
   const [selectedCategory, setSelectedCategory] = useState<IconCategory | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isInitialized, setIsInitialized] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -105,12 +109,39 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
     return useIconLibraryStore.getState().getIcon(value);
   }, [value]);
 
-  // Close picker when clicking outside
+  // Calculate dropdown position when opening
+  const updateDropdownPosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      });
+    }
+  }, []);
+
+  // Toggle dropdown and update position
+  const handleToggle = useCallback(() => {
+    if (!isOpen) {
+      updateDropdownPosition();
+    }
+    setIsOpen(!isOpen);
+  }, [isOpen, updateDropdownPosition]);
+
+  // Close picker when clicking outside (check both container and portal dropdown)
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const dropdown = document.querySelector('.icon-picker-dropdown-portal');
+
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        (!dropdown || !dropdown.contains(target))
+      ) {
         setIsOpen(false);
       }
     };
@@ -118,6 +149,20 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleUpdate = () => updateDropdownPosition();
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [isOpen, updateDropdownPosition]);
 
   // Handle icon selection
   const handleSelect = useCallback(
@@ -163,11 +208,100 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
     }
   }, [isOpen, clearError]);
 
+  // Render the dropdown content
+  const dropdownContent = isOpen && dropdownPosition && (
+    <div
+      className="icon-picker-dropdown icon-picker-dropdown-portal"
+      style={{
+        position: 'fixed',
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        width: dropdownPosition.width,
+        zIndex: 10000,
+      }}
+    >
+      {/* Search and Upload */}
+      <div className="icon-picker-header">
+        <input
+          type="text"
+          className="icon-picker-search"
+          placeholder="Search icons..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          autoFocus
+        />
+        <button
+          className="icon-picker-upload-btn"
+          onClick={handleUploadClick}
+          title="Upload custom SVG icon"
+        >
+          +
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".svg,image/svg+xml"
+          onChange={handleFileChange}
+          style={{ display: 'none' }}
+        />
+      </div>
+
+      {/* Category tabs */}
+      <div className="icon-picker-categories">
+        {categories.map(({ category, count }) => (
+          <button
+            key={category}
+            className={`icon-picker-category ${selectedCategory === category ? 'active' : ''}`}
+            onClick={() => setSelectedCategory(category)}
+          >
+            {category === 'all' ? 'All' : CATEGORY_LABELS[category]} ({count})
+          </button>
+        ))}
+      </div>
+
+      {/* Error display */}
+      {error && <div className="icon-picker-error">{error}</div>}
+
+      {/* Icons grid */}
+      <div className="icon-picker-grid">
+        {/* Clear option */}
+        {value && (
+          <button
+            className="icon-picker-item icon-picker-clear"
+            onClick={handleClear}
+            title="Remove icon"
+          >
+            <span className="icon-picker-clear-icon">{'\u2715'}</span>
+            <span className="icon-picker-item-name">None</span>
+          </button>
+        )}
+
+        {isLoading ? (
+          <div className="icon-picker-loading">Loading...</div>
+        ) : filteredIcons.length === 0 ? (
+          <div className="icon-picker-empty">No icons found</div>
+        ) : (
+          filteredIcons.map((icon) => (
+            <button
+              key={icon.id}
+              className={`icon-picker-item ${value === icon.id ? 'selected' : ''}`}
+              onClick={() => handleSelect(icon)}
+              title={icon.name}
+            >
+              <IconPreview icon={icon} size={24} />
+              <span className="icon-picker-item-name">{icon.name}</span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="icon-picker" ref={containerRef}>
       <label className="icon-picker-label">{label}</label>
 
-      <div className="icon-picker-trigger" onClick={() => setIsOpen(!isOpen)}>
+      <div className="icon-picker-trigger" ref={triggerRef} onClick={handleToggle}>
         {selectedIcon ? (
           <div className="icon-picker-preview">
             <IconPreview icon={selectedIcon} size={20} />
@@ -179,83 +313,8 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
         <span className="icon-picker-chevron">{isOpen ? '\u25B2' : '\u25BC'}</span>
       </div>
 
-      {isOpen && (
-        <div className="icon-picker-dropdown">
-          {/* Search and Upload */}
-          <div className="icon-picker-header">
-            <input
-              type="text"
-              className="icon-picker-search"
-              placeholder="Search icons..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button
-              className="icon-picker-upload-btn"
-              onClick={handleUploadClick}
-              title="Upload custom SVG icon"
-            >
-              +
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".svg,image/svg+xml"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-          </div>
-
-          {/* Category tabs */}
-          <div className="icon-picker-categories">
-            {categories.map(({ category, count }) => (
-              <button
-                key={category}
-                className={`icon-picker-category ${selectedCategory === category ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(category)}
-              >
-                {category === 'all' ? 'All' : CATEGORY_LABELS[category]} ({count})
-              </button>
-            ))}
-          </div>
-
-          {/* Error display */}
-          {error && <div className="icon-picker-error">{error}</div>}
-
-          {/* Icons grid */}
-          <div className="icon-picker-grid">
-            {/* Clear option */}
-            {value && (
-              <button
-                className="icon-picker-item icon-picker-clear"
-                onClick={handleClear}
-                title="Remove icon"
-              >
-                <span className="icon-picker-clear-icon">\u2715</span>
-                <span className="icon-picker-item-name">None</span>
-              </button>
-            )}
-
-            {isLoading ? (
-              <div className="icon-picker-loading">Loading...</div>
-            ) : filteredIcons.length === 0 ? (
-              <div className="icon-picker-empty">No icons found</div>
-            ) : (
-              filteredIcons.map((icon) => (
-                <button
-                  key={icon.id}
-                  className={`icon-picker-item ${value === icon.id ? 'selected' : ''}`}
-                  onClick={() => handleSelect(icon)}
-                  title={icon.name}
-                >
-                  <IconPreview icon={icon} size={24} />
-                  <span className="icon-picker-item-name">{icon.name}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+      {/* Render dropdown in a portal to avoid overflow clipping */}
+      {dropdownContent && createPortal(dropdownContent, document.body)}
     </div>
   );
 }

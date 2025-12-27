@@ -111,14 +111,42 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
       ctx.stroke();
     }
 
-    // Draw icon in top-left corner if present
+    // Draw icon if present
     if (shape.iconId) {
       const iconSize = shape.iconSize || 24;
       const iconPadding = shape.iconPadding || 8;
-      const iconX = -halfWidth + iconPadding;
-      const iconY = -halfHeight + iconPadding;
-      // Use stroke color for icon, fallback to a dark color
-      const iconColor = stroke || '#333333';
+      const iconPosition = shape.iconPosition || 'top-left';
+
+      // Calculate icon position based on iconPosition setting
+      let iconX: number;
+      let iconY: number;
+
+      switch (iconPosition) {
+        case 'top-right':
+          iconX = halfWidth - iconPadding - iconSize;
+          iconY = -halfHeight + iconPadding;
+          break;
+        case 'bottom-left':
+          iconX = -halfWidth + iconPadding;
+          iconY = halfHeight - iconPadding - iconSize;
+          break;
+        case 'bottom-right':
+          iconX = halfWidth - iconPadding - iconSize;
+          iconY = halfHeight - iconPadding - iconSize;
+          break;
+        case 'center':
+          iconX = -iconSize / 2;
+          iconY = -iconSize / 2;
+          break;
+        case 'top-left':
+        default:
+          iconX = -halfWidth + iconPadding;
+          iconY = -halfHeight + iconPadding;
+          break;
+      }
+
+      // Use explicit iconColor if set, otherwise fall back to stroke color
+      const iconColor = shape.iconColor || stroke || '#333333';
       drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
     }
 

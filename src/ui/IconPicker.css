@@ -57,19 +57,28 @@
 
 /* Dropdown */
 .icon-picker-dropdown {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Non-portal dropdown (fallback) */
+.icon-picker-dropdown:not(.icon-picker-dropdown-portal) {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
   margin-top: 4px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
-  max-height: 320px;
-  display: flex;
-  flex-direction: column;
+}
+
+/* Portal dropdown - rendered at document body */
+.icon-picker-dropdown-portal {
+  /* Position and z-index set via inline styles */
 }
 
 .icon-picker-header {

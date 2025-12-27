@@ -126,9 +126,18 @@ export interface RectangleShape extends BaseShape {
   iconId?: string;
   /** Icon size in pixels (default: 24) */
   iconSize?: number;
-  /** Icon padding from top-left corner (default: 8) */
+  /** Icon padding from corner (default: 8) */
   iconPadding?: number;
+  /** Icon color override (default: uses original icon colors) */
+  iconColor?: string;
+  /** Icon position (default: 'top-left') */
+  iconPosition?: IconPosition;
 }
+
+/**
+ * Icon position options.
+ */
+export type IconPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
 
 /**
  * Ellipse shape (circle when radiusX === radiusY).
@@ -149,8 +158,12 @@ export interface EllipseShape extends BaseShape {
   iconId?: string;
   /** Icon size in pixels (default: 24) */
   iconSize?: number;
-  /** Icon padding from top-left corner (default: 8) */
+  /** Icon padding from corner (default: 8) */
   iconPadding?: number;
+  /** Icon color override (default: uses original icon colors) */
+  iconColor?: string;
+  /** Icon position (default: 'top-left') */
+  iconPosition?: IconPosition;
 }
 
 /**
@@ -275,8 +288,12 @@ export interface LibraryShape extends Omit<BaseShape, 'type'> {
   iconId?: string;
   /** Icon size in pixels (default: 24) */
   iconSize?: number;
-  /** Icon padding from top-left corner (default: 8) */
+  /** Icon padding from corner (default: 8) */
   iconPadding?: number;
+  /** Icon color override (default: uses original icon colors) */
+  iconColor?: string;
+  /** Icon position (default: 'top-left') */
+  iconPosition?: IconPosition;
   /** Custom properties for specialized shapes (e.g., UML-specific data) */
   customProperties?: Record<string, unknown>;
 }

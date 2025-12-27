@@ -85,15 +85,42 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
       ctx.stroke();
     }
 
-    // Draw icon in top-left area if present
+    // Draw icon if present
     if (shape.iconId) {
       const iconSize = shape.iconSize || 24;
       const iconPadding = shape.iconPadding || 8;
-      // Position icon in the upper-left quadrant
-      const iconX = -radiusX + iconPadding;
-      const iconY = -radiusY + iconPadding;
-      // Use stroke color for icon, fallback to a dark color
-      const iconColor = stroke || '#333333';
+      const iconPosition = shape.iconPosition || 'top-left';
+
+      // Calculate icon position based on iconPosition setting
+      let iconX: number;
+      let iconY: number;
+
+      switch (iconPosition) {
+        case 'top-right':
+          iconX = radiusX - iconPadding - iconSize;
+          iconY = -radiusY + iconPadding;
+          break;
+        case 'bottom-left':
+          iconX = -radiusX + iconPadding;
+          iconY = radiusY - iconPadding - iconSize;
+          break;
+        case 'bottom-right':
+          iconX = radiusX - iconPadding - iconSize;
+          iconY = radiusY - iconPadding - iconSize;
+          break;
+        case 'center':
+          iconX = -iconSize / 2;
+          iconY = -iconSize / 2;
+          break;
+        case 'top-left':
+        default:
+          iconX = -radiusX + iconPadding;
+          iconY = -radiusY + iconPadding;
+          break;
+      }
+
+      // Use explicit iconColor if set, otherwise fall back to stroke color
+      const iconColor = shape.iconColor || stroke || '#333333';
       drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
     }
 

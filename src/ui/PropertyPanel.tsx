@@ -16,12 +16,14 @@ import {
   TextAlign,
   VerticalAlign,
   RoutingMode,
+  IconPosition,
 } from '../shapes/Shape';
 import { PropertySection } from './PropertySection';
 import { CompactColorInput } from './CompactColorInput';
 import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
 import { IconPicker } from './IconPicker';
+import { NumberInput } from './NumberInput';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
 import './PropertyPanel.css';
@@ -31,7 +33,7 @@ const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
 
 /**
- * Compact number input component.
+ * Compact number input component - wrapper around NumberInput for consistency.
  */
 function CompactNumberInput({
   label,
@@ -51,19 +53,15 @@ function CompactNumberInput({
   suffix?: string;
 }) {
   return (
-    <div className="compact-number-row">
-      <label className="compact-number-label">{label}</label>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="compact-number-input"
-        min={min}
-        max={max}
-        step={step}
-      />
-      {suffix && <span className="compact-number-suffix">{suffix}</span>}
-    </div>
+    <NumberInput
+      label={label}
+      value={value}
+      onChange={onChange}
+      step={step}
+      {...(min !== undefined && { min })}
+      {...(max !== undefined && { max })}
+      {...(suffix !== undefined && { suffix })}
+    />
   );
 }
 
@@ -332,6 +330,36 @@ function LibraryShapeProperties({
                 min={0}
                 max={32}
               />
+              <div className="compact-select-row">
+                <label className="compact-select-label">Position</label>
+                <select
+                  value={shape.iconPosition || 'top-left'}
+                  onChange={(e) => handleUpdate('iconPosition', e.target.value as IconPosition)}
+                  className="compact-select"
+                >
+                  <option value="top-left">Top Left</option>
+                  <option value="top-right">Top Right</option>
+                  <option value="bottom-left">Bottom Left</option>
+                  <option value="bottom-right">Bottom Right</option>
+                  <option value="center">Center</option>
+                </select>
+              </div>
+              <div className="icon-color-row">
+                <CompactColorInput
+                  label="Color"
+                  value={shape.iconColor || shape.stroke || '#333333'}
+                  onChange={(color) => handleUpdate('iconColor', color)}
+                />
+                {shape.iconColor && (
+                  <button
+                    className="icon-color-reset"
+                    onClick={() => handleUpdate('iconColor', '')}
+                    title="Reset to stroke color"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </>
           )}
         </PropertySection>
@@ -659,6 +687,56 @@ export function PropertyPanel() {
                   max={32}
                   suffix="px"
                 />
+                <div className="compact-select-row">
+                  <label className="compact-select-label">Position</label>
+                  <select
+                    value={shape.iconPosition || 'top-left'}
+                    onChange={(e) => {
+                      const val = e.target.value as IconPosition;
+                      selectedShapes.forEach((s) => {
+                        if (isRectangle(s) || isEllipse(s)) {
+                          updateShape(s.id, { iconPosition: val });
+                        }
+                      });
+                    }}
+                    className="compact-select"
+                  >
+                    <option value="top-left">Top Left</option>
+                    <option value="top-right">Top Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="center">Center</option>
+                  </select>
+                </div>
+                <div className="icon-color-row">
+                  <CompactColorInput
+                    label="Color"
+                    value={shape.iconColor || shape.stroke || '#333333'}
+                    onChange={(color) => {
+                      selectedShapes.forEach((s) => {
+                        if (isRectangle(s) || isEllipse(s)) {
+                          updateShape(s.id, { iconColor: color });
+                        }
+                      });
+                    }}
+                  />
+                  {shape.iconColor && (
+                    <button
+                      className="icon-color-reset"
+                      onClick={() => {
+                        selectedShapes.forEach((s) => {
+                          if (isRectangle(s) || isEllipse(s)) {
+                            // Use empty string to reset - falsy value triggers stroke fallback
+                            updateShape(s.id, { iconColor: '' });
+                          }
+                        });
+                      }}
+                      title="Reset to stroke color"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </PropertySection>
