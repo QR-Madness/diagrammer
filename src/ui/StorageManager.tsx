@@ -18,7 +18,35 @@ import type { BlobMetadata, StorageStats, GCStats } from '../storage/BlobTypes';
 import { useIconLibraryStore, initializeIconLibrary } from '../store/iconLibraryStore';
 import type { IconMetadata } from '../storage/IconTypes';
 import { formatFileSize } from '../utils/imageUtils';
+import { usePersistenceStore, loadDocumentFromStorage } from '../store/persistenceStore';
 import './StorageManager.css';
+
+/**
+ * Extract blob IDs from Tiptap rich text content.
+ * Duplicated from persistenceStore for use in recalculation.
+ */
+function extractBlobIds(richTextContent: any): string[] {
+  const blobIds: string[] = [];
+
+  function traverse(node: any) {
+    if (!node) return;
+    if (node.type === 'image' && node.attrs?.src) {
+      const src = node.attrs.src as string;
+      if (src.startsWith('blob://')) {
+        blobIds.push(src.replace('blob://', ''));
+      }
+    }
+    if (node.content && Array.isArray(node.content)) {
+      node.content.forEach((child: any) => traverse(child));
+    }
+  }
+
+  const tiptapContent = richTextContent?.content;
+  if (tiptapContent) {
+    traverse(tiptapContent);
+  }
+  return blobIds;
+}
 
 type TabId = 'images' | 'icons';
 
@@ -34,6 +62,7 @@ export function StorageManager({ onClose }: StorageManagerProps) {
   const [orphanedBlobs, setOrphanedBlobs] = useState<BlobMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCollecting, setIsCollecting] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [gcResult, setGcResult] = useState<GCStats | null>(null);
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
 
@@ -43,6 +72,8 @@ export function StorageManager({ onClose }: StorageManagerProps) {
   const [isLoadingIcons, setIsLoadingIcons] = useState(true);
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const getDocumentList = usePersistenceStore((state) => state.getDocumentList);
 
   const {
     getAllIcons,
@@ -150,6 +181,52 @@ export function StorageManager({ onClose }: StorageManagerProps) {
       alert('Cleanup failed. See console for details.');
     } finally {
       setIsCollecting(false);
+    }
+  };
+
+  // Recalculate usage counts by scanning all documents
+  const handleRecalculateUsage = async () => {
+    setIsRecalculating(true);
+    try {
+      // Get all blobs
+      const allBlobs = await blobStorage.listAllBlobs();
+
+      // Initialize counts to 0
+      const usageCounts: Record<string, number> = {};
+      for (const blob of allBlobs) {
+        usageCounts[blob.id] = 0;
+      }
+
+      // Scan all documents for blob references
+      const documents = getDocumentList();
+      for (const docMeta of documents) {
+        try {
+          const doc = loadDocumentFromStorage(docMeta.id);
+          if (doc?.richTextContent) {
+            const blobIds = extractBlobIds(doc.richTextContent);
+            for (const blobId of blobIds) {
+              if (usageCounts[blobId] !== undefined) {
+                usageCounts[blobId]++;
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Failed to scan document:', docMeta.id, error);
+        }
+      }
+
+      // Update all blob usage counts
+      for (const [blobId, count] of Object.entries(usageCounts)) {
+        await blobStorage.setUsageCount(blobId, count);
+      }
+
+      // Reload data to show updated counts
+      await loadBlobData();
+    } catch (error) {
+      console.error('Recalculate failed:', error);
+      alert('Failed to recalculate usage counts. See console for details.');
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -297,8 +374,16 @@ export function StorageManager({ onClose }: StorageManagerProps) {
               </div>
             )}
 
-            {/* Garbage collection */}
+            {/* Actions */}
             <div className="storage-manager-actions">
+              <button
+                className="storage-manager-btn"
+                onClick={handleRecalculateUsage}
+                disabled={isRecalculating || isLoading}
+                title="Scan all documents to recalculate accurate usage counts"
+              >
+                {isRecalculating ? 'Scanning...' : 'Recalculate Usage'}
+              </button>
               <button
                 className="storage-manager-btn storage-manager-btn-primary"
                 onClick={handleCleanupClick}

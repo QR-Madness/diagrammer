@@ -256,6 +256,21 @@ export class BlobStorage {
   }
 
   /**
+   * Set usage count for a blob directly.
+   * Used by recalculate function to set accurate counts.
+   *
+   * @param id - Blob ID
+   * @param count - New usage count
+   */
+  async setUsageCount(id: string, count: number): Promise<void> {
+    const metadata = await this.getBlobMetadata(id);
+    if (!metadata) return;
+
+    metadata.usageCount = Math.max(0, count);
+    await this.saveBlobMetadata(metadata);
+  }
+
+  /**
    * Check if IndexedDB is supported in the current browser.
    *
    * @returns true if IndexedDB is available
