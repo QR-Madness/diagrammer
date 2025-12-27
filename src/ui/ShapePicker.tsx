@@ -1,0 +1,261 @@
+/**
+ * ShapePicker - Component for selecting library shapes from shape libraries.
+ *
+ * Features:
+ * - Browse shapes by category (flowchart, etc.)
+ * - Visual shape previews with canvas rendering
+ * - Click to activate shape tool
+ * - Keyboard navigation support
+ */
+
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useShapeLibraryStore } from '../store/shapeLibraryStore';
+import { useSessionStore } from '../store/sessionStore';
+import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
+import './ShapePicker.css';
+
+/**
+ * Category labels for display.
+ */
+const CATEGORY_LABELS: Record<ShapeLibraryCategory, string> = {
+  basic: 'Basic',
+  flowchart: 'Flowchart',
+  'uml-class': 'UML Class',
+  'uml-usecase': 'UML Use Case',
+  'uml-sequence': 'UML Sequence',
+  custom: 'Custom',
+};
+
+/**
+ * Categories to show in the picker (ordered).
+ */
+const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart'];
+
+/**
+ * ShapePicker component.
+ */
+export function ShapePicker() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<ShapeLibraryCategory>('flowchart');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { getShapesByCategory, getAllLibraryShapes, isInitialized } = useShapeLibraryStore();
+  const activeTool = useSessionStore((state) => state.activeTool);
+  const setActiveTool = useSessionStore((state) => state.setActiveTool);
+
+  // Get shapes for current category
+  const shapes = useMemo(() => {
+    if (!isInitialized) return [];
+    return getShapesByCategory(selectedCategory);
+  }, [isInitialized, selectedCategory, getShapesByCategory]);
+
+  // Get all library shapes to check if current tool is a library shape
+  const allLibraryShapes = useMemo(() => {
+    if (!isInitialized) return [];
+    return getAllLibraryShapes();
+  }, [isInitialized, getAllLibraryShapes]);
+
+  // Check if current tool is a library shape
+  const isLibraryShapeActive = useMemo(() => {
+    return allLibraryShapes.some((s) => s.type === activeTool);
+  }, [allLibraryShapes, activeTool]);
+
+  // Get active library shape metadata for display
+  const activeLibraryShape = useMemo(() => {
+    if (!isLibraryShapeActive) return undefined;
+    return allLibraryShapes.find((s) => s.type === activeTool);
+  }, [isLibraryShapeActive, allLibraryShapes, activeTool]);
+
+  // Get category counts
+  const categoryCounts = useMemo(() => {
+    if (!isInitialized) return {} as Record<ShapeLibraryCategory, number>;
+    const counts: Record<ShapeLibraryCategory, number> = {
+      basic: 0,
+      flowchart: 0,
+      'uml-class': 0,
+      'uml-usecase': 0,
+      'uml-sequence': 0,
+      custom: 0,
+    };
+    for (const cat of PICKER_CATEGORIES) {
+      counts[cat] = getShapesByCategory(cat).length;
+    }
+    return counts;
+  }, [isInitialized, getShapesByCategory]);
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  // Close on escape
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  // Handle shape selection
+  const handleSelect = useCallback(
+    (shape: ShapeMetadata) => {
+      setActiveTool(shape.type);
+      setIsOpen(false);
+    },
+    [setActiveTool]
+  );
+
+  // Toggle dropdown
+  const handleToggle = useCallback(() => {
+    setIsOpen(!isOpen);
+  }, [isOpen]);
+
+  if (!isInitialized) {
+    return null;
+  }
+
+  return (
+    <div className="shape-picker" ref={containerRef}>
+      <button
+        className={`shape-picker-trigger ${isOpen ? 'open' : ''} ${isLibraryShapeActive ? 'active' : ''}`}
+        onClick={handleToggle}
+        title="Shape library"
+      >
+        {activeLibraryShape ? (
+          <span className="shape-picker-trigger-icon">{activeLibraryShape.icon}</span>
+        ) : (
+          <span className="shape-picker-trigger-icon">◇</span>
+        )}
+        <span className="shape-picker-chevron">{isOpen ? '\u25B2' : '\u25BC'}</span>
+      </button>
+
+      {isOpen && (
+        <div className="shape-picker-dropdown">
+          {/* Category tabs */}
+          <div className="shape-picker-categories">
+            {PICKER_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                className={`shape-picker-category ${selectedCategory === cat ? 'active' : ''}`}
+                onClick={() => setSelectedCategory(cat)}
+              >
+                {CATEGORY_LABELS[cat]} ({categoryCounts[cat] || 0})
+              </button>
+            ))}
+          </div>
+
+          {/* Shapes grid */}
+          <div className="shape-picker-grid">
+            {shapes.length === 0 ? (
+              <div className="shape-picker-empty">No shapes in this category</div>
+            ) : (
+              shapes.map((shape) => (
+                <button
+                  key={shape.type}
+                  className={`shape-picker-item ${activeTool === shape.type ? 'selected' : ''}`}
+                  onClick={() => handleSelect(shape)}
+                  title={shape.name}
+                >
+                  <ShapePreview metadata={shape} size={32} />
+                  <span className="shape-picker-item-name">{shape.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * ShapePreview - Renders a shape preview using canvas.
+ */
+function ShapePreview({ metadata, size }: { metadata: ShapeMetadata; size: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set up high-DPI canvas
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Clear
+    ctx.clearRect(0, 0, size, size);
+
+    // Try to render using the shape's path builder
+    const shapeLibraryStore = useShapeLibraryStore.getState();
+    const definition = shapeLibraryStore.getShapeDefinition(metadata.type);
+
+    if (definition && definition.pathBuilder) {
+      // Calculate scale to fit within preview area with padding
+      const padding = 4;
+      const availableWidth = size - padding * 2;
+      const availableHeight = size - padding * 2;
+      const scaleX = availableWidth / metadata.defaultWidth;
+      const scaleY = availableHeight / metadata.defaultHeight;
+      const scale = Math.min(scaleX, scaleY);
+
+      // Center in preview
+      const scaledWidth = metadata.defaultWidth * scale;
+      const scaledHeight = metadata.defaultHeight * scale;
+      const offsetX = (size - scaledWidth) / 2;
+      const offsetY = (size - scaledHeight) / 2;
+
+      ctx.save();
+      ctx.translate(offsetX + scaledWidth / 2, offsetY + scaledHeight / 2);
+      ctx.scale(scale, scale);
+
+      // Build path
+      const path = definition.pathBuilder(metadata.defaultWidth, metadata.defaultHeight);
+
+      // Draw
+      ctx.fillStyle = 'var(--color-primary, #4a90d9)';
+      ctx.strokeStyle = 'var(--text-primary, #2c5282)';
+      ctx.lineWidth = 2 / scale;
+      ctx.fill(path);
+      ctx.stroke(path);
+
+      ctx.restore();
+    } else {
+      // Fallback: render the icon as text
+      ctx.fillStyle = 'var(--text-primary, #333)';
+      ctx.font = `${size * 0.6}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(metadata.icon, size / 2, size / 2);
+    }
+  }, [metadata, size]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="shape-preview-canvas"
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+export default ShapePicker;

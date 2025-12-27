@@ -1,10 +1,51 @@
 import { create } from 'zustand';
 import { useDocumentStore } from './documentStore';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
 
 /**
- * Available tool types.
+ * Core tool types that are always available.
  */
-export type ToolType = 'select' | 'pan' | 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector';
+export const CORE_TOOLS = [
+  'select',
+  'pan',
+  'rectangle',
+  'ellipse',
+  'line',
+  'text',
+  'connector',
+] as const;
+
+/**
+ * Type for core tools (select, pan, etc.)
+ */
+export type CoreToolType = (typeof CORE_TOOLS)[number];
+
+/**
+ * Tool type - now allows any registered shape type.
+ *
+ * Core tools (select, pan, rectangle, ellipse, line, text, connector) are always valid.
+ * Library shape types (diamond, terminator, etc.) are valid when registered.
+ */
+export type ToolType = string;
+
+/**
+ * Check if a string is a valid tool type.
+ *
+ * @param type - The tool type to validate
+ * @returns true if the type is a core tool or a registered shape type
+ */
+export function isValidToolType(type: string): boolean {
+  return (
+    CORE_TOOLS.includes(type as CoreToolType) || shapeRegistry.hasHandler(type)
+  );
+}
+
+/**
+ * Check if a tool type is a core tool.
+ */
+export function isCoreToolType(type: string): type is CoreToolType {
+  return CORE_TOOLS.includes(type as CoreToolType);
+}
 
 /**
  * Camera state representing the viewport.

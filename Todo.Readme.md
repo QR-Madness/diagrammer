@@ -230,10 +230,25 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 10.5: Shape Libraries
 
 - [ ] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
+  - _Concepts to keep in mind:_
+    - Eventually in the far future, we will be linking shapes to code and using REAL UML classes that link to real classes
+    - Layers will eventually be renamable (GroupShape.name already exists)
+  - _Initial scope:_
+    - Metadata-driven shape system for PropertyPanel extensibility
+    - Flowchart shapes: Diamond, Terminator, Data, Document, Predefined Process, Manual Input, Preparation, Connector, Off-Page Connector
+    - ShapePicker UI component for shape library selection
+
+### Phase 10.6: UML Use-Case Diagrams
+
+- [ ] UML use-case diagram shapes
+  - Actor (stick figure)
+  - Use Case (ellipse with label - can likely reuse Ellipse with metadata)
+  - System Boundary (labeled rectangle container)
+  - Include/Extend relationships (dashed connectors with labels)
 
 ### Phase 11: Advanced Export
 
-- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo, standard cover pages, etc.)
+- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo from storagebrowser, standard cover pages, etc.)
 
 ### Phase 12: Diagram Patterns
 
@@ -264,13 +279,33 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Deeper headings (preferred up to 7 levels)
 - [ ] Additional tweaks
 
-### Phase 14: Version 1.0
+### Phase 14: Advanced Shape Toolsets
+
+#### 14.1 - Property Panel Overhaul
+
+- [ ] The property panel is quite complex; we need to change that
+- [ ] Use powerful components to drive the capabilities we need
+- [ ] Keep it extensible and flexible
+
+#### 14.2 Context Menu Upgrades
+
+- [ ] Implement multi-option entries support that easily allows an exanded context menu when hovering on them
+- [ ] Add context menu entry: Change connector routing (orthgonal/straight so far)
+- [ ] Add context menu entry:
+
+#### 14.3 Layer Panel Upgrades
+
+- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritence when moved out of a group, and remember group->group inheritence)
+- [ ] Rename layers/groups
+- [ ] Versatile layer dragging (allow dragging in/out, and between groups)
+
+### Phase 15: Version 1.0
 
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
 
-### Phase 15: Advanced Diagram Patterns – Version 1.1
+### Phase 16: Advanced Diagram Patterns – Version 1.2
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns

@@ -10,7 +10,9 @@ import {
   isText,
   isGroup,
   isConnector,
+  isLibraryShape,
   GroupShape,
+  LibraryShape,
   TextAlign,
   VerticalAlign,
   RoutingMode,
@@ -21,6 +23,7 @@ import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
 import { IconPicker } from './IconPicker';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
+import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
 import './PropertyPanel.css';
 
 /** Constraints for panel width */
@@ -116,6 +119,256 @@ function InfoRow({ label, value }: { label: string; value: string | number }) {
 }
 
 /**
+ * Generic property editor based on PropertyDefinition.
+ */
+function MetadataPropertyEditor({
+  definition,
+  value,
+  onChange,
+}: {
+  definition: PropertyDefinition;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  switch (definition.type) {
+    case 'number':
+      return (
+        <CompactNumberInput
+          label={definition.label}
+          value={(value as number) ?? (definition.default as number | undefined) ?? 0}
+          onChange={(v) => onChange(v)}
+          {...(definition.min !== undefined && { min: definition.min })}
+          {...(definition.max !== undefined && { max: definition.max })}
+          {...(definition.step !== undefined && { step: definition.step })}
+        />
+      );
+    case 'string':
+      return (
+        <div className="compact-string-row">
+          <label className="compact-string-label">{definition.label}</label>
+          <input
+            type="text"
+            value={(value as string) ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            className="property-text-input"
+            placeholder={definition.placeholder}
+          />
+        </div>
+      );
+    case 'color':
+      return (
+        <CompactColorInput
+          label={definition.label}
+          value={(value as string) ?? ''}
+          onChange={(c) => onChange(c)}
+        />
+      );
+    case 'boolean':
+      return (
+        <div className="compact-checkbox-row">
+          <label className="compact-checkbox-label">{definition.label}</label>
+          <input
+            type="checkbox"
+            checked={(value as boolean) ?? false}
+            onChange={(e) => onChange(e.target.checked)}
+            className="compact-checkbox"
+          />
+        </div>
+      );
+    case 'slider':
+      return (
+        <CompactSliderInput
+          label={definition.label}
+          value={(value as number) ?? (definition.default as number | undefined) ?? 0}
+          onChange={(v) => onChange(v)}
+          {...(definition.min !== undefined && { min: definition.min })}
+          {...(definition.max !== undefined && { max: definition.max })}
+          {...(definition.step !== undefined && { step: definition.step })}
+          formatValue={(v) => definition.max === 1 ? `${Math.round(v * 100)}%` : v.toString()}
+        />
+      );
+    case 'select':
+      return (
+        <div className="compact-select-row">
+          <label className="compact-select-label">{definition.label}</label>
+          <select
+            value={(value as string) ?? ''}
+            onChange={(e) => onChange(e.target.value)}
+            className="compact-select"
+          >
+            {definition.options?.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      );
+    default:
+      return null;
+  }
+}
+
+/**
+ * Group properties by section for rendering.
+ */
+function groupBySection(properties: PropertyDefinition[]): Map<PropertySectionType, PropertyDefinition[]> {
+  const grouped = new Map<PropertySectionType, PropertyDefinition[]>();
+  for (const prop of properties) {
+    const section = prop.section;
+    if (!grouped.has(section)) {
+      grouped.set(section, []);
+    }
+    grouped.get(section)!.push(prop);
+  }
+  return grouped;
+}
+
+/**
+ * Section labels for display.
+ */
+const SECTION_LABELS: Record<PropertySectionType, string> = {
+  appearance: 'Appearance',
+  dimensions: 'Dimensions',
+  label: 'Label',
+  icon: 'Icon',
+  endpoints: 'Endpoints',
+  routing: 'Routing',
+  custom: 'Properties',
+};
+
+/**
+ * Get a property value from a shape by key.
+ */
+function getShapeProperty(shape: Shape, key: string): unknown {
+  return (shape as unknown as Record<string, unknown>)[key];
+}
+
+/**
+ * Metadata-driven properties for library shapes.
+ */
+function LibraryShapeProperties({
+  shape,
+  metadata,
+  selectedShapes,
+  updateShape,
+}: {
+  shape: LibraryShape;
+  metadata: ShapeMetadata;
+  selectedShapes: Shape[];
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  const groupedProperties = useMemo(() => groupBySection(metadata.properties), [metadata.properties]);
+
+  const handleUpdate = useCallback((key: string, value: unknown) => {
+    selectedShapes.forEach((s) => {
+      if (isLibraryShape(s)) {
+        updateShape(s.id, { [key]: value } as Partial<Shape>);
+      }
+    });
+  }, [selectedShapes, updateShape]);
+
+  return (
+    <>
+      {/* Appearance Section */}
+      {groupedProperties.has('appearance') && (
+        <PropertySection id="appearance" title={SECTION_LABELS.appearance} defaultExpanded>
+          {groupedProperties.get('appearance')!.map((prop) => (
+            <MetadataPropertyEditor
+              key={prop.key}
+              definition={prop}
+              value={getShapeProperty(shape, prop.key)}
+              onChange={(v) => handleUpdate(prop.key, v)}
+            />
+          ))}
+        </PropertySection>
+      )}
+
+      {/* Label Section */}
+      {metadata.supportsLabel && (
+        <PropertySection id="label" title={SECTION_LABELS.label} defaultExpanded>
+          <input
+            type="text"
+            value={shape.label || ''}
+            onChange={(e) => handleUpdate('label', e.target.value)}
+            className="property-text-input"
+            placeholder="Enter label..."
+          />
+          <CompactNumberInput
+            label="Font Size"
+            value={shape.labelFontSize || 14}
+            onChange={(val) => handleUpdate('labelFontSize', val)}
+            min={8}
+            max={100}
+          />
+          <CompactColorInput
+            label="Color"
+            value={shape.labelColor || '#000000'}
+            onChange={(color) => handleUpdate('labelColor', color)}
+          />
+        </PropertySection>
+      )}
+
+      {/* Icon Section */}
+      {metadata.supportsIcon && (
+        <PropertySection id="icon" title={SECTION_LABELS.icon} defaultExpanded={false}>
+          <IconPicker
+            value={shape.iconId}
+            onChange={(iconId: string | undefined) => handleUpdate('iconId', iconId || '')}
+          />
+          {shape.iconId && (
+            <>
+              <CompactNumberInput
+                label="Size"
+                value={shape.iconSize || 24}
+                onChange={(val) => handleUpdate('iconSize', val)}
+                min={12}
+                max={64}
+              />
+              <CompactNumberInput
+                label="Padding"
+                value={shape.iconPadding || 8}
+                onChange={(val) => handleUpdate('iconPadding', val)}
+                min={0}
+                max={32}
+              />
+            </>
+          )}
+        </PropertySection>
+      )}
+
+      {/* Dimensions Section */}
+      {groupedProperties.has('dimensions') && (
+        <PropertySection id="dimensions" title={SECTION_LABELS.dimensions} defaultExpanded={false}>
+          {groupedProperties.get('dimensions')!.map((prop) => (
+            <MetadataPropertyEditor
+              key={prop.key}
+              definition={prop}
+              value={getShapeProperty(shape, prop.key)}
+              onChange={(v) => handleUpdate(prop.key, v)}
+            />
+          ))}
+        </PropertySection>
+      )}
+
+      {/* Custom Section */}
+      {groupedProperties.has('custom') && (
+        <PropertySection id="custom" title={SECTION_LABELS.custom} defaultExpanded>
+          {groupedProperties.get('custom')!.map((prop) => (
+            <MetadataPropertyEditor
+              key={prop.key}
+              definition={prop}
+              value={getShapeProperty(shape, prop.key)}
+              onChange={(v) => handleUpdate(prop.key, v)}
+            />
+          ))}
+        </PropertySection>
+      )}
+    </>
+  );
+}
+
+/**
  * PropertyPanel component for editing selected shape properties.
  *
  * Features:
@@ -185,6 +438,13 @@ export function PropertyPanel() {
   const shape = selectedShapes[0];
   const isMultiple = selectedShapes.length > 1;
   const isGroupSelected = shape ? isGroup(shape) : false;
+  const isLibraryShapeSelected = shape ? isLibraryShape(shape) : false;
+
+  // Get metadata for library shapes
+  const shapeMetadata = useMemo(() => {
+    if (!shape || !isLibraryShapeSelected) return null;
+    return shapeRegistry.getMetadata(shape.type);
+  }, [shape, isLibraryShapeSelected]);
 
   // Calculate group bounds
   const groupBounds = useMemo(() => {
@@ -232,9 +492,19 @@ export function PropertyPanel() {
       <div className="property-panel-content">
         {/* Shape Type Badge */}
         <div className="property-type-badge">
-          {isGroupSelected ? 'Group' : shape.type}
+          {isGroupSelected ? 'Group' : (shapeMetadata?.name || shape.type)}
           {isGroupSelected && ` (${(shape as GroupShape).childIds.length})`}
         </div>
+
+        {/* Library shape properties - metadata-driven */}
+        {isLibraryShapeSelected && shapeMetadata && (
+          <LibraryShapeProperties
+            shape={shape as LibraryShape}
+            metadata={shapeMetadata}
+            selectedShapes={selectedShapes}
+            updateShape={updateShape}
+          />
+        )}
 
         {/* Group-specific properties */}
         {isGroupSelected && (
@@ -255,8 +525,8 @@ export function PropertyPanel() {
           </PropertySection>
         )}
 
-        {/* Appearance Section - only for non-group shapes */}
-        {!isGroupSelected && (
+        {/* Appearance Section - only for non-group, non-library shapes */}
+        {!isGroupSelected && !isLibraryShapeSelected && (
           <PropertySection id="appearance" title="Appearance" defaultExpanded>
             {/* Fill Color */}
             {shape.fill !== null && (
@@ -458,8 +728,8 @@ export function PropertyPanel() {
           </PropertySection>
         )}
 
-        {/* Position Section - collapsed by default */}
-        {!isGroupSelected && (
+        {/* Position Section - collapsed by default, for core shapes only */}
+        {!isGroupSelected && !isLibraryShapeSelected && (
           <PropertySection id="position" title="Position" defaultExpanded={false}>
             <InfoRow label="X" value={Math.round(shape.x)} />
             <InfoRow label="Y" value={Math.round(shape.y)} />

@@ -34,9 +34,28 @@ export interface Handle {
 }
 
 /**
- * Shape type discriminator.
+ * Core shape type discriminator.
+ * These are the built-in shape types that have dedicated handlers.
  */
-export type ShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector' | 'group';
+export type CoreShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector' | 'group';
+
+/**
+ * Array of core shape types for runtime checking.
+ */
+export const CORE_SHAPE_TYPES: readonly CoreShapeType[] = [
+  'rectangle',
+  'ellipse',
+  'line',
+  'text',
+  'connector',
+  'group',
+] as const;
+
+/**
+ * Shape type - includes core types and any library shape type.
+ * Library shapes use dynamic string types like 'diamond', 'terminator', etc.
+ */
+export type ShapeType = CoreShapeType | string;
 
 /**
  * Anchor position on a shape for connectors.
@@ -233,9 +252,47 @@ export interface GroupShape extends BaseShape {
 }
 
 /**
- * Union type of all shape types.
+ * Library shape - a generic shape type for shape library extensions.
+ *
+ * Library shapes use a dynamic type string (e.g., 'diamond', 'terminator')
+ * and share common properties: width, height, optional label and icon.
+ * The actual rendering is handled by the shape's registered handler.
  */
-export type Shape = RectangleShape | EllipseShape | LineShape | TextShape | ConnectorShape | GroupShape;
+export interface LibraryShape extends Omit<BaseShape, 'type'> {
+  /** Dynamic shape type (e.g., 'diamond', 'terminator', 'parallelogram') */
+  type: string;
+  /** Width in world units */
+  width: number;
+  /** Height in world units */
+  height: number;
+  /** Optional inline text label */
+  label?: string;
+  /** Label font size in world units (default: 14) */
+  labelFontSize?: number;
+  /** Label text color (default: inherits from stroke or '#000000') */
+  labelColor?: string;
+  /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
+  iconId?: string;
+  /** Icon size in pixels (default: 24) */
+  iconSize?: number;
+  /** Icon padding from top-left corner (default: 8) */
+  iconPadding?: number;
+  /** Custom properties for specialized shapes (e.g., UML-specific data) */
+  customProperties?: Record<string, unknown>;
+}
+
+/**
+ * Union type of all shape types.
+ * Includes core shapes and library shapes.
+ */
+export type Shape =
+  | RectangleShape
+  | EllipseShape
+  | LineShape
+  | TextShape
+  | ConnectorShape
+  | GroupShape
+  | LibraryShape;
 
 // ============ Type Guards ============
 
@@ -279,6 +336,20 @@ export function isConnector(shape: Shape): shape is ConnectorShape {
  */
 export function isGroup(shape: Shape): shape is GroupShape {
   return shape.type === 'group';
+}
+
+/**
+ * Check if a shape is a library shape (not a core shape type).
+ */
+export function isLibraryShape(shape: Shape): shape is LibraryShape {
+  return !CORE_SHAPE_TYPES.includes(shape.type as CoreShapeType);
+}
+
+/**
+ * Check if a type string is a core shape type.
+ */
+export function isCoreShapeType(type: string): type is CoreShapeType {
+  return CORE_SHAPE_TYPES.includes(type as CoreShapeType);
 }
 
 // ============ Factory Defaults ============
@@ -370,4 +441,17 @@ export const DEFAULT_GROUP = {
   stroke: null,
   strokeWidth: 0,
   childIds: [] as string[],
+} as const;
+
+/**
+ * Default values for library shapes.
+ * Library shapes share common properties with rectangles.
+ */
+export const DEFAULT_LIBRARY_SHAPE = {
+  ...DEFAULT_SHAPE_STYLE,
+  width: 100,
+  height: 80,
+  labelFontSize: 14,
+  iconSize: 24,
+  iconPadding: 8,
 } as const;

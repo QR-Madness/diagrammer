@@ -12,6 +12,7 @@ import { EllipseTool } from './tools/EllipseTool';
 import { LineTool } from './tools/LineTool';
 import { TextTool } from './tools/TextTool';
 import { ConnectorTool } from './tools/ConnectorTool';
+import { LibraryShapeTool } from './tools/LibraryShapeTool';
 import { Vec2 } from '../math/Vec2';
 import { Shape, isConnector, isGroup, ConnectorShape } from '../shapes/Shape';
 import { updateConnectorEndpoints } from '../shapes/Connector';
@@ -19,6 +20,7 @@ import { calculateConnectorWaypoints } from './OrthogonalRouter';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
 import { useHistoryStore, pushHistory } from '../store/historyStore';
+import { useShapeLibraryStore } from '../store/shapeLibraryStore';
 import { nanoid } from 'nanoid';
 
 // Import shape handlers to register them
@@ -330,6 +332,7 @@ export class Engine {
    * Register the default tools.
    */
   private registerDefaultTools(): void {
+    // Core tools
     this.toolManager.register(new SelectTool());
     this.toolManager.register(new PanTool());
     this.toolManager.register(new RectangleTool());
@@ -337,6 +340,15 @@ export class Engine {
     this.toolManager.register(new LineTool());
     this.toolManager.register(new TextTool());
     this.toolManager.register(new ConnectorTool());
+
+    // Initialize shape library and register library shape tools
+    const shapeLibrary = useShapeLibraryStore.getState();
+    shapeLibrary.initialize();
+
+    // Register a tool for each library shape
+    for (const definition of shapeLibrary.registeredDefinitions) {
+      this.toolManager.register(new LibraryShapeTool(definition));
+    }
   }
 
   /**

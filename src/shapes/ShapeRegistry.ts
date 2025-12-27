@@ -1,6 +1,7 @@
 import { Vec2 } from '../math/Vec2';
 import { Box } from '../math/Box';
 import { Shape, Handle, Anchor } from './Shape';
+import type { ShapeMetadata, ShapeLibraryCategory } from './ShapeMetadata';
 
 /**
  * Handler interface for shape operations.
@@ -89,19 +90,28 @@ export interface ShapeHandler<T extends Shape = Shape> {
  */
 export class ShapeRegistry {
   private handlers: Map<string, ShapeHandler> = new Map();
+  private metadata: Map<string, ShapeMetadata> = new Map();
 
   /**
-   * Register a handler for a shape type.
+   * Register a handler for a shape type with optional metadata.
    *
    * @param type - The shape type (e.g., 'rectangle', 'ellipse')
    * @param handler - The handler implementing shape operations
+   * @param metadata - Optional metadata for UI rendering (PropertyPanel, ShapePicker)
    * @throws Error if a handler is already registered for the type
    */
-  register<T extends Shape>(type: string, handler: ShapeHandler<T>): void {
+  register<T extends Shape>(
+    type: string,
+    handler: ShapeHandler<T>,
+    metadata?: ShapeMetadata
+  ): void {
     if (this.handlers.has(type)) {
       throw new Error(`Handler already registered for shape type: ${type}`);
     }
     this.handlers.set(type, handler as ShapeHandler);
+    if (metadata) {
+      this.metadata.set(type, metadata);
+    }
   }
 
   /**
@@ -161,11 +171,75 @@ export class ShapeRegistry {
   }
 
   /**
-   * Clear all registered handlers.
+   * Get metadata for a shape type.
+   *
+   * @param type - The shape type to get metadata for
+   * @returns The shape metadata, or undefined if not registered
+   */
+  getMetadata(type: string): ShapeMetadata | undefined {
+    return this.metadata.get(type);
+  }
+
+  /**
+   * Get metadata for a specific shape.
+   * Convenience method that extracts the type from the shape.
+   *
+   * @param shape - The shape to get metadata for
+   * @returns The shape metadata, or undefined if not registered
+   */
+  getMetadataForShape(shape: Shape): ShapeMetadata | undefined {
+    return this.getMetadata(shape.type);
+  }
+
+  /**
+   * Check if metadata is registered for a shape type.
+   *
+   * @param type - The shape type to check
+   * @returns true if metadata is registered
+   */
+  hasMetadata(type: string): boolean {
+    return this.metadata.has(type);
+  }
+
+  /**
+   * Get all registered metadata.
+   *
+   * @returns Array of all shape metadata
+   */
+  getAllMetadata(): ShapeMetadata[] {
+    return Array.from(this.metadata.values());
+  }
+
+  /**
+   * Get metadata for shapes in a specific category.
+   *
+   * @param category - The category to filter by
+   * @returns Array of shape metadata in the category
+   */
+  getMetadataByCategory(category: ShapeLibraryCategory): ShapeMetadata[] {
+    return this.getAllMetadata().filter((m) => m.category === category);
+  }
+
+  /**
+   * Get all registered categories.
+   *
+   * @returns Array of unique categories
+   */
+  getRegisteredCategories(): ShapeLibraryCategory[] {
+    const categories = new Set<ShapeLibraryCategory>();
+    for (const meta of this.metadata.values()) {
+      categories.add(meta.category);
+    }
+    return Array.from(categories);
+  }
+
+  /**
+   * Clear all registered handlers and metadata.
    * Useful for testing.
    */
   clear(): void {
     this.handlers.clear();
+    this.metadata.clear();
   }
 }
 

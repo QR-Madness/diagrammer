@@ -16,6 +16,7 @@ import { useHistoryStore } from '../store/historyStore';
 import { usePersistenceStore } from '../store/persistenceStore';
 import { useThemeStore } from '../store/themeStore';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { ShapePicker } from './ShapePicker';
 import './UnifiedToolbar.css';
 
 /**
@@ -542,6 +543,7 @@ export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager }: 
               onClick={() => setActiveTool(tool.type)}
             />
           ))}
+          <ShapePicker />
         </div>
       </div>
 
