@@ -1,28 +1,17 @@
 /**
  * LibraryShapeTool - Generic tool for creating library shapes.
  *
- * This tool is parameterized with a LibraryShapeDefinition and can create
- * any library shape type (diamond, terminator, hexagon, etc.) using the
- * same drag-to-create pattern as RectangleTool.
+ * This tool extends DragToCreateTool and is parameterized with a
+ * LibraryShapeDefinition to create any library shape type (diamond,
+ * terminator, hexagon, etc.).
  */
 
-import { BaseTool, ToolContext } from './Tool';
-import { NormalizedPointerEvent } from '../InputHandler';
+import { ToolContext } from './Tool';
+import { DragToCreateTool, DragRect } from './DragToCreateTool';
 import { Vec2 } from '../../math/Vec2';
 import { ToolType } from '../../store/sessionStore';
-import { LibraryShape, DEFAULT_LIBRARY_SHAPE } from '../../shapes/Shape';
+import { LibraryShape, Shape, DEFAULT_LIBRARY_SHAPE } from '../../shapes/Shape';
 import type { LibraryShapeDefinition } from '../../shapes/library/ShapeLibraryTypes';
-import { nanoid } from 'nanoid';
-
-/**
- * State machine states for the LibraryShapeTool.
- */
-type LibraryShapeState = 'idle' | 'drawing';
-
-/**
- * Minimum size in world units to create a shape.
- */
-const MIN_SIZE = 5;
 
 /**
  * Generic tool for creating library shapes.
@@ -34,17 +23,13 @@ const MIN_SIZE = 5;
  * - Escape to cancel creation
  * - Automatically selects created shape and switches to Select tool
  */
-export class LibraryShapeTool extends BaseTool {
+export class LibraryShapeTool extends DragToCreateTool {
   readonly type: ToolType;
   readonly name: string;
   // Note: Library shapes don't have keyboard shortcuts by default
   // as there are too many shapes to assign unique shortcuts
 
   private definition: LibraryShapeDefinition;
-  private state: LibraryShapeState = 'idle';
-  private startPoint: Vec2 | null = null;
-  private currentPoint: Vec2 | null = null;
-  private isShiftHeld = false;
 
   constructor(definition: LibraryShapeDefinition) {
     super();
@@ -53,124 +38,36 @@ export class LibraryShapeTool extends BaseTool {
     this.name = definition.metadata.name;
   }
 
-  onActivate(ctx: ToolContext): void {
-    ctx.setCursor('crosshair');
+  /**
+   * Create a LibraryShape from the drag rectangle.
+   */
+  protected createShape(rect: DragRect, id: string): Shape {
+    const shape: LibraryShape = {
+      id,
+      type: this.definition.type,
+      x: rect.centerX,
+      y: rect.centerY,
+      width: rect.width,
+      height: rect.height,
+      rotation: DEFAULT_LIBRARY_SHAPE.rotation,
+      opacity: DEFAULT_LIBRARY_SHAPE.opacity,
+      locked: DEFAULT_LIBRARY_SHAPE.locked,
+      visible: DEFAULT_LIBRARY_SHAPE.visible,
+      fill: DEFAULT_LIBRARY_SHAPE.fill,
+      stroke: DEFAULT_LIBRARY_SHAPE.stroke,
+      strokeWidth: DEFAULT_LIBRARY_SHAPE.strokeWidth,
+    };
+    return shape;
   }
 
-  onDeactivate(ctx: ToolContext): void {
-    this.resetState();
-    ctx.setCursor('default');
-    ctx.setIsInteracting(false);
-    ctx.requestRender();
-  }
-
-  onPointerDown(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    if (event.button !== 'left') return;
-
-    this.state = 'drawing';
-    this.startPoint = event.worldPoint;
-    this.currentPoint = event.worldPoint;
-    this.isShiftHeld = event.modifiers.shift;
-
-    ctx.setIsInteracting(true);
-    ctx.requestRender();
-  }
-
-  onPointerMove(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    if (this.state !== 'drawing') return;
-
-    this.currentPoint = event.worldPoint;
-    this.isShiftHeld = event.modifiers.shift;
-    ctx.requestRender();
-  }
-
-  onPointerUp(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    if (event.button !== 'left') return;
-    if (this.state !== 'drawing') return;
-
-    this.currentPoint = event.worldPoint;
-    this.isShiftHeld = event.modifiers.shift;
-
-    // Calculate shape dimensions
-    const rect = this.calculateDimensions();
-
-    if (rect && rect.width >= MIN_SIZE && rect.height >= MIN_SIZE) {
-      // Push history before creating shape
-      ctx.pushHistory(`Create ${this.definition.metadata.name.toLowerCase()}`);
-
-      // Create the shape
-      const id = nanoid();
-      const shape: LibraryShape = {
-        id,
-        type: this.definition.type,
-        x: rect.centerX,
-        y: rect.centerY,
-        width: rect.width,
-        height: rect.height,
-        rotation: DEFAULT_LIBRARY_SHAPE.rotation,
-        opacity: DEFAULT_LIBRARY_SHAPE.opacity,
-        locked: DEFAULT_LIBRARY_SHAPE.locked,
-        visible: DEFAULT_LIBRARY_SHAPE.visible,
-        fill: DEFAULT_LIBRARY_SHAPE.fill,
-        stroke: DEFAULT_LIBRARY_SHAPE.stroke,
-        strokeWidth: DEFAULT_LIBRARY_SHAPE.strokeWidth,
-      };
-
-      // Add to document
-      ctx.addShape(shape);
-
-      // Update spatial index
-      ctx.spatialIndex.insert(shape);
-
-      // Select the new shape
-      ctx.select([id]);
-
-      // Switch to select tool
-      ctx.setActiveTool('select');
-    }
-
-    this.resetState();
-    ctx.setIsInteracting(false);
-    ctx.requestRender();
-  }
-
-  onKeyDown(event: KeyboardEvent, ctx: ToolContext): boolean {
-    if (event.key === 'Escape') {
-      if (this.state === 'drawing') {
-        this.resetState();
-        ctx.setIsInteracting(false);
-        ctx.requestRender();
-        return true;
-      }
-    }
-
-    if (event.key === 'Shift') {
-      this.isShiftHeld = true;
-      if (this.state === 'drawing') {
-        ctx.requestRender();
-      }
-      return false;
-    }
-
-    return false;
-  }
-
-  onKeyUp(event: KeyboardEvent, ctx: ToolContext): boolean {
-    if (event.key === 'Shift') {
-      this.isShiftHeld = false;
-      if (this.state === 'drawing') {
-        ctx.requestRender();
-      }
-    }
-    return false;
-  }
-
-  renderOverlay(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
-    if (this.state !== 'drawing') return;
-
-    const rect = this.calculateDimensions();
-    if (!rect) return;
-
+  /**
+   * Render the path-based shape preview.
+   */
+  protected renderPreview(
+    ctx2d: CanvasRenderingContext2D,
+    toolCtx: ToolContext,
+    rect: DragRect
+  ): void {
     const camera = toolCtx.camera;
 
     // Convert world center to screen coordinates
@@ -186,11 +83,10 @@ export class LibraryShapeTool extends BaseTool {
     ctx2d.translate(screenCenter.x, screenCenter.y);
 
     // Build the path at screen scale
-    // Note: We scale the path dimensions, not the canvas
     const path = this.definition.pathBuilder(screenWidth, screenHeight);
 
     // Draw preview shape
-    ctx2d.fillStyle = 'rgba(74, 144, 217, 0.3)'; // Semi-transparent blue
+    ctx2d.fillStyle = 'rgba(74, 144, 217, 0.3)';
     ctx2d.fill(path);
 
     ctx2d.strokeStyle = '#4a90d9';
@@ -202,15 +98,9 @@ export class LibraryShapeTool extends BaseTool {
   }
 
   /**
-   * Calculate the shape dimensions from start and current points.
-   * Applies aspect ratio constraint if shift is held, or if shape has locked aspect ratio.
+   * Override calculateRect to support aspectRatioLocked from metadata.
    */
-  private calculateDimensions(): {
-    centerX: number;
-    centerY: number;
-    width: number;
-    height: number;
-  } | null {
+  protected calculateRect(): DragRect | null {
     if (!this.startPoint || !this.currentPoint) return null;
 
     let width = Math.abs(this.currentPoint.x - this.startPoint.x);
@@ -239,12 +129,5 @@ export class LibraryShapeTool extends BaseTool {
       width,
       height,
     };
-  }
-
-  private resetState(): void {
-    this.state = 'idle';
-    this.startPoint = null;
-    this.currentPoint = null;
-    this.isShiftHeld = false;
   }
 }

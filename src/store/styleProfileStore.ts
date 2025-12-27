@@ -252,6 +252,19 @@ export function extractStyleFromShape(shape: {
 }
 
 /**
+ * Core shape types that don't support labels.
+ */
+const SHAPES_WITHOUT_LABELS = new Set(['line', 'text', 'group']);
+
+/**
+ * Check if a shape type supports labels.
+ * Includes: rectangle, ellipse, connector, and all library shapes.
+ */
+function supportsLabels(shapeType: string): boolean {
+  return !SHAPES_WITHOUT_LABELS.has(shapeType);
+}
+
+/**
  * Get updates object to apply a profile to a shape.
  * Filters out properties that don't apply to the shape type.
  */
@@ -272,12 +285,14 @@ export function getProfileUpdates(
   }
 
   // Include label properties for shapes that support labels
-  if ((shapeType === 'rectangle' || shapeType === 'ellipse') && profile.properties.labelFontSize !== undefined) {
-    updates.labelFontSize = profile.properties.labelFontSize;
-  }
-
-  if ((shapeType === 'rectangle' || shapeType === 'ellipse') && profile.properties.labelColor !== undefined) {
-    updates.labelColor = profile.properties.labelColor;
+  // (rectangle, ellipse, connector, and all library shapes)
+  if (supportsLabels(shapeType)) {
+    if (profile.properties.labelFontSize !== undefined) {
+      updates.labelFontSize = profile.properties.labelFontSize;
+    }
+    if (profile.properties.labelColor !== undefined) {
+      updates.labelColor = profile.properties.labelColor;
+    }
   }
 
   return updates;

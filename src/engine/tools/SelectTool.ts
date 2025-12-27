@@ -4,7 +4,7 @@ import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
 import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
-import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup, isConnector, Anchor, AnchorPosition } from '../../shapes/Shape';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup, isConnector, isLibraryShape, Anchor, AnchorPosition } from '../../shapes/Shape';
 import { useDocumentStore } from '../../store/documentStore';
 import { snapBounds, SnapResult } from '../Snapping';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
@@ -1085,6 +1085,28 @@ export class SelectTool extends BaseTool {
       return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
     }
 
+    // Library shapes use width/height like rectangles
+    if (isLibraryShape(shape)) {
+      const halfWidth = shape.width / 2;
+      const halfHeight = shape.height / 2;
+
+      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+        'top-left': { x: halfWidth, y: halfHeight },
+        'top': { x: 0, y: halfHeight },
+        'top-right': { x: -halfWidth, y: halfHeight },
+        'right': { x: -halfWidth, y: 0 },
+        'bottom-right': { x: -halfWidth, y: -halfHeight },
+        'bottom': { x: 0, y: -halfHeight },
+        'bottom-left': { x: halfWidth, y: -halfHeight },
+        'left': { x: halfWidth, y: 0 },
+        'rotation': { x: 0, y: 0 },
+      };
+
+      const offset = anchorOffsets[handleType];
+      const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
+      return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
+    }
+
     // Default fallback for any other shape types
     return new Vec2((shape as { x: number }).x, (shape as { y: number }).y);
   }
@@ -1117,6 +1139,11 @@ export class SelectTool extends BaseTool {
 
     if (isText(original)) {
       return this.calculateTextResize(original, handleType, currentPoint, anchor);
+    }
+
+    // Library shapes use the same resize logic as rectangles (width/height based)
+    if (isLibraryShape(original)) {
+      return this.calculateLibraryShapeResize(original, handleType, currentPoint, anchor, maintainAspectRatio);
     }
 
     return null;
@@ -1427,6 +1454,107 @@ export class SelectTool extends BaseTool {
     return {
       x: original.x + worldCenter.x,
       width: newWidth,
+    };
+  }
+
+  /**
+   * Calculate library shape resize (same logic as rectangle).
+   */
+  private calculateLibraryShapeResize(
+    original: Shape,
+    handleType: HandleType,
+    currentPoint: Vec2,
+    anchor: Vec2,
+    maintainAspectRatio: boolean
+  ): Partial<Shape> {
+    if (!isLibraryShape(original)) return {};
+
+    // Transform current point to local space (un-rotate around original center)
+    const toLocal = (p: Vec2): Vec2 => {
+      const translated = Vec2.subtract(p, new Vec2(original.x, original.y));
+      return translated.rotate(-original.rotation);
+    };
+
+    const localAnchor = toLocal(anchor);
+    const localCurrent = toLocal(currentPoint);
+
+    // Calculate new dimensions based on handle type
+    let newWidth = original.width;
+    let newHeight = original.height;
+    let newCenterX = 0;
+    let newCenterY = 0;
+
+    const isCorner = ['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(handleType);
+    const isHorizontal = ['left', 'right'].includes(handleType);
+    const isVertical = ['top', 'bottom'].includes(handleType);
+
+    if (isCorner) {
+      // Corner resize: both dimensions change
+      newWidth = Math.abs(localCurrent.x - localAnchor.x);
+      newHeight = Math.abs(localCurrent.y - localAnchor.y);
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.width > 0 && original.height > 0) {
+        const aspectRatio = original.width / original.height;
+        const currentRatio = newWidth / newHeight;
+
+        if (currentRatio > aspectRatio) {
+          newWidth = newHeight * aspectRatio;
+        } else {
+          newHeight = newWidth / aspectRatio;
+        }
+
+        // Adjust center based on which corner
+        if (handleType === 'top-left') {
+          newCenterX = localAnchor.x - newWidth / 2;
+          newCenterY = localAnchor.y - newHeight / 2;
+        } else if (handleType === 'top-right') {
+          newCenterX = localAnchor.x + newWidth / 2;
+          newCenterY = localAnchor.y - newHeight / 2;
+        } else if (handleType === 'bottom-left') {
+          newCenterX = localAnchor.x - newWidth / 2;
+          newCenterY = localAnchor.y + newHeight / 2;
+        } else {
+          newCenterX = localAnchor.x + newWidth / 2;
+          newCenterY = localAnchor.y + newHeight / 2;
+        }
+      }
+    } else if (isHorizontal) {
+      // Horizontal resize: only width changes
+      newWidth = Math.abs(localCurrent.x - localAnchor.x);
+      newCenterX = (localCurrent.x + localAnchor.x) / 2;
+      newCenterY = 0;
+
+      if (maintainAspectRatio && original.width > 0) {
+        const aspectRatio = original.width / original.height;
+        newHeight = newWidth / aspectRatio;
+      }
+    } else if (isVertical) {
+      // Vertical resize: only height changes
+      newHeight = Math.abs(localCurrent.y - localAnchor.y);
+      newCenterX = 0;
+      newCenterY = (localCurrent.y + localAnchor.y) / 2;
+
+      if (maintainAspectRatio && original.height > 0) {
+        const aspectRatio = original.width / original.height;
+        newWidth = newHeight * aspectRatio;
+      }
+    }
+
+    // Enforce minimum size
+    const minSize = 10;
+    newWidth = Math.max(newWidth, minSize);
+    newHeight = Math.max(newHeight, minSize);
+
+    // Transform new center back to world space
+    const worldCenter = new Vec2(newCenterX, newCenterY).rotate(original.rotation);
+
+    return {
+      x: original.x + worldCenter.x,
+      y: original.y + worldCenter.y,
+      width: newWidth,
+      height: newHeight,
     };
   }
 }
