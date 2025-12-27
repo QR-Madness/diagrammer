@@ -106,6 +106,7 @@ export class SelectTool extends BaseTool {
    * Resolve a hit shape ID to the appropriate selection target.
    * If the shape is in a group and the group is not selected, return the group ID.
    * If the group is already selected, allow click-through to select the child.
+   * If the child itself is already selected (e.g., via LayerPanel), allow direct interaction.
    */
   private resolveHitToSelection(hitId: string, ctx: ToolContext): string {
     const parentGroupId = useDocumentStore.getState().getParentGroup(hitId);
@@ -115,8 +116,15 @@ export class SelectTool extends BaseTool {
       return hitId;
     }
 
-    // Check if the parent group is already selected
+    // Check if the hit shape itself is already selected (e.g., from LayerPanel)
+    // This allows direct interaction with child shapes that were selected by other means
     const selectedIds = ctx.getSelectedIds();
+    if (selectedIds.includes(hitId)) {
+      // Child is already selected - allow direct interaction
+      return hitId;
+    }
+
+    // Check if the parent group is already selected
     if (selectedIds.includes(parentGroupId)) {
       // Group is selected - allow click-through to select child
       return hitId;

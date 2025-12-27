@@ -1,6 +1,6 @@
 import { Vec2 } from '../math/Vec2';
 import { Box } from '../math/Box';
-import { Shape, Handle } from '../shapes/Shape';
+import { Shape, Handle, isGroup, GroupShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { SpatialIndex } from './SpatialIndex';
 
@@ -63,6 +63,7 @@ export class HitTester {
   /**
    * Test if a point hits any shape.
    * Returns the topmost (highest z-order) shape at the point.
+   * For groups, returns the innermost child shape that was hit.
    *
    * @param worldPoint - Point in world coordinates
    * @param shapes - Map of shape ID to shape data
@@ -102,7 +103,51 @@ export class HitTester {
       try {
         const handler = shapeRegistry.getHandler(shape.type);
         if (handler.hitTest(shape, worldPoint)) {
+          // If this is a group, find the actual child that was hit
+          if (isGroup(shape)) {
+            const childResult = this.findHitChildInGroup(shape, worldPoint, shapes);
+            if (childResult.id) {
+              return childResult;
+            }
+          }
           return { shape, id };
+        }
+      } catch {
+        // Shape type not registered - skip
+      }
+    }
+
+    return { shape: null, id: null };
+  }
+
+  /**
+   * Recursively find the innermost child shape hit within a group.
+   * Tests children in reverse order of childIds (last = top, first = bottom).
+   */
+  private findHitChildInGroup(
+    group: GroupShape,
+    worldPoint: Vec2,
+    shapes: Record<string, Shape>
+  ): HitTestResult {
+    // Test children in reverse order (topmost first)
+    for (let i = group.childIds.length - 1; i >= 0; i--) {
+      const childId = group.childIds[i];
+      if (!childId) continue;
+
+      const child = shapes[childId];
+      if (!child || !child.visible) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(child.type);
+        if (handler.hitTest(child, worldPoint)) {
+          // If this child is also a group, recurse to find innermost hit
+          if (isGroup(child)) {
+            const innerResult = this.findHitChildInGroup(child, worldPoint, shapes);
+            if (innerResult.id) {
+              return innerResult;
+            }
+          }
+          return { shape: child, id: childId };
         }
       } catch {
         // Shape type not registered - skip

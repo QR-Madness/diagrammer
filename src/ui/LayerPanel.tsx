@@ -6,6 +6,15 @@ import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 import './LayerPanel.css';
 
+/**
+ * Drop zone type for layer reordering.
+ */
+interface DropZone {
+  type: 'before' | 'after' | 'into-group';
+  targetId: string;
+  groupId: string | null; // null for top-level, groupId for within a group
+}
+
 /** Height constraints for resizable panel */
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 500;
@@ -50,6 +59,8 @@ export function LayerPanel() {
   const groupShapes = useDocumentStore((state) => state.groupShapes);
   const ungroupShape = useDocumentStore((state) => state.ungroupShape);
   const deleteShapes = useDocumentStore((state) => state.deleteShapes);
+  const moveShapeInHierarchy = useDocumentStore((state) => state.moveShapeInHierarchy);
+  const reorderChildrenInGroup = useDocumentStore((state) => state.reorderChildrenInGroup);
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const select = useSessionStore((state) => state.select);
   const addToSelection = useSessionStore((state) => state.addToSelection);
@@ -75,8 +86,8 @@ export function LayerPanel() {
 
   // Drag state for reordering
   const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const dragStartIndex = useRef<number | null>(null);
+  const [dragSourceGroupId, setDragSourceGroupId] = useState<string | null>(null);
+  const [dropZone, setDropZone] = useState<DropZone | null>(null);
 
   // Expanded groups state (tracks which groups are expanded)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -121,52 +132,171 @@ export function LayerPanel() {
   // Display order is reversed (top of list = front = end of shapeOrder)
   const displayOrder = [...shapeOrder].reverse();
 
-  const handleDragStart = useCallback((e: React.DragEvent, id: string, index: number) => {
+  // Handle drag start for any layer item
+  const handleDragStart = useCallback((e: React.DragEvent, id: string, parentGroupId: string | null) => {
     setDraggedId(id);
-    dragStartIndex.current = index;
+    setDragSourceGroupId(parentGroupId);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', id);
+    // Add a small delay for visual feedback
+    const target = e.currentTarget as HTMLElement;
+    target.style.opacity = '0.5';
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+  // Handle drag over - determine drop zone based on position
+  const handleDragOver = useCallback((e: React.DragEvent, targetId: string, targetGroupId: string | null, isGroupItem: boolean) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverIndex(index);
+
+    if (!draggedId || draggedId === targetId) return;
+
+    // Prevent dropping a group into itself or its descendants
+    if (draggedId) {
+      const draggedShape = shapes[draggedId];
+      if (draggedShape && isGroup(draggedShape)) {
+        // Check if target is a descendant of dragged
+        const isDescendant = (groupId: string, checkId: string): boolean => {
+          const group = shapes[groupId] as GroupShape;
+          if (!group || !isGroup(group)) return false;
+          for (const childId of group.childIds) {
+            if (childId === checkId) return true;
+            const child = shapes[childId];
+            if (child && isGroup(child) && isDescendant(childId, checkId)) return true;
+          }
+          return false;
+        };
+        if (isDescendant(draggedId, targetId)) return;
+      }
+    }
+
+    // Calculate drop position based on mouse Y relative to the element
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseY = e.clientY - rect.top;
+    const threshold = rect.height / 3;
+
+    let dropType: 'before' | 'after' | 'into-group';
+    if (isGroupItem && mouseY > threshold && mouseY < rect.height - threshold) {
+      // Drop into group (middle third of the element)
+      dropType = 'into-group';
+    } else if (mouseY < rect.height / 2) {
+      dropType = 'before';
+    } else {
+      dropType = 'after';
+    }
+
+    setDropZone({
+      type: dropType,
+      targetId,
+      groupId: targetGroupId,
+    });
+  }, [draggedId, shapes]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if leaving the layer panel entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!relatedTarget || !e.currentTarget.contains(relatedTarget)) {
+      setDropZone(null);
+    }
   }, []);
 
-  const handleDragLeave = useCallback(() => {
-    setDragOverIndex(null);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent, dropIndex: number) => {
+  // Handle drop - move shape to new location
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
 
-    if (draggedId && dragStartIndex.current !== null && dragStartIndex.current !== dropIndex) {
-      push('Reorder shapes');
+    if (!draggedId || !dropZone) {
+      setDraggedId(null);
+      setDragSourceGroupId(null);
+      setDropZone(null);
+      return;
+    }
 
-      // Convert display indices back to shapeOrder indices
-      // displayOrder is reversed, so we need to convert
-      const fromShapeOrderIndex = shapeOrder.length - 1 - dragStartIndex.current;
-      const toShapeOrderIndex = shapeOrder.length - 1 - dropIndex;
+    const { type, targetId, groupId: targetGroupId } = dropZone;
 
-      // Create new order
-      const newOrder = [...shapeOrder];
-      const [movedId] = newOrder.splice(fromShapeOrderIndex, 1);
-      if (movedId) {
-        newOrder.splice(toShapeOrderIndex, 0, movedId);
-        reorderShapes(newOrder);
+    // Don't do anything if dropping on self
+    if (draggedId === targetId && type !== 'into-group') {
+      setDraggedId(null);
+      setDragSourceGroupId(null);
+      setDropZone(null);
+      return;
+    }
+
+    push('Move layer');
+
+    if (type === 'into-group') {
+      // Dropping into a group - add as child
+      const targetGroup = shapes[targetId];
+      if (targetGroup && isGroup(targetGroup)) {
+        moveShapeInHierarchy(draggedId, targetId, 0); // Add at beginning (top in visual order)
+        // Expand the group to show the dropped item
+        setExpandedGroups((prev) => new Set([...prev, targetId]));
+      }
+    } else {
+      // Dropping before/after a target
+      if (dragSourceGroupId === targetGroupId) {
+        // Same container - reorder within
+        if (targetGroupId) {
+          // Reorder within group
+          const group = shapes[targetGroupId] as GroupShape;
+          const newOrder = [...group.childIds];
+          const fromIndex = newOrder.indexOf(draggedId);
+          let toIndex = newOrder.indexOf(targetId);
+
+          if (fromIndex !== -1) {
+            newOrder.splice(fromIndex, 1);
+            // Recalculate target index after removal
+            toIndex = newOrder.indexOf(targetId);
+            if (type === 'after') toIndex++;
+            newOrder.splice(toIndex, 0, draggedId);
+            reorderChildrenInGroup(targetGroupId, newOrder);
+          }
+        } else {
+          // Reorder at top level
+          const newOrder = [...shapeOrder];
+          const fromIndex = newOrder.indexOf(draggedId);
+          let toIndex = newOrder.indexOf(targetId);
+
+          if (fromIndex !== -1 && toIndex !== -1) {
+            newOrder.splice(fromIndex, 1);
+            // Recalculate target index after removal
+            toIndex = newOrder.indexOf(targetId);
+            if (type === 'after') toIndex++;
+            newOrder.splice(toIndex, 0, draggedId);
+            reorderShapes(newOrder);
+          }
+        }
+      } else {
+        // Different containers - move between
+        // Calculate insert index in target container
+        let insertIndex: number;
+        if (targetGroupId) {
+          // Moving to a group
+          const group = shapes[targetGroupId] as GroupShape;
+          insertIndex = group.childIds.indexOf(targetId);
+          if (type === 'after') insertIndex++;
+        } else {
+          // Moving to top level
+          insertIndex = shapeOrder.indexOf(targetId);
+          if (type === 'after') insertIndex++;
+        }
+        moveShapeInHierarchy(draggedId, targetGroupId, insertIndex);
       }
     }
 
     setDraggedId(null);
-    setDragOverIndex(null);
-    dragStartIndex.current = null;
-  }, [draggedId, shapeOrder, push, reorderShapes]);
+    setDragSourceGroupId(null);
+    setDropZone(null);
+  }, [draggedId, dropZone, dragSourceGroupId, shapes, shapeOrder, push, moveShapeInHierarchy, reorderChildrenInGroup, reorderShapes]);
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = useCallback((e: React.DragEvent) => {
+    // Reset opacity
+    const target = e.currentTarget as HTMLElement;
+    target.style.opacity = '1';
+
     setDraggedId(null);
-    setDragOverIndex(null);
-    dragStartIndex.current = null;
+    setDragSourceGroupId(null);
+    setDropZone(null);
   }, []);
 
   const handleToggleLock = useCallback((id: string, currentLocked: boolean) => {
@@ -312,29 +442,45 @@ export function LayerPanel() {
 
   /**
    * Render a layer item (shape or group child).
+   * @param shape - The shape to render
+   * @param parentGroupId - ID of the parent group (null for top-level)
    */
   const renderLayerItem = useCallback((
     shape: Shape,
-    index: number,
-    isChild: boolean = false
+    parentGroupId: string | null
   ) => {
     const id = shape.id;
     const isSelected = selectedIds.has(id);
     const isDragging = draggedId === id;
-    const isDragOver = dragOverIndex === index;
     const isGroupShape = isGroup(shape);
     const isExpanded = expandedGroups.has(id);
+    const isChild = parentGroupId !== null;
+
+    // Calculate drop indicator styles
+    const isDropBefore = dropZone?.targetId === id && dropZone?.type === 'before';
+    const isDropAfter = dropZone?.targetId === id && dropZone?.type === 'after';
+    const isDropInto = dropZone?.targetId === id && dropZone?.type === 'into-group';
+
+    const classNames = [
+      'layer-item',
+      isSelected && 'selected',
+      isDragging && 'dragging',
+      isChild && 'child',
+      isDropBefore && 'drop-before',
+      isDropAfter && 'drop-after',
+      isDropInto && 'drop-into',
+    ].filter(Boolean).join(' ');
 
     return (
       <div key={id}>
         <div
-          className={`layer-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isDragOver ? 'drag-over' : ''} ${isChild ? 'child' : ''}`}
-          draggable={!isChild}
-          onDragStart={isChild ? undefined : (e) => handleDragStart(e, id, index)}
-          onDragOver={isChild ? undefined : (e) => handleDragOver(e, index)}
-          onDragLeave={isChild ? undefined : handleDragLeave}
-          onDrop={isChild ? undefined : (e) => handleDrop(e, index)}
-          onDragEnd={isChild ? undefined : handleDragEnd}
+          className={classNames}
+          draggable
+          onDragStart={(e) => handleDragStart(e, id, parentGroupId)}
+          onDragOver={(e) => handleDragOver(e, id, parentGroupId, isGroupShape)}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onDragEnd={handleDragEnd}
           onClick={(e) => handleSelectShape(e, id)}
           onContextMenu={(e) => handleContextMenu(e, id)}
         >
@@ -352,7 +498,7 @@ export function LayerPanel() {
             </button>
           ) : (
             <div className="layer-item-drag-handle">
-              {!isChild && <DragIcon />}
+              <DragIcon />
             </div>
           )}
 
@@ -399,30 +545,26 @@ export function LayerPanel() {
             >
               {shape.locked ? <LockIcon /> : <UnlockIcon />}
             </button>
-            {!isChild && (
-              <>
-                <button
-                  className="layer-action-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMoveToFront(id);
-                  }}
-                  title="Bring to front"
-                >
-                  <MoveUpIcon />
-                </button>
-                <button
-                  className="layer-action-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMoveToBack(id);
-                  }}
-                  title="Send to back"
-                >
-                  <MoveDownIcon />
-                </button>
-              </>
-            )}
+            <button
+              className="layer-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveToFront(id);
+              }}
+              title="Bring to front"
+            >
+              <MoveUpIcon />
+            </button>
+            <button
+              className="layer-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleMoveToBack(id);
+              }}
+              title="Send to back"
+            >
+              <MoveDownIcon />
+            </button>
           </div>
         </div>
 
@@ -432,17 +574,18 @@ export function LayerPanel() {
             {(shape as GroupShape).childIds.map((childId) => {
               const childShape = shapes[childId];
               if (!childShape) return null;
-              return renderLayerItem(childShape, -1, true);
+              return renderLayerItem(childShape, id);
             })}
           </div>
         )}
       </div>
     );
   }, [
-    selectedIds, draggedId, dragOverIndex, expandedGroups, shapes,
+    selectedIds, draggedId, dropZone, expandedGroups, shapes,
     handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd,
     handleSelectShape, handleToggleExpand, handleToggleVisibility, handleToggleLock,
-    handleMoveToFront, handleMoveToBack, handleContextMenu
+    handleMoveToFront, handleMoveToBack, handleContextMenu, renamingGroupId, renameValue,
+    handleFinishRename, handleCancelRename
   ]);
 
   if (displayOrder.length === 0) {
@@ -498,10 +641,10 @@ export function LayerPanel() {
             </div>
           )}
           <div className="layer-panel-list">
-            {displayOrder.map((id, index) => {
+            {displayOrder.map((id) => {
               const shape = shapes[id];
               if (!shape) return null;
-              return renderLayerItem(shape, index);
+              return renderLayerItem(shape, null);
             })}
           </div>
         </>

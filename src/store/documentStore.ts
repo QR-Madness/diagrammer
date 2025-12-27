@@ -54,6 +54,22 @@ export interface DocumentActions {
   groupShapes: (ids: string[], groupId: string) => void;
   ungroupShape: (groupId: string) => void;
   getParentGroup: (shapeId: string) => string | null;
+
+  // Layer movement (for drag-drop reordering in LayerPanel)
+  /**
+   * Move a shape within the hierarchy.
+   * @param shapeId - ID of the shape to move
+   * @param targetGroupId - Target group ID (null for top-level)
+   * @param insertIndex - Index to insert at in the target (end if not specified)
+   */
+  moveShapeInHierarchy: (shapeId: string, targetGroupId: string | null, insertIndex?: number) => void;
+
+  /**
+   * Reorder children within a group.
+   * @param groupId - Group to reorder
+   * @param newChildOrder - New order of child IDs
+   */
+  reorderChildrenInGroup: (groupId: string, newChildOrder: string[]) => void;
 }
 
 /**
@@ -342,6 +358,14 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
           }
         }
 
+        // Sort childIds by their original z-order to preserve visual layering
+        // Shapes earlier in shapeOrder (lower index) should render first (at bottom)
+        const sortedChildIds = [...validIds].sort((a, b) => {
+          const indexA = state.shapeOrder.indexOf(a);
+          const indexB = state.shapeOrder.indexOf(b);
+          return indexA - indexB;
+        });
+
         // Create the group shape
         const group: GroupShape = {
           id: groupId,
@@ -355,7 +379,7 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
           fill: null,
           stroke: null,
           strokeWidth: 0,
-          childIds: validIds,
+          childIds: sortedChildIds,
         };
 
         // Add group to shapes
@@ -433,6 +457,102 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
         }
       }
       return null;
+    },
+
+    moveShapeInHierarchy: (
+      shapeId: string,
+      targetGroupId: string | null,
+      insertIndex?: number
+    ) => {
+      set((state) => {
+        const shape = state.shapes[shapeId];
+        if (!shape) {
+          console.warn(`Shape ${shapeId} not found`);
+          return;
+        }
+
+        // Prevent moving a group into itself or its descendants
+        if (targetGroupId) {
+          let checkId: string | null = targetGroupId;
+          while (checkId) {
+            if (checkId === shapeId) {
+              console.warn('Cannot move a group into itself or its descendants');
+              return;
+            }
+            // Check if checkId's parent is shapeId
+            let found = false;
+            for (const s of Object.values(state.shapes)) {
+              if (isGroup(s) && s.childIds.includes(checkId)) {
+                checkId = s.id;
+                found = true;
+                break;
+              }
+            }
+            if (!found) break;
+          }
+        }
+
+        // Find current parent (null if top-level)
+        let currentParentId: string | null = null;
+        for (const s of Object.values(state.shapes)) {
+          if (isGroup(s) && s.childIds.includes(shapeId)) {
+            currentParentId = s.id;
+            break;
+          }
+        }
+
+        // Remove from current location
+        if (currentParentId) {
+          // Remove from parent group's childIds
+          const parentGroup = state.shapes[currentParentId] as GroupShape;
+          parentGroup.childIds = parentGroup.childIds.filter((id) => id !== shapeId);
+        } else {
+          // Remove from shapeOrder
+          state.shapeOrder = state.shapeOrder.filter((id) => id !== shapeId);
+        }
+
+        // Add to new location
+        if (targetGroupId) {
+          // Add to target group's childIds
+          const targetGroup = state.shapes[targetGroupId];
+          if (!targetGroup || !isGroup(targetGroup)) {
+            console.warn(`Target group ${targetGroupId} not found or is not a group`);
+            // Add back to shapeOrder as fallback
+            state.shapeOrder.push(shapeId);
+            return;
+          }
+          const targetChildren = [...(targetGroup as GroupShape).childIds];
+          const idx = insertIndex !== undefined ? insertIndex : targetChildren.length;
+          targetChildren.splice(idx, 0, shapeId);
+          (state.shapes[targetGroupId] as GroupShape).childIds = targetChildren;
+        } else {
+          // Add to shapeOrder (top-level)
+          const idx = insertIndex !== undefined ? insertIndex : state.shapeOrder.length;
+          state.shapeOrder.splice(idx, 0, shapeId);
+        }
+      });
+    },
+
+    reorderChildrenInGroup: (groupId: string, newChildOrder: string[]) => {
+      set((state) => {
+        const group = state.shapes[groupId];
+        if (!group || !isGroup(group)) {
+          console.warn(`Shape ${groupId} is not a group`);
+          return;
+        }
+
+        // Validate that all IDs are valid children
+        const currentChildIds = new Set(group.childIds);
+        const validNewOrder = newChildOrder.filter((id) => currentChildIds.has(id));
+
+        // Ensure we have the same children (just reordered)
+        if (validNewOrder.length !== group.childIds.length) {
+          console.warn('Invalid child order: missing or extra children');
+          return;
+        }
+
+        (state.shapes[groupId] as GroupShape).childIds = validNewOrder;
+      });
     },
   }))
 );
