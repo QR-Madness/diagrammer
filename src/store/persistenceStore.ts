@@ -132,7 +132,7 @@ export function deleteDocumentFromStorage(id: string): void {
  * @param content - Tiptap JSON content
  * @returns Array of blob IDs
  */
-function extractBlobIds(content: any): string[] {
+function extractBlobIds(richTextContent: any): string[] {
   const blobIds: string[] = [];
 
   function traverse(node: any) {
@@ -153,7 +153,13 @@ function extractBlobIds(content: any): string[] {
     }
   }
 
-  traverse(content);
+  // RichTextContent has structure { content: JSONContent, version: number }
+  // JSONContent is the actual Tiptap document with { type: "doc", content: [...] }
+  const tiptapContent = richTextContent?.content;
+  if (tiptapContent) {
+    traverse(tiptapContent);
+  }
+
   return blobIds;
 }
 
