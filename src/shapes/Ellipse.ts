@@ -128,11 +128,37 @@ export const ellipseHandler: ShapeHandler<EllipseShape> = {
     if (shape.label) {
       const fontSize = shape.labelFontSize || 14;
       const labelColor = shape.labelColor || stroke || '#000000';
+      const labelBackground = shape.labelBackground;
+      const labelOffsetX = shape.labelOffsetX || 0;
+      const labelOffsetY = shape.labelOffsetY || 0;
       // Use 70% of ellipse dimensions for text area (ellipse has less usable area than rectangle)
       const textMaxWidth = radiusX * 2 * 0.7;
       const textMaxHeight = radiusY * 2 * 0.7;
 
+      // Apply offset for label positioning
+      ctx.save();
+      ctx.translate(labelOffsetX, labelOffsetY);
+
+      // Draw label background if specified
+      if (labelBackground) {
+        // Measure text to get background dimensions
+        ctx.font = `${fontSize}px sans-serif`;
+        const lines = shape.label.split('\n');
+        const lineHeight = fontSize * 1.2;
+        let maxLineWidth = 0;
+        for (const line of lines) {
+          const metrics = ctx.measureText(line);
+          maxLineWidth = Math.max(maxLineWidth, metrics.width);
+        }
+        const bgWidth = Math.min(maxLineWidth + 12, textMaxWidth + 12);
+        const bgHeight = Math.min(lines.length * lineHeight + 8, textMaxHeight + 8);
+
+        ctx.fillStyle = labelBackground;
+        ctx.fillRect(-bgWidth / 2, -bgHeight / 2, bgWidth, bgHeight);
+      }
+
       renderWrappedText(ctx, shape.label, textMaxWidth, textMaxHeight, fontSize, 'sans-serif', labelColor);
+      ctx.restore();
     }
 
     ctx.restore();

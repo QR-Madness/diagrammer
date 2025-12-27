@@ -122,6 +122,12 @@ export interface RectangleShape extends BaseShape {
   labelFontSize?: number;
   /** Label text color (default: inherits from stroke or '#000000') */
   labelColor?: string;
+  /** Label background color (default: transparent) */
+  labelBackground?: string;
+  /** Label horizontal offset from center (default: 0) */
+  labelOffsetX?: number;
+  /** Label vertical offset from center (default: 0) */
+  labelOffsetY?: number;
   /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
   iconId?: string;
   /** Icon size in pixels (default: 24) */
@@ -154,6 +160,12 @@ export interface EllipseShape extends BaseShape {
   labelFontSize?: number;
   /** Label text color (default: inherits from stroke or '#000000') */
   labelColor?: string;
+  /** Label background color (default: transparent) */
+  labelBackground?: string;
+  /** Label horizontal offset from center (default: 0) */
+  labelOffsetX?: number;
+  /** Label vertical offset from center (default: 0) */
+  labelOffsetY?: number;
   /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
   iconId?: string;
   /** Icon size in pixels (default: 24) */
@@ -284,6 +296,12 @@ export interface LibraryShape extends Omit<BaseShape, 'type'> {
   labelFontSize?: number;
   /** Label text color (default: inherits from stroke or '#000000') */
   labelColor?: string;
+  /** Label background color (default: transparent) */
+  labelBackground?: string;
+  /** Label horizontal offset from center (default: 0) */
+  labelOffsetX?: number;
+  /** Label vertical offset from center (default: 0) */
+  labelOffsetY?: number;
   /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
   iconId?: string;
   /** Icon size in pixels (default: 24) */

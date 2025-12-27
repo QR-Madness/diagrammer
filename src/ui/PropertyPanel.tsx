@@ -304,6 +304,43 @@ function LibraryShapeProperties({
             value={shape.labelColor || '#000000'}
             onChange={(color) => handleUpdate('labelColor', color)}
           />
+          <CompactColorInput
+            label="Background"
+            value={shape.labelBackground || ''}
+            onChange={(color) => handleUpdate('labelBackground', color)}
+            showNoFill
+          />
+          {/* Label offset controls */}
+          {shape.label && (
+            <div className="label-offset-row">
+              <CompactNumberInput
+                label="Offset X"
+                value={shape.labelOffsetX || 0}
+                onChange={(val) => handleUpdate('labelOffsetX', val)}
+                min={-500}
+                max={500}
+              />
+              <CompactNumberInput
+                label="Offset Y"
+                value={shape.labelOffsetY || 0}
+                onChange={(val) => handleUpdate('labelOffsetY', val)}
+                min={-500}
+                max={500}
+              />
+              {(shape.labelOffsetX || shape.labelOffsetY) && (
+                <button
+                  className="label-offset-reset"
+                  onClick={() => {
+                    handleUpdate('labelOffsetX', 0);
+                    handleUpdate('labelOffsetY', 0);
+                  }}
+                  title="Reset label position"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+          )}
         </PropertySection>
       )}
 
@@ -640,6 +677,77 @@ export function PropertyPanel() {
               max={100}
               suffix="px"
             />
+            <CompactColorInput
+              label="Color"
+              value={shape.labelColor || shape.stroke || '#000000'}
+              onChange={(color) => {
+                selectedShapes.forEach((s) => {
+                  if (isRectangle(s) || isEllipse(s)) {
+                    updateShape(s.id, { labelColor: color });
+                  }
+                });
+              }}
+            />
+            <CompactColorInput
+              label="Background"
+              value={shape.labelBackground || ''}
+              onChange={(color) => {
+                selectedShapes.forEach((s) => {
+                  if (isRectangle(s) || isEllipse(s)) {
+                    updateShape(s.id, { labelBackground: color });
+                  }
+                });
+              }}
+              showNoFill
+            />
+            {/* Label offset controls */}
+            {shape.label && (
+              <div className="label-offset-row">
+                <CompactNumberInput
+                  label="Offset X"
+                  value={shape.labelOffsetX || 0}
+                  onChange={(val) => {
+                    selectedShapes.forEach((s) => {
+                      if (isRectangle(s) || isEllipse(s)) {
+                        updateShape(s.id, { labelOffsetX: val });
+                      }
+                    });
+                  }}
+                  min={-500}
+                  max={500}
+                  suffix="px"
+                />
+                <CompactNumberInput
+                  label="Offset Y"
+                  value={shape.labelOffsetY || 0}
+                  onChange={(val) => {
+                    selectedShapes.forEach((s) => {
+                      if (isRectangle(s) || isEllipse(s)) {
+                        updateShape(s.id, { labelOffsetY: val });
+                      }
+                    });
+                  }}
+                  min={-500}
+                  max={500}
+                  suffix="px"
+                />
+                {(shape.labelOffsetX || shape.labelOffsetY) && (
+                  <button
+                    className="label-offset-reset"
+                    onClick={() => {
+                      selectedShapes.forEach((s) => {
+                        if (isRectangle(s) || isEllipse(s)) {
+                          updateShape(s.id, { labelOffsetX: 0, labelOffsetY: 0 });
+                        }
+                      });
+                    }}
+                    title="Reset label position"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+            )}
           </PropertySection>
         )}
 

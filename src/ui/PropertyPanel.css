@@ -670,3 +670,51 @@
 [data-theme="dark"] .icon-color-reset:hover {
   background: var(--bg-tertiary, #333333);
 }
+
+/* Label Offset Row */
+.label-offset-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.label-offset-row .number-input-row {
+  flex: 1;
+}
+
+.label-offset-reset {
+  align-self: flex-end;
+  padding: 4px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.label-offset-reset:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--color-primary);
+}
+
+.label-offset-reset:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+}
+
+[data-theme="dark"] .label-offset-reset {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .label-offset-reset:hover {
+  background: var(--bg-tertiary, #333333);
+}
