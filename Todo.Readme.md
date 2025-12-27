@@ -266,6 +266,7 @@ implementation phase as defined in Specification.Readme.md.
 
 - [ ] Implement draggable layer reordering throughout groups and nested groups
 - [ ] Fix group layer-order visibility issues; when I grouped a text and shape together with my text on top, the grouping moved my text to the bottom and went invisible even though it was above the shape within the layer-order
+- [ ] Shapes have no available icons yet they are 
 
 ### Phase 11: Advanced Export
 

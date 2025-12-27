@@ -12,8 +12,10 @@
 import { nanoid } from 'nanoid';
 import { Vec2 } from '../math/Vec2';
 import { Box } from '../math/Box';
-import { Shape, isGroup, GroupShape } from '../shapes/Shape';
+import { Shape, isGroup, GroupShape, isConnector, ConnectorShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
+import { getConnectorStartPoint, getConnectorEndPoint } from '../shapes/Connector';
+import { calculateConnectorWaypoints } from '../engine/OrthogonalRouter';
 import type { SerializedShapeData } from '../storage/ShapeLibraryTypes';
 
 /**
@@ -245,6 +247,39 @@ export function deserializeShapes(
     if ('endShapeId' in shape && shape.endShapeId) {
       (shape as { endShapeId: string | null }).endShapeId =
         idMap.get(shape.endShapeId as string) || null;
+    }
+  }
+
+  // Build a temporary shapes map for connector endpoint calculation
+  const allShapes = [newRootShape, ...newChildShapes];
+  const shapesMap: Record<string, Shape> = {};
+  for (const shape of allShapes) {
+    shapesMap[shape.id] = shape;
+  }
+
+  // Recalculate connector endpoints based on new shape positions
+  for (const shape of allShapes) {
+    if (isConnector(shape)) {
+      const connector = shape as ConnectorShape;
+
+      // Recalculate start point if connected to a shape in this set
+      if (connector.startShapeId && shapesMap[connector.startShapeId]) {
+        const startPoint = getConnectorStartPoint(connector, shapesMap);
+        connector.x = startPoint.x;
+        connector.y = startPoint.y;
+      }
+
+      // Recalculate end point if connected to a shape in this set
+      if (connector.endShapeId && shapesMap[connector.endShapeId]) {
+        const endPoint = getConnectorEndPoint(connector, shapesMap);
+        connector.x2 = endPoint.x;
+        connector.y2 = endPoint.y;
+      }
+
+      // Recalculate orthogonal routing waypoints
+      if (connector.routingMode === 'orthogonal') {
+        connector.waypoints = calculateConnectorWaypoints(connector, shapesMap) ?? [];
+      }
     }
   }
 
