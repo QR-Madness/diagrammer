@@ -14,6 +14,22 @@ import { useSessionStore } from '../store/sessionStore';
 import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
 import './ShapePicker.css';
 
+/** View size options */
+type ViewSize = 'small' | 'medium' | 'large';
+
+const VIEW_SIZES: { value: ViewSize; label: string }[] = [
+  { value: 'small', label: 'S' },
+  { value: 'medium', label: 'M' },
+  { value: 'large', label: 'L' },
+];
+
+/** Preview sizes for each view size */
+const PREVIEW_SIZES: Record<ViewSize, number> = {
+  small: 32,
+  medium: 48,
+  large: 72,
+};
+
 /**
  * Category labels for display.
  */
@@ -37,6 +53,7 @@ const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'uml-usecase'];
 export function ShapePicker() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<ShapeLibraryCategory>('flowchart');
+  const [viewSize, setViewSize] = useState<ViewSize>('small');
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { getShapesByCategory, getAllLibraryShapes, isInitialized } = useShapeLibraryStore();
@@ -146,21 +163,35 @@ export function ShapePicker() {
 
       {isOpen && (
         <div className="shape-picker-dropdown">
-          {/* Category tabs */}
-          <div className="shape-picker-categories">
-            {PICKER_CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                className={`shape-picker-category ${selectedCategory === cat ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {CATEGORY_LABELS[cat]} ({categoryCounts[cat] || 0})
-              </button>
-            ))}
+          {/* Header with category tabs and view options */}
+          <div className="shape-picker-header">
+            <div className="shape-picker-categories">
+              {PICKER_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  className={`shape-picker-category ${selectedCategory === cat ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  {CATEGORY_LABELS[cat]} ({categoryCounts[cat] || 0})
+                </button>
+              ))}
+            </div>
+            <div className="shape-picker-view-options">
+              {VIEW_SIZES.map((size) => (
+                <button
+                  key={size.value}
+                  className={`shape-picker-view-btn ${viewSize === size.value ? 'active' : ''}`}
+                  onClick={() => setViewSize(size.value)}
+                  title={`${size.value.charAt(0).toUpperCase() + size.value.slice(1)} view`}
+                >
+                  {size.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Shapes grid */}
-          <div className="shape-picker-grid">
+          <div className={`shape-picker-grid size-${viewSize}`}>
             {shapes.length === 0 ? (
               <div className="shape-picker-empty">No shapes in this category</div>
             ) : (
@@ -171,7 +202,7 @@ export function ShapePicker() {
                   onClick={() => handleSelect(shape)}
                   title={shape.name}
                 >
-                  <ShapePreview metadata={shape} size={32} />
+                  <ShapePreview metadata={shape} size={PREVIEW_SIZES[viewSize]} />
                   <span className="shape-picker-item-name">{shape.name}</span>
                 </button>
               ))

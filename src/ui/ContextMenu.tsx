@@ -11,13 +11,14 @@ interface ContextMenuProps {
   y: number;
   onClose: () => void;
   onExport?: () => void;
+  onSaveToLibrary?: () => void;
 }
 
 /**
  * Context menu for shape operations.
  * Shows contextual actions based on current selection.
  */
-export function ContextMenu({ x, y, onClose, onExport }: ContextMenuProps) {
+export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: ContextMenuProps) {
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const shapes = useDocumentStore((state) => state.shapes);
   const select = useSessionStore((state) => state.select);
@@ -113,6 +114,13 @@ export function ContextMenu({ x, y, onClose, onExport }: ContextMenuProps) {
     onClose();
   }, [hasSelection, onExport, onClose]);
 
+  const handleSaveToLibrary = useCallback(() => {
+    if (hasSelection && onSaveToLibrary) {
+      onSaveToLibrary();
+    }
+    onClose();
+  }, [hasSelection, onSaveToLibrary, onClose]);
+
   return (
     <div
       className="context-menu"
@@ -146,14 +154,17 @@ export function ContextMenu({ x, y, onClose, onExport }: ContextMenuProps) {
             <span className="context-menu-label">Send to Back</span>
           </button>
           <div className="context-menu-separator" />
-          {onExport && (
-            <>
-              <button className="context-menu-item" onClick={handleExport}>
-                <span className="context-menu-label">Export Selection...</span>
-              </button>
-              <div className="context-menu-separator" />
-            </>
+          {onSaveToLibrary && (
+            <button className="context-menu-item" onClick={handleSaveToLibrary}>
+              <span className="context-menu-label">Save to Library...</span>
+            </button>
           )}
+          {onExport && (
+            <button className="context-menu-item" onClick={handleExport}>
+              <span className="context-menu-label">Export Selection...</span>
+            </button>
+          )}
+          {(onSaveToLibrary || onExport) && <div className="context-menu-separator" />}
           <button className="context-menu-item danger" onClick={handleDelete}>
             <span className="context-menu-label">Delete</span>
             <span className="context-menu-shortcut">Del</span>

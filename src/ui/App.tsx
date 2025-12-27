@@ -5,6 +5,7 @@ import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
 import { DocumentManager } from './DocumentManager';
 import { StorageManager } from './StorageManager';
+import { SettingsModal } from './SettingsModal';
 import { SplitPane } from './SplitPane';
 import { DocumentEditorPanel } from './DocumentEditorPanel';
 import { UnifiedToolbar } from './UnifiedToolbar';
@@ -23,6 +24,9 @@ function App() {
 
   // Storage manager modal state
   const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
+
+  // Settings modal state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // Split pane collapse state
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
@@ -46,6 +50,15 @@ function App() {
 
   const handleCloseStorageManager = useCallback(() => {
     setIsStorageManagerOpen(false);
+  }, []);
+
+  // Open settings callback
+  const handleOpenSettings = useCallback(() => {
+    setIsSettingsOpen(true);
+  }, []);
+
+  const handleCloseSettings = useCallback(() => {
+    setIsSettingsOpen(false);
   }, []);
 
   // Collapse handler for document editor panel
@@ -86,6 +99,7 @@ function App() {
       <UnifiedToolbar
         onOpenDocumentManager={handleOpenDocumentManager}
         onOpenStorageManager={handleOpenStorageManager}
+        onOpenSettings={handleOpenSettings}
       />
       <main className="app-main">
         <SplitPane
@@ -117,6 +131,12 @@ function App() {
       {isStorageManagerOpen && (
         <StorageManager onClose={handleCloseStorageManager} />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={handleCloseSettings}
+      />
     </div>
   );
 }

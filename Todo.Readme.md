@@ -247,17 +247,20 @@ implementation phase as defined in Specification.Readme.md.
   - Include/Extend relationship indicators (arrow shapes for visual reference)
 - [x] Fixed dark mode rendering for ShapePicker canvas previews
 
-### Phase 10.7 User Expandable Shape Libraries
+### Phase 10.7 User Expandable Shape Libraries - COMPLETE
 
-- [ ] Create a settings modal (feel free to add anything that belongs) that we will use in the future for various features
-- [ ] Implement the ability to save and re-use shapes into a runtime shape library
-  - Simular UI to the current shape library but with a manage button which opens a menu in the settings for managing custom libraries
-  - Users should be able to create named libraries
-  - Users should have the ability to rename custom libraries
-  - User should have the ability to export their libraries
-  - User should be able to save a group, or shape as an item in their library using the context menu then a triggered popup
-  - Keep this store extensible for future usage of advanced shapes and more
-  - Keep the UX fluid as this will be a heavily trafficked area of the app
+- [x] Create a settings modal (feel free to add anything that belongs) that we will use in the future for various features
+  - Tab-based settings modal infrastructure (SettingsModal.tsx)
+  - Shape Libraries tab as initial implementation
+- [x] Implement the ability to save and re-use shapes into a runtime shape library
+  - ShapeLibraryManager UI for creating/renaming/deleting libraries
+  - Users can create named libraries
+  - Users can rename custom libraries
+  - Users can export/import libraries as JSON
+  - SaveToLibraryDialog accessible via context menu "Save to Library..."
+  - CustomShapeTool for click-to-place behavior
+  - Two-tier storage: Zustand (localStorage) for metadata, IndexedDB for shape data
+  - Extensible store architecture for future usage
 
 #### UI Fixes & Improvements
 
@@ -294,9 +297,9 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Tables
 - [ ] LaTeX Equation Support
 - [ ] Interactive Tasks Lists
-- [ ] Image resizing handles OR install a better image extension
+- [ ] Image resizing handles
 - [ ] Deeper headings (preferred up to 7 levels)
-- [ ] Additional tweaks
+- [ ] Additional tweaks at your discretion
 
 ### Phase 14: Advanced Shape Toolsets
 
@@ -321,14 +324,21 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 15: Version 1.0
 
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
+- [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
+- [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
 
-### Phase 16: Advanced Diagram Patterns – Version 1.2
+### Phase 16: Advanced Diagram Patterns – Version 1.1
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns
 - [ ] Swimlane customization
+
+### Phase ??: Auto-Update
+
+- [ ] Implement a feature which can scan the GitHub repo for updates and check if a new version exists
+- [ ] Implement a feature to update the application **without** user commands or manual download+installation
 
 ### Phase ??: Comprehensive Local Help System - Version ?.?
 

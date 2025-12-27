@@ -6,3 +6,4 @@ export { BaseTool } from './Tool';
 export { PanTool, MiddleClickPanHandler } from './PanTool';
 export { SelectTool } from './SelectTool';
 export { RectangleTool } from './RectangleTool';
+export { CustomShapeTool, createCustomShapeTool } from './CustomShapeTool';

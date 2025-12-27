@@ -13,6 +13,7 @@ import { LineTool } from './tools/LineTool';
 import { TextTool } from './tools/TextTool';
 import { ConnectorTool } from './tools/ConnectorTool';
 import { LibraryShapeTool } from './tools/LibraryShapeTool';
+import { CustomShapeTool } from './tools/CustomShapeTool';
 import { Vec2 } from '../math/Vec2';
 import { Shape, isConnector, isGroup, ConnectorShape } from '../shapes/Shape';
 import { updateConnectorEndpoints } from '../shapes/Connector';
@@ -21,6 +22,7 @@ import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore';
 import { useHistoryStore, pushHistory } from '../store/historyStore';
 import { useShapeLibraryStore } from '../store/shapeLibraryStore';
+import { useCustomShapeLibraryStore } from '../store/customShapeLibraryStore';
 import { nanoid } from 'nanoid';
 
 // Import shape handlers to register them
@@ -217,8 +219,47 @@ export class Engine {
    * Set the active tool.
    */
   setActiveTool(type: ToolType): void {
+    // Handle dynamic custom shape tools
+    this.ensureCustomShapeToolRegistered(type);
     this.toolManager.setActiveTool(type);
     useSessionStore.getState().setActiveTool(type);
+  }
+
+  /**
+   * Ensure a custom shape tool is registered if the type starts with 'custom-shape:'.
+   * Returns true if the tool is ready (either already registered or successfully created).
+   */
+  private ensureCustomShapeToolRegistered(type: ToolType): boolean {
+    // Only handle custom shape tool types
+    if (!type.startsWith('custom-shape:')) {
+      return true;
+    }
+
+    // Check if already registered
+    if (this.toolManager.hasToolRegistered(type)) {
+      return true;
+    }
+
+    // Extract item ID from tool type
+    const itemId = type.slice('custom-shape:'.length);
+    if (!itemId) {
+      console.error('Invalid custom shape tool type:', type);
+      return false;
+    }
+
+    // Get item from custom shape library store
+    const store = useCustomShapeLibraryStore.getState();
+    const item = store.itemsCache[itemId];
+
+    if (!item) {
+      console.error('Custom shape item not found:', itemId);
+      return false;
+    }
+
+    // Create and register the tool
+    const tool = new CustomShapeTool(item.id, item.name);
+    this.toolManager.register(tool);
+    return true;
   }
 
   /**
@@ -308,6 +349,8 @@ export class Engine {
       setIsInteracting: (isInteracting) =>
         sessionStore.getState().setIsInteracting(isInteracting),
       setActiveTool: (tool) => {
+        // Handle dynamic custom shape tools
+        this.ensureCustomShapeToolRegistered(tool);
         this.toolManager.setActiveTool(tool);
         sessionStore.getState().setActiveTool(tool);
       },
@@ -379,6 +422,8 @@ export class Engine {
         previousTool = state.activeTool;
         // Only update if different from current tool manager state
         if (this.toolManager.getActiveToolType() !== state.activeTool) {
+          // Handle dynamic custom shape tools
+          this.ensureCustomShapeToolRegistered(state.activeTool);
           this.toolManager.setActiveTool(state.activeTool);
         }
       }

@@ -1,17 +1,19 @@
 import type { BlobMetadata, StorageStats } from './BlobTypes';
 import { QuotaExceededError, BlobStorageError } from './BlobTypes';
+import type { CustomShapeItem } from './ShapeLibraryTypes';
 
 /**
  * IndexedDB database name and version.
  */
 const DB_NAME = 'diagrammer-blobs';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for shape_library_items store
 
 /**
  * Object store names.
  */
 const STORE_BLOBS = 'blobs';
 const STORE_METADATA = 'blob_metadata';
+const STORE_SHAPE_ITEMS = 'shape_library_items';
 
 /**
  * Blob storage implementation using IndexedDB.
@@ -279,6 +281,129 @@ export class BlobStorage {
     return typeof window !== 'undefined' && 'indexedDB' in window && window.indexedDB !== null;
   }
 
+  // Shape Library Item Methods
+
+  /**
+   * Save a custom shape item to storage.
+   *
+   * @param item - Shape item to save
+   * @returns Item ID
+   * @throws BlobStorageError if save operation fails
+   */
+  async saveShapeItem(item: CustomShapeItem): Promise<string> {
+    await this.ensureDB();
+
+    try {
+      return new Promise((resolve, reject) => {
+        const transaction = this.db!.transaction([STORE_SHAPE_ITEMS], 'readwrite');
+        const store = transaction.objectStore(STORE_SHAPE_ITEMS);
+        const request = store.put(item);
+
+        request.onsuccess = () => resolve(item.id);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      throw new BlobStorageError('Failed to save shape item', error as Error);
+    }
+  }
+
+  /**
+   * Load a shape item from storage.
+   *
+   * @param id - Shape item ID
+   * @returns Shape item or null if not found
+   */
+  async loadShapeItem(id: string): Promise<CustomShapeItem | null> {
+    await this.ensureDB();
+
+    try {
+      return new Promise((resolve, reject) => {
+        const transaction = this.db!.transaction([STORE_SHAPE_ITEMS], 'readonly');
+        const store = transaction.objectStore(STORE_SHAPE_ITEMS);
+        const request = store.get(id);
+
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      console.error('Failed to load shape item:', id, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a shape item from storage.
+   *
+   * @param id - Shape item ID to delete
+   * @throws BlobStorageError if delete operation fails
+   */
+  async deleteShapeItem(id: string): Promise<void> {
+    await this.ensureDB();
+
+    try {
+      return new Promise((resolve, reject) => {
+        const transaction = this.db!.transaction([STORE_SHAPE_ITEMS], 'readwrite');
+        const store = transaction.objectStore(STORE_SHAPE_ITEMS);
+        const request = store.delete(id);
+
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    } catch (error) {
+      throw new BlobStorageError(`Failed to delete shape item: ${id}`, error as Error);
+    }
+  }
+
+  /**
+   * List all shape items in a specific library.
+   *
+   * @param libraryId - Library ID to filter by
+   * @returns Array of shape items in the library
+   */
+  async listShapeItemsByLibrary(libraryId: string): Promise<CustomShapeItem[]> {
+    await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORE_SHAPE_ITEMS], 'readonly');
+      const store = transaction.objectStore(STORE_SHAPE_ITEMS);
+      const index = store.index('libraryId');
+      const request = index.getAll(libraryId);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * List all shape items in storage.
+   *
+   * @returns Array of all shape items
+   */
+  async listAllShapeItems(): Promise<CustomShapeItem[]> {
+    await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORE_SHAPE_ITEMS], 'readonly');
+      const store = transaction.objectStore(STORE_SHAPE_ITEMS);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Delete all shape items for a specific library.
+   *
+   * @param libraryId - Library ID to delete items for
+   */
+  async deleteShapeItemsByLibrary(libraryId: string): Promise<void> {
+    const items = await this.listShapeItemsByLibrary(libraryId);
+    for (const item of items) {
+      await this.deleteShapeItem(item.id);
+    }
+  }
+
   // Private methods
 
   /**
@@ -320,6 +445,13 @@ export class BlobStorage {
           const metadataStore = db.createObjectStore(STORE_METADATA, { keyPath: 'id' });
           metadataStore.createIndex('createdAt', 'createdAt', { unique: false });
           metadataStore.createIndex('usageCount', 'usageCount', { unique: false });
+        }
+
+        // Create shape_library_items object store with indexes (v2)
+        if (!db.objectStoreNames.contains(STORE_SHAPE_ITEMS)) {
+          const shapeStore = db.createObjectStore(STORE_SHAPE_ITEMS, { keyPath: 'id' });
+          shapeStore.createIndex('libraryId', 'libraryId', { unique: false });
+          shapeStore.createIndex('createdAt', 'createdAt', { unique: false });
         }
       };
 

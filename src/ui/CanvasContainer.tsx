@@ -4,6 +4,7 @@ import { Camera } from '../engine/Camera';
 import { TextEditor } from './TextEditor';
 import { ContextMenu } from './ContextMenu';
 import { ExportDialog } from './ExportDialog';
+import { SaveToLibraryDialog } from './SaveToLibraryDialog';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -58,6 +59,9 @@ export function CanvasContainer({
 
   // Export dialog state
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+
+  // Save to library dialog state
+  const [saveToLibraryOpen, setSaveToLibraryOpen] = useState(false);
 
   /**
    * Update canvas size to match container, accounting for DPI.
@@ -245,6 +249,14 @@ export function CanvasContainer({
     setExportDialogOpen(false);
   }, []);
 
+  const handleSaveToLibrary = useCallback(() => {
+    setSaveToLibraryOpen(true);
+  }, []);
+
+  const handleCloseSaveToLibrary = useCallback(() => {
+    setSaveToLibraryOpen(false);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -288,6 +300,7 @@ export function CanvasContainer({
           y={contextMenu.y}
           onClose={handleCloseContextMenu}
           onExport={handleExportSelection}
+          onSaveToLibrary={handleSaveToLibrary}
         />
       )}
       <ExportDialog
@@ -295,6 +308,10 @@ export function CanvasContainer({
         onClose={handleCloseExportDialog}
         scope="selection"
         defaultFilename="selection"
+      />
+      <SaveToLibraryDialog
+        isOpen={saveToLibraryOpen}
+        onClose={handleCloseSaveToLibrary}
       />
     </div>
   );

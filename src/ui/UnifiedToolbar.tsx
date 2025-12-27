@@ -17,6 +17,7 @@ import { usePersistenceStore } from '../store/persistenceStore';
 import { useThemeStore } from '../store/themeStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { ShapePicker } from './ShapePicker';
+import { CustomShapePicker } from './CustomShapePicker';
 import './UnifiedToolbar.css';
 
 /**
@@ -516,12 +517,13 @@ function InlinePageTabs() {
 interface UnifiedToolbarProps {
   onOpenDocumentManager: () => void;
   onOpenStorageManager: () => void;
+  onOpenSettings?: () => void;
 }
 
 /**
  * UnifiedToolbar component.
  */
-export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager }: UnifiedToolbarProps) {
+export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager, onOpenSettings }: UnifiedToolbarProps) {
   const activeTool = useSessionStore((state) => state.activeTool);
   const setActiveTool = useSessionStore((state) => state.setActiveTool);
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
@@ -544,6 +546,7 @@ export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager }: 
             />
           ))}
           <ShapePicker />
+          <CustomShapePicker />
         </div>
       </div>
 
@@ -556,6 +559,15 @@ export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager }: 
       <div className="unified-toolbar-right">
         <InlinePageTabs />
         <div className="toolbar-divider" />
+        {onOpenSettings && (
+          <button
+            className="toolbar-action-button"
+            onClick={onOpenSettings}
+            title="Settings"
+          >
+            ⚙️
+          </button>
+        )}
         <button
           className="toolbar-action-button"
           onClick={toggleTheme}
