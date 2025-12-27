@@ -316,7 +316,7 @@ function DocumentInfo() {
         onClick={isDirty ? saveNow : undefined}
         title={isDirty ? 'Unsaved changes - click to save' : 'Saved'}
       >
-        {isDirty ? '\u25CF' : '\u2713'}
+        {isDirty ? '🔥' : '✅'}
       </span>
     </div>
   );

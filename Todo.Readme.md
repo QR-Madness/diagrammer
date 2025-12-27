@@ -229,7 +229,7 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase 10.5: Shape Libraries
 
-- [ ] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
+- [X] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
   - _Concepts to keep in mind:_
     - Eventually in the far future, we will be linking shapes to code and using REAL UML classes that link to real classes
     - Layers will eventually be renamable (GroupShape.name already exists)
@@ -291,7 +291,7 @@ implementation phase as defined in Specification.Readme.md.
 
 - [ ] Implement multi-option entries support that easily allows an exanded context menu when hovering on them
 - [ ] Add context menu entry: Change connector routing (orthgonal/straight so far)
-- [ ] Add context menu entry:
+- [ ] Add context menu entry: Apply Style (multi-option entry with list of favorite styles to quickly apply)
 
 #### 14.3 Layer Panel Upgrades
 
