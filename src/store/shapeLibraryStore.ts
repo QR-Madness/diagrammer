@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { createLibraryShapeHandler } from '../shapes/library/LibraryShapeHandler';
 import { flowchartShapes } from '../shapes/library/flowchartShapes';
+import { umlUseCaseShapes } from '../shapes/library/umlUseCaseShapes';
 import type { LibraryShapeDefinition } from '../shapes/library/ShapeLibraryTypes';
 import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
 
@@ -78,6 +79,9 @@ export const useShapeLibraryStore = create<ShapeLibraryState & ShapeLibraryActio
 
       // Register all flowchart shapes
       get().registerShapes(flowchartShapes);
+
+      // Register UML use-case shapes
+      get().registerShapes(umlUseCaseShapes);
 
       set({ isInitialized: true });
     },

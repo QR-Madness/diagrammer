@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<ShapeLibraryCategory, string> = {
 /**
  * Categories to show in the picker (ordered).
  */
-const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart'];
+const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'uml-usecase'];
 
 /**
  * ShapePicker component.
@@ -184,6 +184,14 @@ export function ShapePicker() {
 }
 
 /**
+ * Helper to get computed CSS variable value from the document.
+ */
+function getCSSVariable(varName: string, fallback: string): string {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return value || fallback;
+}
+
+/**
  * ShapePreview - Renders a shape preview using canvas.
  */
 function ShapePreview({ metadata, size }: { metadata: ShapeMetadata; size: number }) {
@@ -204,6 +212,10 @@ function ShapePreview({ metadata, size }: { metadata: ShapeMetadata; size: numbe
 
     // Clear
     ctx.clearRect(0, 0, size, size);
+
+    // Get theme-aware colors (CSS variables don't work directly in canvas)
+    const fillColor = getCSSVariable('--color-primary', '#4a90d9');
+    const strokeColor = getCSSVariable('--color-primary-dark', '#2c5282');
 
     // Try to render using the shape's path builder
     const shapeLibraryStore = useShapeLibraryStore.getState();
@@ -231,9 +243,9 @@ function ShapePreview({ metadata, size }: { metadata: ShapeMetadata; size: numbe
       // Build path
       const path = definition.pathBuilder(metadata.defaultWidth, metadata.defaultHeight);
 
-      // Draw
-      ctx.fillStyle = 'var(--color-primary, #4a90d9)';
-      ctx.strokeStyle = 'var(--text-primary, #2c5282)';
+      // Draw with resolved CSS colors
+      ctx.fillStyle = fillColor;
+      ctx.strokeStyle = strokeColor;
       ctx.lineWidth = 2 / scale;
       ctx.fill(path);
       ctx.stroke(path);
@@ -241,7 +253,8 @@ function ShapePreview({ metadata, size }: { metadata: ShapeMetadata; size: numbe
       ctx.restore();
     } else {
       // Fallback: render the icon as text
-      ctx.fillStyle = 'var(--text-primary, #333)';
+      const textColor = getCSSVariable('--text-primary', '#333');
+      ctx.fillStyle = textColor;
       ctx.font = `${size * 0.6}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

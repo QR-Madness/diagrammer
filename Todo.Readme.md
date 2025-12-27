@@ -229,7 +229,7 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase 10.5: Shape Libraries
 
-- [X] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
+- [x] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
   - _Concepts to keep in mind:_
     - Eventually in the far future, we will be linking shapes to code and using REAL UML classes that link to real classes
     - Layers will eventually be renamable (GroupShape.name already exists)
@@ -238,17 +238,35 @@ implementation phase as defined in Specification.Readme.md.
     - Flowchart shapes: Diamond, Terminator, Data, Document, Predefined Process, Manual Input, Preparation, Connector, Off-Page Connector
     - ShapePicker UI component for shape library selection
 
-### Phase 10.6: UML Use-Case Diagrams
+### Phase 10.6: UML Use-Case Diagrams - COMPLETE
 
-- [ ] UML use-case diagram shapes
-  - Actor (stick figure)
-  - Use Case (ellipse with label - can likely reuse Ellipse with metadata)
-  - System Boundary (labeled rectangle container)
-  - Include/Extend relationships (dashed connectors with labels)
+- [x] UML use-case diagram shapes
+  - Actor (stick figure with circle head and limbs)
+  - Use Case (ellipse with label)
+  - System Boundary (labeled rectangle container with title bar)
+  - Include/Extend relationship indicators (arrow shapes for visual reference)
+- [x] Fixed dark mode rendering for ShapePicker canvas previews
+
+### Phase 10.7 User Expandable Shape Libraries
+
+- [ ] Create a settings modal (feel free to add anything that belongs) that we will use in the future for various features
+- [ ] Implement the ability to save and re-use shapes into a runtime shape library
+  - Simular UI to the current shape library but with a manage button which opens a menu in the settings for managing custom libraries
+  - Users should be able to create named libraries
+  - Users should have the ability to rename custom libraries
+  - User should have the ability to export their libraries
+  - User should be able to save a group, or shape as an item in their library using the context menu then a triggered popup
+  - Keep this store extensible for future usage of advanced shapes and more
+  - Keep the UX fluid as this will be a heavily trafficked area of the app
+
+#### UI Fixes & Improvements
+
+- [ ] Implement draggable layer reordering throughout groups and nested groups
+- [ ] Fix group layer-order visibility issues; when I grouped a text and shape together with my text on top, the grouping moved my text to the bottom and went invisible even though it was above the shape within the layer-order
 
 ### Phase 11: Advanced Export
 
-- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo from storagebrowser, standard cover pages, etc.)
+- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo from storagebrowser, standard cover page, etc.)
 
 ### Phase 12: Diagram Patterns
 
@@ -259,6 +277,7 @@ implementation phase as defined in Specification.Readme.md.
 ### Phase 13: Collaboration & UI Improvements
 
 - [ ] Real-time collaboration (CRDT integration)
+  - Users
 - [ ] Presence indicators (who's viewing where)
 - [ ] Collaborative cursors
 
