@@ -264,36 +264,78 @@ implementation phase as defined in Specification.Readme.md.
 
 #### UI Fixes & Improvements
 
-- [ ] Implement draggable layer reordering throughout groups and nested groups
-- [ ] Fix group layer-order visibility issues; when I grouped a text and shape together with my text on top, the grouping moved my text to the bottom and went invisible even though it was above the shape within the layer-order
-- [ ] Shapes have no available icons yet they are 
+- [x] Implement draggable layer reordering throughout groups and nested groups
+- [x] Fix group layer-order visibility issues; when I grouped a text and shape together with my text on top, the grouping moved my text to the bottom and went invisible even though it was above the shape within the layer-order
+- [x] Shapes have no available icons in the property panel
 
-### Phase 11: Advanced Export
+### Phase 11: Advanced Shape Toolsets
+
+#### 11.1 - Property Panel Overhaul - COMPLETE
+
+- [x] Icon picker dropdown is buried underneath property panel elements (messed-up-z-order)
+  - Fixed using React Portal to render dropdown at document body level
+  - Added position tracking and scroll/resize handling
+- [x] Improve the property panel UX where possible including aesthetics
+  - Updated PropertyPanel.css with modern styling (rounded borders, better spacing)
+  - Improved PropertySection.css with card-like appearance
+  - Added hover states, smooth transitions, and better scrollbar styling
+  - Updated type badge with accent color
+- [x] Plugin extensibility for panels
+  - Created PanelExtensions.ts with registry pattern
+  - PropertySectionExtension for custom panel sections
+  - PropertyRendererExtension for custom property types
+  - PanelActionExtension for header action buttons
+  - Extensible architecture ready for future plugins
+- [ ] AMMENDMENT: Shape label customizations: custom BG, and draggable labels from the default position on a shape.
+
+#### 11.2 Context Menu Upgrades
+
+- [ ] Implement multi-option entries support that easily allows an exanded context menu when hovering on them
+- [ ] Add context menu entry: Change connector routing (orthgonal/straight so far)
+- [ ] Add context menu entry: Apply Style (multi-option entry with list of favorite styles to quickly apply)
+
+#### 11.3 Layer Panel Upgrades
+
+- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritence when moved out of a group, and remember group->group inheritence)
+- [ ] Rename layers/groups
+- [ ] Creating layer views (tabbed views within layer panel; maybe use a dropdown for this) that display subsets of layers that are: selected via regex (do we need to sanitize this input?), or by name, and layer views also can have manual additions to them (via context menu - 'Add to Layer View -> ...').
+
+#### 11.4 Advanced Group UI
+
+- [ ] Implement the following properties for groups:
+  - [ ] s
+
+### Phase 12: Advanced Export
 
 - [ ] Customizable PDF document export (feats: DPI, include software version, custom logo from storagebrowser, standard cover page, etc.)
 
-### Phase 12: Diagram Patterns
+### Phase 13: Diagram Patterns
 
 - [ ] Basic flowchart patterns
 - [ ] Basic UML class diagram patterns
 - [ ] Basic ERD diagram patterns
 
-### Phase 13: Collaboration & UI Improvements
+### Phase 14: Collaboration & UI Improvements
 
 - [ ] Real-time collaboration (CRDT integration)
   - Users
 - [ ] Presence indicators (who's viewing where)
 - [ ] Collaborative cursors
 
-#### UI Improvements
+#### Phase 14.1 UX Improvements
 
+- [ ] Make the canvas not-focused effect more friendly the red border is annoying; consider a light blue top-border or similar
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
 - [ ] Context menu for style profiles (overwrite with current, delete, rename)
 - [ ] Allow group click-through to shapes for trivial editing of shapes within groups
 - [ ] Smart-alignment for shape resize
 - [ ] Allow LaTeX equations for shape text by prepending `=` to the
+- [ ] Translate selected items using arrow keys
+- [ ] Return focus to canvas when the layer panel is collapsed
+- [ ] Implement a button to snap to a layer item instead of doing it on click (but add this option in the settings to enable the auto-snap again)
+- [ ] Add settings and implementations for the saving the following by default into a new Style Profile: 
 
-##### Rich Document Editor Upgrades
+##### Phase 14.2 Rich Document Editor Upgrades
 
 - [ ] Tables
 - [ ] LaTeX Equation Support
@@ -302,29 +344,16 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Deeper headings (preferred up to 7 levels)
 - [ ] Additional tweaks at your discretion
 
-### Phase 14: Advanced Shape Toolsets
+### Phase 14.9: AI Insights Improvements Checklist
 
-#### 14.1 - Property Panel Overhaul
+Replace this list with your own checklists of areas needed for improvement before we get-ready for release of v.1.0
 
-- [ ] The property panel is quite complex; we need to change that
-- [ ] Use powerful components to drive the capabilities we need
-- [ ] Keep it extensible and flexible
-
-#### 14.2 Context Menu Upgrades
-
-- [ ] Implement multi-option entries support that easily allows an exanded context menu when hovering on them
-- [ ] Add context menu entry: Change connector routing (orthgonal/straight so far)
-- [ ] Add context menu entry: Apply Style (multi-option entry with list of favorite styles to quickly apply)
-
-#### 14.3 Layer Panel Upgrades
-
-- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritence when moved out of a group, and remember group->group inheritence)
-- [ ] Rename layers/groups
-- [ ] Versatile layer dragging (allow dragging in/out, and between groups)
+- [ ]
 
 ### Phase 15: Version 1.0
 
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
+- [ ] Implement a local help system (consider a markdown server of some sort)
 - [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
