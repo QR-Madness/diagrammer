@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useColorPaletteStore } from '../store/colorPaletteStore';
 import { ColorPalette } from './ColorPalette';
 import './CompactColorInput.css';
@@ -27,6 +28,7 @@ interface CompactColorInputProps {
  * - Hex value display/input
  * - Click to expand color palette
  * - Recent colors tracking
+ * - Portal-based dropdown to avoid overflow clipping
  *
  * Usage:
  * ```tsx
@@ -48,17 +50,38 @@ export function CompactColorInput({
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { addRecentColor } = useColorPaletteStore();
 
-  // Close palette when clicking outside
+  // Calculate dropdown position
+  const updateDropdownPosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: Math.max(rect.width, 200), // Minimum width for palette
+      });
+    }
+  }, []);
+
+  // Close palette when clicking outside (check both container and portal dropdown)
   useEffect(() => {
     if (!isPaletteOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const dropdown = document.querySelector('.compact-color-palette-portal');
+
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        (!dropdown || !dropdown.contains(target))
+      ) {
         setIsPaletteOpen(false);
       }
     };
@@ -66,6 +89,20 @@ export function CompactColorInput({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isPaletteOpen]);
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    if (!isPaletteOpen) return;
+
+    const handleUpdate = () => updateDropdownPosition();
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [isPaletteOpen, updateDropdownPosition]);
 
   // Handle native picker change
   const handlePickerChange = useCallback(
@@ -77,15 +114,18 @@ export function CompactColorInput({
     [onChange, addRecentColor]
   );
 
-  // Handle hex input click
+  // Handle hex input click - toggle palette
   const handleHexClick = useCallback(() => {
     if (showPalette) {
+      if (!isPaletteOpen) {
+        updateDropdownPosition();
+      }
       setIsPaletteOpen((prev) => !prev);
     } else {
       setIsEditing(true);
       setEditValue(value || '');
     }
-  }, [showPalette, value]);
+  }, [showPalette, value, isPaletteOpen, updateDropdownPosition]);
 
   // Handle starting edit mode
   const handleStartEdit = useCallback(
@@ -151,10 +191,31 @@ export function CompactColorInput({
   const displayValue = value || '';
   const hasValue = displayValue && displayValue !== 'transparent';
 
+  // Render dropdown via portal
+  const dropdownContent = isPaletteOpen && showPalette && dropdownPosition && (
+    <div
+      className="compact-color-palette-dropdown compact-color-palette-portal"
+      style={{
+        position: 'fixed',
+        top: dropdownPosition.top,
+        left: dropdownPosition.left,
+        minWidth: dropdownPosition.width,
+        zIndex: 10000,
+      }}
+    >
+      <ColorPalette
+        value={displayValue}
+        onChange={handlePaletteSelect}
+        showNoFill={showNoFill}
+        compact
+      />
+    </div>
+  );
+
   return (
     <div className="compact-color-input" ref={containerRef}>
       <label className="compact-color-label">{label}</label>
-      <div className="compact-color-controls">
+      <div className="compact-color-controls" ref={triggerRef}>
         <input
           type="color"
           value={hasValue ? displayValue : '#000000'}
@@ -193,17 +254,8 @@ export function CompactColorInput({
         )}
       </div>
 
-      {/* Color Palette Dropdown */}
-      {isPaletteOpen && showPalette && (
-        <div className="compact-color-palette-dropdown">
-          <ColorPalette
-            value={displayValue}
-            onChange={handlePaletteSelect}
-            showNoFill={showNoFill}
-            compact
-          />
-        </div>
-      )}
+      {/* Color Palette Dropdown - rendered via portal */}
+      {dropdownContent && createPortal(dropdownContent, document.body)}
     </div>
   );
 }
