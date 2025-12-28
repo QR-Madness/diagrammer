@@ -286,7 +286,10 @@ implementation phase as defined in Specification.Readme.md.
   - PropertyRendererExtension for custom property types
   - PanelActionExtension for header action buttons
   - Extensible architecture ready for future plugins
-- [ ] AMMENDMENT: Shape label customizations: custom BG, and draggable labels from the default position on a shape.
+- [x] AMMENDMENT: Shape label customizations: custom BG, ~~and draggable~~ offset labels from the default position on a shape.
+  - Label background color property for Rectangle, Ellipse, LibraryShape, and Connector
+  - Label offset X/Y properties for positioning labels away from center
+  - PropertyPanel controls for all label styling options
 
 #### 11.2 Context Menu Upgrades
 
@@ -299,6 +302,12 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritence when moved out of a group, and remember group->group inheritence)
 - [ ] Rename layers/groups
 - [ ] Creating layer views (tabbed views within layer panel; maybe use a dropdown for this) that display subsets of layers that are: selected via regex (do we need to sanitize this input?), or by name, and layer views also can have manual additions to them (via context menu - 'Add to Layer View -> ...').
+
+#### 11.5 Common Settings
+
+- Implement a 'Common Settings' area in the settings modal which contains the following:
+  - [ ] Default connector type
+  - [ ] 
 
 #### 11.4 Advanced Group UI
 
