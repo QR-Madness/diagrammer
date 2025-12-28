@@ -1,9 +1,11 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
+import { useLayerViewStore, getMatchingShapeIds } from '../store/layerViewStore';
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
+import { LayerViewManager } from './LayerViewManager';
 import './LayerPanel.css';
 
 /**
@@ -19,6 +21,11 @@ interface DropZone {
 const MIN_HEIGHT = 100;
 const MAX_HEIGHT = 500;
 const DEFAULT_HEIGHT = 250;
+
+/** Width constraints for horizontal resizing */
+const MIN_WIDTH = 180;
+const MAX_WIDTH = 400;
+const DEFAULT_WIDTH = 240;
 
 /**
  * Get a display name for a shape based on its type.
@@ -39,8 +46,92 @@ function getShapeName(shape: Shape): string {
       const group = shape as GroupShape;
       return group.name || `Group (${group.childIds.length})`;
     default:
-      return 'Shape';
+      // Library shapes - capitalize the type
+      return shape.type.charAt(0).toUpperCase() + shape.type.slice(1);
   }
+}
+
+/**
+ * Get preview text for a shape (label, text content, etc.) for display in layer panel.
+ * Returns null if the shape has no displayable text.
+ */
+function getShapePreviewText(shape: Shape): string | null {
+  // Check for label property (Rectangle, Ellipse, Connector, LibraryShape)
+  if ('label' in shape && typeof shape.label === 'string' && shape.label.trim()) {
+    return shape.label.trim();
+  }
+  // Check for text property (TextShape)
+  if ('text' in shape && typeof shape.text === 'string' && shape.text.trim()) {
+    return shape.text.trim();
+  }
+  return null;
+}
+
+/**
+ * Truncate text to a maximum length, adding ellipsis if needed.
+ */
+function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength - 1) + '…';
+}
+
+/**
+ * Preset colors for group color badges.
+ */
+const LAYER_COLOR_PRESETS = [
+  '#ef4444', // red
+  '#f97316', // orange
+  '#eab308', // yellow
+  '#22c55e', // green
+  '#14b8a6', // teal
+  '#3b82f6', // blue
+  '#8b5cf6', // violet
+  '#ec4899', // pink
+];
+
+/**
+ * Find the parent group ID for a shape by searching through all groups.
+ */
+function findParentGroupId(shapeId: string, shapes: Record<string, Shape>): string | null {
+  for (const shape of Object.values(shapes)) {
+    if (isGroup(shape)) {
+      const group = shape as GroupShape;
+      if (group.childIds.includes(shapeId)) {
+        return group.id;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Get the effective layer color for a group, considering parent group inheritance.
+ * Returns [color, isInherited] tuple.
+ */
+function getEffectiveGroupColor(
+  shape: Shape,
+  shapes: Record<string, Shape>,
+  visited: Set<string> = new Set()
+): [string | null, boolean] {
+  if (!isGroup(shape)) return [null, false];
+
+  const group = shape as GroupShape;
+  if (group.layerColor) return [group.layerColor, false];
+
+  // Check for parent group color (inheritance)
+  if (visited.has(shape.id)) return [null, false]; // Prevent infinite loop
+  visited.add(shape.id);
+
+  const parentId = findParentGroupId(shape.id, shapes);
+  if (parentId) {
+    const parentShape = shapes[parentId];
+    if (parentShape && isGroup(parentShape)) {
+      const [parentColor] = getEffectiveGroupColor(parentShape, shapes, visited);
+      if (parentColor) return [parentColor, true];
+    }
+  }
+
+  return [null, false];
 }
 
 /**
@@ -68,21 +159,38 @@ export function LayerPanel() {
   const focusOnShape = useSessionStore((state) => state.focusOnShape);
   const push = useHistoryStore((state) => state.push);
 
+  // Layer view store
+  const views = useLayerViewStore((state) => state.views);
+  const activeViewId = useLayerViewStore((state) => state.activeViewId);
+  const setActiveView = useLayerViewStore((state) => state.setActiveView);
+  const toggleShapeInView = useLayerViewStore((state) => state.toggleShapeInView);
+  const isShapeInView = useLayerViewStore((state) => state.isShapeInView);
+
+  // View manager modal state
+  const [isViewManagerOpen, setIsViewManagerOpen] = useState(false);
+
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
 
   // Rename state
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Collapse state (collapsed by default)
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  // Resize state
+  // Resize state (vertical)
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
-  const [isResizing, setIsResizing] = useState(false);
+  const [isResizingVertical, setIsResizingVertical] = useState(false);
   const startYRef = useRef(0);
   const startHeightRef = useRef(DEFAULT_HEIGHT);
+
+  // Resize state (horizontal)
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [isResizingHorizontal, setIsResizingHorizontal] = useState(false);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(DEFAULT_WIDTH);
 
   // Drag state for reordering
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -92,17 +200,17 @@ export function LayerPanel() {
   // Expanded groups state (tracks which groups are expanded)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Handle resize
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+  // Handle vertical resize (height)
+  const handleVerticalResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsResizing(true);
+    setIsResizingVertical(true);
     startYRef.current = e.clientY;
     startHeightRef.current = height;
   }, [height]);
 
   useEffect(() => {
-    if (!isResizing) return;
+    if (!isResizingVertical) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       // Dragging up increases height, dragging down decreases
@@ -112,7 +220,7 @@ export function LayerPanel() {
     };
 
     const handleMouseUp = () => {
-      setIsResizing(false);
+      setIsResizingVertical(false);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -122,7 +230,41 @@ export function LayerPanel() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing]);
+  }, [isResizingVertical]);
+
+  // Handle horizontal resize (width)
+  const handleHorizontalResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizingHorizontal(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = width;
+  }, [width]);
+
+  useEffect(() => {
+    if (!isResizingHorizontal) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Dragging right increases width
+      const delta = e.clientX - startXRef.current;
+      const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current + delta));
+      setWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingHorizontal(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingHorizontal]);
+
+  const isResizing = isResizingVertical || isResizingHorizontal;
 
   // Toggle collapse
   const handleToggleCollapse = useCallback(() => {
@@ -131,6 +273,17 @@ export function LayerPanel() {
 
   // Display order is reversed (top of list = front = end of shapeOrder)
   const displayOrder = [...shapeOrder].reverse();
+
+  // Filter displayOrder based on active view
+  const filteredDisplayOrder = useMemo(() => {
+    if (!activeViewId) return displayOrder;
+
+    const activeView = views.find((v) => v.id === activeViewId);
+    if (!activeView) return displayOrder;
+
+    const matchingIds = new Set(getMatchingShapeIds(activeView, shapes, shapeOrder));
+    return displayOrder.filter((id) => matchingIds.has(id));
+  }, [displayOrder, activeViewId, views, shapes, shapeOrder]);
 
   // Handle drag start for any layer item
   const handleDragStart = useCallback((e: React.DragEvent, id: string, parentGroupId: string | null) => {
@@ -396,6 +549,13 @@ export function LayerPanel() {
     }
   }, [shapes]);
 
+  // Set group layer color
+  const handleSetGroupColor = useCallback((groupId: string, color: string | null) => {
+    push(color ? 'Set group color' : 'Clear group color');
+    updateShape(groupId, { layerColor: color || undefined } as Partial<Shape>);
+    setContextMenu(null);
+  }, [push, updateShape]);
+
   // Finish renaming a group
   const handleFinishRename = useCallback(() => {
     if (renamingGroupId) {
@@ -411,6 +571,16 @@ export function LayerPanel() {
     setRenamingGroupId(null);
     setRenameValue('');
   }, []);
+
+  // Auto-select text when entering rename mode
+  useEffect(() => {
+    if (renamingGroupId && renameInputRef.current) {
+      // Use requestAnimationFrame to ensure the input is mounted and focused
+      requestAnimationFrame(() => {
+        renameInputRef.current?.select();
+      });
+    }
+  }, [renamingGroupId]);
 
   // Context menu handlers
   const handleContextMenu = useCallback((e: React.MouseEvent, shapeId: string) => {
@@ -502,9 +672,22 @@ export function LayerPanel() {
             </div>
           )}
 
+          {/* Color badge for groups */}
+          {isGroupShape && (() => {
+            const [effectiveColor, isInherited] = getEffectiveGroupColor(shape, shapes);
+            return effectiveColor ? (
+              <span
+                className={`layer-item-color-badge ${isInherited ? 'inherited' : ''}`}
+                style={{ backgroundColor: effectiveColor }}
+                title={isInherited ? 'Inherited from parent group' : 'Group color'}
+              />
+            ) : null;
+          })()}
+
           <div className="layer-item-info">
             {renamingGroupId === id ? (
               <input
+                ref={renameInputRef}
                 type="text"
                 className="layer-item-rename-input"
                 value={renameValue}
@@ -522,6 +705,15 @@ export function LayerPanel() {
               <span className="layer-item-type">{getShapeName(shape)}</span>
             )}
             <span className="layer-item-id">{id.slice(0, 6)}</span>
+            {/* Preview text for shapes with labels/text */}
+            {(() => {
+              const previewText = getShapePreviewText(shape);
+              return previewText ? (
+                <span className="layer-item-preview" title={previewText}>
+                  {truncateText(previewText, 24)}
+                </span>
+              ) : null;
+            })()}
           </div>
 
           <div className="layer-item-actions">
@@ -609,13 +801,20 @@ export function LayerPanel() {
   return (
     <div
       className={`layer-panel ${isCollapsed ? 'collapsed' : ''} ${isResizing ? 'resizing' : ''}`}
-      style={isCollapsed ? undefined : { height }}
+      style={isCollapsed ? undefined : { height, width }}
     >
-      {/* Resize handle - only show when expanded */}
+      {/* Vertical resize handle (top edge) - only show when expanded */}
       {!isCollapsed && (
         <div
-          className="layer-panel-resize-handle"
-          onMouseDown={handleResizeStart}
+          className="layer-panel-resize-handle-vertical"
+          onMouseDown={handleVerticalResizeStart}
+        />
+      )}
+      {/* Horizontal resize handle (right edge) - only show when expanded */}
+      {!isCollapsed && (
+        <div
+          className="layer-panel-resize-handle-horizontal"
+          onMouseDown={handleHorizontalResizeStart}
         />
       )}
       <div
@@ -628,6 +827,46 @@ export function LayerPanel() {
       </div>
       {!isCollapsed && (
         <>
+          {/* View selector */}
+          {views.length > 0 && (
+            <div className="layer-view-selector">
+              <select
+                value={activeViewId || ''}
+                onChange={(e) => setActiveView(e.target.value || null)}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">All Layers</option>
+                {views.map((view) => (
+                  <option key={view.id} value={view.id}>
+                    {view.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="layer-view-manage-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsViewManagerOpen(true);
+                }}
+                title="Manage views"
+              >
+                <GearIcon />
+              </button>
+            </div>
+          )}
+          {views.length === 0 && (
+            <div className="layer-view-selector layer-view-selector-empty">
+              <button
+                className="layer-view-create-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsViewManagerOpen(true);
+                }}
+              >
+                + Create View
+              </button>
+            </div>
+          )}
           {/* Group button when 2+ shapes selected */}
           {selectedIds.size >= 2 && (
             <div className="layer-panel-actions">
@@ -641,7 +880,7 @@ export function LayerPanel() {
             </div>
           )}
           <div className="layer-panel-list">
-            {displayOrder.map((id) => {
+            {filteredDisplayOrder.map((id) => {
               const shape = shapes[id];
               if (!shape) return null;
               return renderLayerItem(shape, null);
@@ -665,6 +904,32 @@ export function LayerPanel() {
               >
                 Rename
               </button>
+              {/* Set Color submenu */}
+              <div className="layer-context-menu-submenu">
+                <button className="layer-context-menu-item layer-context-menu-submenu-trigger">
+                  Set Color
+                  <span className="layer-context-menu-arrow">▶</span>
+                </button>
+                <div className="layer-context-menu-submenu-content">
+                  <div className="layer-color-picker-grid">
+                    {LAYER_COLOR_PRESETS.map((color) => (
+                      <button
+                        key={color}
+                        className="layer-color-swatch"
+                        style={{ backgroundColor: color }}
+                        onClick={() => handleSetGroupColor(contextMenu.shapeId, color)}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    className="layer-context-menu-item"
+                    onClick={() => handleSetGroupColor(contextMenu.shapeId, null)}
+                  >
+                    Clear Color
+                  </button>
+                </div>
+              </div>
               <button
                 className="layer-context-menu-item"
                 onClick={() => handleUngroup(contextMenu.shapeId)}
@@ -693,6 +958,33 @@ export function LayerPanel() {
           >
             Send to Back
           </button>
+          {/* Add to View submenu */}
+          {views.length > 0 && (
+            <>
+              <div className="layer-context-menu-separator" />
+              <div className="layer-context-menu-submenu">
+                <button className="layer-context-menu-item layer-context-menu-submenu-trigger">
+                  Add to View
+                  <span className="layer-context-menu-arrow">▶</span>
+                </button>
+                <div className="layer-context-menu-submenu-content">
+                  {views.map((view) => (
+                    <button
+                      key={view.id}
+                      className="layer-context-menu-item"
+                      onClick={() => {
+                        toggleShapeInView(view.id, contextMenu.shapeId);
+                        setContextMenu(null);
+                      }}
+                    >
+                      {isShapeInView(view.id, contextMenu.shapeId) ? '✓ ' : ''}
+                      {view.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
           <div className="layer-context-menu-separator" />
           <button
             className="layer-context-menu-item danger"
@@ -702,6 +994,12 @@ export function LayerPanel() {
           </button>
         </div>
       )}
+
+      {/* Layer View Manager Modal */}
+      <LayerViewManager
+        isOpen={isViewManagerOpen}
+        onClose={() => setIsViewManagerOpen(false)}
+      />
     </div>
   );
 }
@@ -798,6 +1096,15 @@ function GroupIcon() {
       <rect x="1" y="1" width="5" height="5" rx="1" />
       <rect x="8" y="8" width="5" height="5" rx="1" />
       <path d="M6 4h2M4 6v2M8 10h-2M10 8v-2" strokeDasharray="2 1" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="7" cy="7" r="2" />
+      <path d="M7 1v1.5M7 11.5V13M1 7h1.5M11.5 7H13M2.5 2.5l1.06 1.06M10.44 10.44l1.06 1.06M2.5 11.5l1.06-1.06M10.44 3.56l1.06-1.06" />
     </svg>
   );
 }

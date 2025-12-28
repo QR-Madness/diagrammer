@@ -2,7 +2,8 @@
   position: absolute;
   bottom: 20px;
   left: 20px;
-  width: 240px;
+  min-width: 180px;
+  max-width: 400px;
   background: var(--bg-primary, #ffffff);
   border: 1px solid var(--border-color, #dee2e6);
   border-radius: 8px;
@@ -11,11 +12,12 @@
   flex-direction: column;
   overflow: hidden;
   z-index: 100;
-  transition: height 0.2s ease;
+  transition: height 0.2s ease, width 0.2s ease;
 }
 
 .layer-panel.collapsed {
   height: auto !important;
+  width: auto !important;
 }
 
 .layer-panel.resizing {
@@ -23,8 +25,8 @@
   user-select: none;
 }
 
-/* Resize handle at the top */
-.layer-panel-resize-handle {
+/* Vertical resize handle at the top */
+.layer-panel-resize-handle-vertical {
   position: absolute;
   top: 0;
   left: 0;
@@ -35,7 +37,24 @@
   z-index: 10;
 }
 
-.layer-panel-resize-handle:hover {
+.layer-panel-resize-handle-vertical:hover {
+  background: var(--accent-color, #2196f3);
+  opacity: 0.3;
+}
+
+/* Horizontal resize handle at the right */
+.layer-panel-resize-handle-horizontal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+}
+
+.layer-panel-resize-handle-horizontal:hover {
   background: var(--accent-color, #2196f3);
   opacity: 0.3;
 }
@@ -174,6 +193,16 @@
   font-family: monospace;
 }
 
+.layer-item-preview {
+  font-size: 10px;
+  color: var(--text-muted, #868e96);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
 .layer-item-actions {
   display: flex;
   gap: 2px;
@@ -265,7 +294,8 @@
   background: var(--bg-hover, #2a2a2a);
 }
 
-[data-theme="dark"] .layer-panel-resize-handle:hover {
+[data-theme="dark"] .layer-panel-resize-handle-vertical:hover,
+[data-theme="dark"] .layer-panel-resize-handle-horizontal:hover {
   background: var(--accent-color, #60a5fa);
 }
 
@@ -410,4 +440,186 @@
 
 [data-theme="dark"] .layer-context-menu-separator {
   background: var(--border-color, #3d3d3d);
+}
+
+/* Color badge for groups */
+.layer-item-color-badge {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+
+.layer-item-color-badge.inherited {
+  opacity: 0.6;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] .layer-item-color-badge.inherited {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Context menu submenu */
+.layer-context-menu-submenu {
+  position: relative;
+}
+
+.layer-context-menu-submenu-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.layer-context-menu-arrow {
+  font-size: 8px;
+  opacity: 0.6;
+  margin-left: 8px;
+}
+
+.layer-context-menu-submenu-content {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  min-width: 120px;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  z-index: 1001;
+}
+
+.layer-context-menu-submenu:hover .layer-context-menu-submenu-content {
+  display: block;
+}
+
+[data-theme="dark"] .layer-context-menu-submenu-content {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #3d3d3d);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Color picker grid */
+.layer-color-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+}
+
+[data-theme="dark"] .layer-color-picker-grid {
+  border-color: var(--border-color, #3d3d3d);
+}
+
+.layer-color-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.layer-color-swatch:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .layer-color-swatch {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Layer view selector */
+.layer-view-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color, #dee2e6);
+  background: var(--bg-secondary, #f8f9fa);
+}
+
+.layer-view-selector select {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #495057);
+  cursor: pointer;
+}
+
+.layer-view-selector select:focus {
+  outline: none;
+  border-color: var(--accent-color, #2196f3);
+}
+
+.layer-view-manage-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary, #6c757d);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.layer-view-manage-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--text-primary, #495057);
+}
+
+.layer-view-selector-empty {
+  justify-content: center;
+}
+
+.layer-view-create-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+  border: 1px dashed var(--border-color, #dee2e6);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary, #6c757d);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.layer-view-create-btn:hover {
+  border-color: var(--accent-color, #2196f3);
+  color: var(--accent-color, #2196f3);
+}
+
+[data-theme="dark"] .layer-view-selector {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-view-selector select {
+  background: var(--bg-primary, #1e1e1e);
+  border-color: var(--border-color, #3d3d3d);
+  color: var(--text-primary, #e0e0e0);
+}
+
+[data-theme="dark"] .layer-view-manage-btn:hover {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+[data-theme="dark"] .layer-view-create-btn {
+  border-color: var(--border-color, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-view-create-btn:hover {
+  border-color: var(--accent-color, #60a5fa);
+  color: var(--accent-color, #60a5fa);
 }

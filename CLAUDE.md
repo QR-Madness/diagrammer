@@ -182,8 +182,9 @@ Completed phases:
 - **Phase 10**: Advanced diagramming (connector labels, orthogonal routing, icon library, shape icons)
 - **Phase 10.5-10.7**: Shape libraries (flowcharts, UML use-case, user-expandable libraries, settings modal)
 - **Phase 11.1-11.2**: Property panel overhaul, label customization, context menu upgrades with submenus
+- **Phase 11.3**: Layer panel upgrades (group colors with inheritance, layer views with regex/manual filtering, shape label preview)
 
-Current: Phase 11.3 (Layer Panel Upgrades) and beyond.
+Current: Phase 11.5 (Common Settings) and beyond.
 
 See Todo.Readme.md for detailed task tracking.
 

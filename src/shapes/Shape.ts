@@ -284,6 +284,8 @@ export interface GroupShape extends BaseShape {
   childIds: string[];
   /** Optional name for the group (displayed in layer panel) */
   name?: string;
+  /** Optional color badge for visual organization in LayerPanel (not rendered on canvas) */
+  layerColor?: string;
 }
 
 /**

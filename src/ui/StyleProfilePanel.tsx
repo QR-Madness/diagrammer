@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { getSelectedShapes } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -12,6 +12,12 @@ import { Shape } from '../shapes/Shape';
 import './StyleProfilePanel.css';
 
 type ViewMode = 'grid' | 'list';
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  profileId: string;
+}
 
 /**
  * Panel for managing and applying style profiles.
@@ -36,6 +42,7 @@ export function StyleProfilePanel() {
   const [editingName, setEditingName] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmOverwriteId, setConfirmOverwriteId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   // Sort profiles: favorites first (alphabetically), then non-favorites (alphabetically)
   const profiles = [...storeProfiles].sort((a, b) => {
@@ -149,6 +156,38 @@ export function StyleProfilePanel() {
     toggleFavorite(id);
   }, [toggleFavorite]);
 
+  // Context menu handlers
+  const handleContextMenu = useCallback((e: React.MouseEvent, profileId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, profileId });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  // Close context menu on click outside or escape
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const handleClick = () => closeContextMenu();
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeContextMenu();
+    };
+
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClick);
+      document.addEventListener('keydown', handleEscape);
+    }, 0);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [contextMenu, closeContextMenu]);
+
   // Get preview style for a profile
   const getPreviewStyle = (profile: StyleProfile): React.CSSProperties => {
     return {
@@ -242,7 +281,8 @@ export function StyleProfilePanel() {
                 key={profile.id}
                 className={`style-profile-grid-item ${!hasSelection ? 'disabled' : ''} ${profile.favorite ? 'favorite' : ''}`}
                 onClick={() => hasSelection && handleApplyProfile(profile)}
-                title={`${profile.name}${!hasSelection ? ' (select a shape to apply)' : ''}`}
+                onContextMenu={(e) => handleContextMenu(e, profile.id)}
+                title={`${profile.name}${!hasSelection ? ' (select a shape to apply)' : ''}\nRight-click for options`}
               >
                 <div
                   className="style-profile-grid-preview"
@@ -252,43 +292,6 @@ export function StyleProfilePanel() {
                   <span className="style-profile-grid-star">★</span>
                 )}
                 <span className="style-profile-grid-name">{profile.name}</span>
-                {/* Hover actions */}
-                <div className="style-profile-grid-actions">
-                  <button
-                    className="style-profile-grid-action"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggleFavorite(profile.id);
-                    }}
-                    title={profile.favorite ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <StarIcon filled={profile.favorite} />
-                  </button>
-                  {!isDefault && hasSelection && (
-                    <button
-                      className="style-profile-grid-action overwrite"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRequestOverwrite(profile.id);
-                      }}
-                      title="Overwrite with current style"
-                    >
-                      <OverwriteIcon />
-                    </button>
-                  )}
-                  {!isDefault && (
-                    <button
-                      className="style-profile-grid-action delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRequestDelete(profile.id);
-                      }}
-                      title="Delete profile"
-                    >
-                      <DeleteIcon />
-                    </button>
-                  )}
-                </div>
                 {/* Confirmation overlays */}
                 {isDeleting && (
                   <div className="style-profile-grid-confirm delete">
@@ -453,6 +456,76 @@ export function StyleProfilePanel() {
           Select a shape to apply or save styles
         </div>
       )}
+
+      {/* Context menu for grid items */}
+      {contextMenu && (() => {
+        const profile = profiles.find((p) => p.id === contextMenu.profileId);
+        if (!profile) return null;
+        const isDefault = profile.id.startsWith('default-');
+
+        return (
+          <div
+            className="style-profile-context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {hasSelection && (
+              <button
+                className="style-profile-context-menu-item"
+                onClick={() => {
+                  handleApplyProfile(profile);
+                  closeContextMenu();
+                }}
+              >
+                Apply Style
+              </button>
+            )}
+            <button
+              className="style-profile-context-menu-item"
+              onClick={() => {
+                handleToggleFavorite(profile.id);
+                closeContextMenu();
+              }}
+            >
+              {profile.favorite ? 'Remove from Favorites' : 'Add to Favorites'}
+            </button>
+            {!isDefault && (
+              <>
+                <button
+                  className="style-profile-context-menu-item"
+                  onClick={() => {
+                    handleStartEdit(profile);
+                    closeContextMenu();
+                  }}
+                >
+                  Rename
+                </button>
+                {hasSelection && (
+                  <button
+                    className="style-profile-context-menu-item"
+                    onClick={() => {
+                      handleRequestOverwrite(profile.id);
+                      closeContextMenu();
+                    }}
+                  >
+                    Overwrite with Current
+                  </button>
+                )}
+                <div className="style-profile-context-menu-separator" />
+                <button
+                  className="style-profile-context-menu-item danger"
+                  onClick={() => {
+                    handleRequestDelete(profile.id);
+                    closeContextMenu();
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

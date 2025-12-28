@@ -300,13 +300,27 @@ implementation phase as defined in Specification.Readme.md.
   - Lock Position, Lock Size, Lock All options
   - SelectTool respects lock properties
 
-#### 11.3 Layer Panel Upgrades
+#### 11.3 Layer Panel Upgrades - COMPLETE
 
-- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritance when moved out of a group, and remember group->group inheritance)
-- [ ] Rename layers/groups
-- [ ] Creating layer views (tabbed views within layer panel; maybe use a dropdown for this) that display subsets of layers that are: selected via regex (do we need to sanitize this input?), or by name, and layer views also can have manual additions to them (via context menu - 'Add to Layer View -> ...').
+- [x] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritance when moved out of a group, and remember group->group inheritance)
+  - Added `layerColor` property to GroupShape
+  - Color badge displayed in LayerPanel with inheritance from parent groups
+  - "Set Color" submenu in context menu with preset colors
+  - Inherited colors shown with reduced opacity
+- [x] Rename layers/groups
+  - Polished existing rename UX: auto-select text on focus
+  - Validates non-empty names before saving
+- [x] Creating layer views (dropdown selector for filtered subsets of layers)
+  - LayerViewStore for persistent view storage
+  - LayerViewManager modal for creating/editing/deleting views
+  - Regex pattern matching against shape types, group names, and labels
+  - Manual additions via "Add to View" context menu submenu
+  - View selector dropdown in LayerPanel header
+- [x] Show a compact line with a preview of a shape's label-text
+  - Displays truncated label/text content below shape type
+  - Works for Rectangle, Ellipse, Text, Connector, and LibraryShape
 
-#### 11.5 Common Settings
+#### 11.4 Common Settings
 
 - Implement a 'Common Settings' area in the settings modal which contains the following:
   - [ ] Default connector type (default orthogonal)
@@ -316,11 +330,18 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Move the storage manager into a settings section and delete the tools toolbar entry
 - [ ] Migrate the entire file toolbar entry into a 'Files' button (grouped with the settings button) which opens a comprehensive management modal for documents
 - [ ] Style the 'Files', and 'Settings' buttons to be aesthetically pleasing
+- [ ] Add a small 'Rebuild' button which recalculates all connector routes
+- Add a 'Style Profile' settings area and implementations for the saving the following by default into a new Style Profile:
+  - [ ] Save Icon Style to Style Profile (on by default)
+  - [ ] Save Label Style to Style Profile (on by default)
 
-#### 11.4 Advanced Group UI
+#### 11.5 Advanced Group UI
 
-- [ ] Implement the following properties for groups:
-  - [ ] s
+- Implement the following properties for groups:
+  - [ ] Background Color, and Background-Pattern Support (e.g. hazard stripes, gradients, etc.)
+  - [ ] Labels (with manual offset translation capability)
+  - [ ] Border styling properties
+  - [ ] 
 
 ### Phase 12: Advanced Export
 
@@ -357,7 +378,8 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Translate selected items using arrow keys
 - [ ] Return focus to canvas when the layer panel is collapsed
 - [ ] Implement a button to snap to a layer item instead of doing it on click (but add this option in the settings to enable the auto-snap again)
-- [ ] Add settings and implementations for the saving the following by default into a new Style Profile:
+- [ ] Context menu for style profiles clips overflows outside of window viewport
+- [ ] Cool saving/saved icon+animation
 
 ##### Phase 14.2 Rich Document Editor Upgrades
 
