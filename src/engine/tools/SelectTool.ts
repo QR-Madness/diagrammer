@@ -198,15 +198,24 @@ export class SelectTool extends BaseTool {
       );
 
       if (handleResult.handle && handleResult.shape) {
+        const shape = handleResult.shape;
+
+        // Check if shape is fully locked
+        if (shape.locked) {
+          // Locked shape - don't allow any resize or rotation
+          return;
+        }
+
         if (handleResult.handle.type === 'rotation') {
           // Clicked on rotation handle - start rotating
+          // Rotation is blocked if shape is fully locked (checked above)
           this.rotateShapeId = handleResult.shapeId;
-          this.rotateOriginalRotation = handleResult.shape.rotation;
-          this.rotateShapeCenter = new Vec2(handleResult.shape.x, handleResult.shape.y);
+          this.rotateOriginalRotation = shape.rotation;
+          this.rotateShapeCenter = new Vec2(shape.x, shape.y);
 
           // Calculate starting angle from shape center to click point
-          const dx = event.worldPoint.x - handleResult.shape.x;
-          const dy = event.worldPoint.y - handleResult.shape.y;
+          const dx = event.worldPoint.x - shape.x;
+          const dy = event.worldPoint.y - shape.y;
           this.rotateStartAngle = Math.atan2(dy, dx);
 
           this.state = 'rotating';
@@ -217,11 +226,17 @@ export class SelectTool extends BaseTool {
           return;
         }
 
+        // Check if size is locked
+        if (shape.lockedSize) {
+          // Size locked - don't allow resize
+          return;
+        }
+
         // Clicked on a resize handle - start resizing
         this.activeHandle = handleResult.handle;
         this.resizeShapeId = handleResult.shapeId;
-        this.resizeOriginalShape = { ...handleResult.shape };
-        this.resizeAnchorPoint = this.getAnchorPoint(handleResult.shape, handleResult.handle.type);
+        this.resizeOriginalShape = { ...shape };
+        this.resizeAnchorPoint = this.getAnchorPoint(shape, handleResult.handle.type);
         this.state = 'resizing';
         ctx.setCursor(handleResult.handle.cursor as CursorStyle);
         ctx.setIsInteracting(true);
@@ -477,16 +492,26 @@ export class SelectTool extends BaseTool {
     // First check for handle hover on selected shapes
     const selectedShapes = ctx.getSelectedShapes();
     if (selectedShapes.length === 1) {
-      const handleSize = 10 / ctx.camera.zoom;
-      const handleResult = ctx.hitTester.hitTestHandles(
-        event.worldPoint,
-        selectedShapes,
-        handleSize
-      );
+      const shape = selectedShapes[0];
 
-      if (handleResult.handle) {
-        ctx.setCursor(handleResult.handle.cursor as CursorStyle);
-        return;
+      // Don't show resize cursors for fully locked shapes
+      if (shape && !shape.locked) {
+        const handleSize = 10 / ctx.camera.zoom;
+        const handleResult = ctx.hitTester.hitTestHandles(
+          event.worldPoint,
+          selectedShapes,
+          handleSize
+        );
+
+        if (handleResult.handle) {
+          // Don't show resize cursor if size is locked (but allow rotation)
+          if (shape.lockedSize && handleResult.handle.type !== 'rotation') {
+            ctx.setCursor('not-allowed');
+          } else {
+            ctx.setCursor(handleResult.handle.cursor as CursorStyle);
+          }
+          return;
+        }
       }
     }
 
@@ -498,7 +523,13 @@ export class SelectTool extends BaseTool {
     );
 
     if (hitResult.id) {
-      ctx.setCursor('move');
+      const shape = ctx.getShapes()[hitResult.id];
+      // Show not-allowed cursor for locked shapes or position-locked shapes
+      if (shape && (shape.locked || shape.lockedPosition)) {
+        ctx.setCursor('not-allowed');
+      } else {
+        ctx.setCursor('move');
+      }
     } else {
       ctx.setCursor('default');
     }
@@ -696,7 +727,8 @@ export class SelectTool extends BaseTool {
 
     for (const id of idsToTranslate) {
       const shape = shapes[id];
-      if (shape) {
+      // Skip shapes that are locked or have position locked
+      if (shape && !shape.locked && !shape.lockedPosition) {
         const startPos: { x: number; y: number; x2?: number; y2?: number } = { x: shape.x, y: shape.y };
         // For connectors, also store x2, y2
         if (isConnector(shape)) {

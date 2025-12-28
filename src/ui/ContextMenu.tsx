@@ -1,8 +1,8 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { useHistoryStore } from '../store/historyStore';
-import { isGroup } from '../shapes/Shape';
+import { isGroup, isConnector, RoutingMode } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 import './ContextMenu.css';
 
@@ -14,6 +14,87 @@ interface ContextMenuProps {
   onSaveToLibrary?: () => void;
 }
 
+interface SubmenuItem {
+  label: string;
+  onClick: () => void;
+  checked?: boolean;
+  disabled?: boolean;
+}
+
+interface SubmenuProps {
+  label: string;
+  items: SubmenuItem[];
+  onClose: () => void;
+}
+
+/**
+ * Submenu component for nested menu options.
+ */
+function Submenu({ label, items, onClose }: SubmenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsOpen(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    timeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 150);
+  }, []);
+
+  const handleItemClick = useCallback((item: SubmenuItem) => {
+    if (!item.disabled) {
+      item.onClick();
+      onClose();
+    }
+  }, [onClose]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="context-menu-submenu"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className="context-menu-item has-submenu">
+        <span className="context-menu-label">{label}</span>
+        <span className="context-menu-arrow">▶</span>
+      </div>
+      {isOpen && (
+        <div className="context-menu-submenu-content">
+          {items.map((item, index) => (
+            <button
+              key={index}
+              className={`context-menu-item ${item.disabled ? 'disabled' : ''}`}
+              onClick={() => handleItemClick(item)}
+            >
+              <span className="context-menu-check">
+                {item.checked ? '✓' : ''}
+              </span>
+              <span className="context-menu-label">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Context menu for shape operations.
  * Shows contextual actions based on current selection.
@@ -21,6 +102,7 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: ContextMenuProps) {
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const shapes = useDocumentStore((state) => state.shapes);
+  const updateShape = useDocumentStore((state) => state.updateShape);
   const select = useSessionStore((state) => state.select);
   const clearSelection = useSessionStore((state) => state.clearSelection);
   const groupShapes = useDocumentStore((state) => state.groupShapes);
@@ -34,14 +116,32 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
   const hasSelection = selectedArray.length > 0;
   const canGroup = selectedArray.length >= 2;
 
+  // Get selected shapes
+  const selectedShapes = selectedArray.map(id => shapes[id]).filter(Boolean);
+  const firstShape = selectedShapes[0];
+
   // Check if a single group is selected
   const singleGroupSelected = selectedArray.length === 1 &&
-    shapes[selectedArray[0]!] &&
-    isGroup(shapes[selectedArray[0]!]!);
+    firstShape && isGroup(firstShape);
+
+  // Check if a connector is selected (for routing options)
+  const hasConnector = selectedShapes.some(s => s && isConnector(s));
+  const singleConnector = selectedShapes.length === 1 && firstShape && isConnector(firstShape);
+  const connectorRoutingMode = singleConnector && isConnector(firstShape) ? firstShape.routingMode : undefined;
+
+  // Check lock states
+  const allLocked = selectedShapes.every(s => s?.locked);
+  const allPositionLocked = selectedShapes.every(s => s?.lockedPosition);
+  const allSizeLocked = selectedShapes.every(s => s?.lockedSize);
 
   // Close menu on click outside or escape
   useEffect(() => {
-    const handleClickOutside = () => onClose();
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't close if clicking inside the context menu
+      const target = e.target as Element;
+      if (target.closest('.context-menu')) return;
+      onClose();
+    };
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -70,17 +170,14 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
   }, [canGroup, selectedArray, push, groupShapes, select, onClose]);
 
   const handleUngroup = useCallback(() => {
-    if (singleGroupSelected) {
-      const shape = shapes[selectedArray[0]!]!;
-      if (isGroup(shape)) {
-        push('Ungroup shapes');
-        const childIds = [...shape.childIds];
-        ungroupShape(shape.id);
-        select(childIds);
-      }
+    if (singleGroupSelected && firstShape && isGroup(firstShape)) {
+      push('Ungroup shapes');
+      const childIds = [...firstShape.childIds];
+      ungroupShape(firstShape.id);
+      select(childIds);
     }
     onClose();
-  }, [singleGroupSelected, selectedArray, shapes, push, ungroupShape, select, onClose]);
+  }, [singleGroupSelected, firstShape, push, ungroupShape, select, onClose]);
 
   const handleDelete = useCallback(() => {
     if (hasSelection) {
@@ -121,6 +218,74 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
     onClose();
   }, [hasSelection, onSaveToLibrary, onClose]);
 
+  // Routing submenu items
+  const routingItems: SubmenuItem[] = [
+    {
+      label: 'Straight',
+      checked: connectorRoutingMode === 'straight',
+      onClick: () => {
+        push('Change routing mode');
+        selectedShapes.forEach(s => {
+          if (s && isConnector(s)) {
+            updateShape(s.id, { routingMode: 'straight' as RoutingMode });
+          }
+        });
+      },
+    },
+    {
+      label: 'Orthogonal',
+      checked: connectorRoutingMode === 'orthogonal',
+      onClick: () => {
+        push('Change routing mode');
+        selectedShapes.forEach(s => {
+          if (s && isConnector(s)) {
+            updateShape(s.id, { routingMode: 'orthogonal' as RoutingMode });
+          }
+        });
+      },
+    },
+  ];
+
+  // Lock submenu items
+  const lockItems: SubmenuItem[] = [
+    {
+      label: 'Lock Position',
+      checked: allPositionLocked,
+      onClick: () => {
+        push(allPositionLocked ? 'Unlock position' : 'Lock position');
+        selectedShapes.forEach(s => {
+          if (s) {
+            updateShape(s.id, { lockedPosition: !allPositionLocked });
+          }
+        });
+      },
+    },
+    {
+      label: 'Lock Size',
+      checked: allSizeLocked,
+      onClick: () => {
+        push(allSizeLocked ? 'Unlock size' : 'Lock size');
+        selectedShapes.forEach(s => {
+          if (s) {
+            updateShape(s.id, { lockedSize: !allSizeLocked });
+          }
+        });
+      },
+    },
+    {
+      label: 'Lock All',
+      checked: allLocked,
+      onClick: () => {
+        push(allLocked ? 'Unlock shape' : 'Lock shape');
+        selectedShapes.forEach(s => {
+          if (s) {
+            updateShape(s.id, { locked: !allLocked });
+          }
+        });
+      },
+    },
+  ];
+
   return (
     <div
       className="context-menu"
@@ -153,7 +318,19 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
           <button className="context-menu-item" onClick={handleSendToBack}>
             <span className="context-menu-label">Send to Back</span>
           </button>
+
           <div className="context-menu-separator" />
+
+          {/* Connector Routing submenu */}
+          {hasConnector && (
+            <Submenu label="Routing" items={routingItems} onClose={onClose} />
+          )}
+
+          {/* Lock submenu */}
+          <Submenu label="Lock" items={lockItems} onClose={onClose} />
+
+          <div className="context-menu-separator" />
+
           {onSaveToLibrary && (
             <button className="context-menu-item" onClick={handleSaveToLibrary}>
               <span className="context-menu-label">Save to Library...</span>

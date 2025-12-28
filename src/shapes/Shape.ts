@@ -91,8 +91,12 @@ export interface BaseShape {
   rotation: number;
   /** Opacity from 0 (transparent) to 1 (opaque) */
   opacity: number;
-  /** Whether the shape is locked from editing */
+  /** Whether the shape is fully locked from all editing */
   locked: boolean;
+  /** Whether the shape position is locked (can still resize) */
+  lockedPosition?: boolean;
+  /** Whether the shape size is locked (can still move) */
+  lockedSize?: boolean;
   /** Whether the shape is visible (hidden shapes are not rendered) */
   visible: boolean;
 

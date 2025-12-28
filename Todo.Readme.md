@@ -286,28 +286,36 @@ implementation phase as defined in Specification.Readme.md.
   - PropertyRendererExtension for custom property types
   - PanelActionExtension for header action buttons
   - Extensible architecture ready for future plugins
-- [x] AMMENDMENT: Shape label customizations: custom BG, ~~and draggable~~ offset labels from the default position on a shape.
+- [x] AMENDMENT: Shape label customizations: custom BG, ~~and draggable~~ offset labels from the default position on a shape.
   - Label background color property for Rectangle, Ellipse, LibraryShape, and Connector
   - Label offset X/Y properties for positioning labels away from center
   - PropertyPanel controls for all label styling options
 
-#### 11.2 Context Menu Upgrades
+#### 11.2 Context Menu Upgrades - COMPLETE
 
-- [ ] Implement multi-option entries support that easily allows an exanded context menu when hovering on them
-- [ ] Add context menu entry: Change connector routing (orthgonal/straight so far)
-- [ ] Add context menu entry: Apply Style (multi-option entry with list of favorite styles to quickly apply)
+- [x] Implement multi-option entries support (submenu on hover)
+  - Created reusable Submenu component with hover delay
+- [x] Add context menu entry: Change connector routing
+- [x] Add context menu entry: Lock submenu
+  - Lock Position, Lock Size, Lock All options
+  - SelectTool respects lock properties
 
 #### 11.3 Layer Panel Upgrades
 
-- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritence when moved out of a group, and remember group->group inheritence)
+- [ ] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritance when moved out of a group, and remember group->group inheritance)
 - [ ] Rename layers/groups
 - [ ] Creating layer views (tabbed views within layer panel; maybe use a dropdown for this) that display subsets of layers that are: selected via regex (do we need to sanitize this input?), or by name, and layer views also can have manual additions to them (via context menu - 'Add to Layer View -> ...').
 
 #### 11.5 Common Settings
 
 - Implement a 'Common Settings' area in the settings modal which contains the following:
-  - [ ] Default connector type
-  - [ ] 
+  - [ ] Default connector type (default orthogonal)
+  - [ ] Default shape style profile
+  - [ ] Show static properties in the property panel (default enabled)
+  - [ ] Hide default style profiles
+- [ ] Move the storage manager into a settings section and delete the tools toolbar entry
+- [ ] Migrate the entire file toolbar entry into a 'Files' button (grouped with the settings button) which opens a comprehensive management modal for documents
+- [ ] Style the 'Files', and 'Settings' buttons to be aesthetically pleasing
 
 #### 11.4 Advanced Group UI
 
@@ -324,12 +332,19 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Basic UML class diagram patterns
 - [ ] Basic ERD diagram patterns
 
-### Phase 14: Collaboration & UI Improvements
+### Phase 14: Collaboration, Simple Auth, and UI Improvements
 
 - [ ] Real-time collaboration (CRDT integration)
-  - Users
 - [ ] Presence indicators (who's viewing where)
 - [ ] Collaborative cursors
+- [ ] All documents
+
+#### Phase 14.1: Simple Authentication
+
+- Add a collaboration area to the settings (if it doesn't exist yet) that contains:
+  - [ ] 'Server Access': {Offline (Default)|Protected Local}
+  - [ ] 'Team-Accessible Documents': Manageable list of documents accessible by team members
+  - [ ] 'Team Members': Managed credential store for [local] authentication
 
 #### Phase 14.1 UX Improvements
 
@@ -342,7 +357,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Translate selected items using arrow keys
 - [ ] Return focus to canvas when the layer panel is collapsed
 - [ ] Implement a button to snap to a layer item instead of doing it on click (but add this option in the settings to enable the auto-snap again)
-- [ ] Add settings and implementations for the saving the following by default into a new Style Profile: 
+- [ ] Add settings and implementations for the saving the following by default into a new Style Profile:
 
 ##### Phase 14.2 Rich Document Editor Upgrades
 
