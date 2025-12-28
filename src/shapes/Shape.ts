@@ -229,8 +229,14 @@ export interface ConnectorShape extends BaseShape {
   labelFontSize?: number;
   /** Color for the label (default: stroke color or black) */
   labelColor?: string;
+  /** Label background color (default: transparent) */
+  labelBackground?: string;
   /** Position of label along the path, 0-1 (default: 0.5 = midpoint) */
   labelPosition?: number;
+  /** Label horizontal offset from calculated position (default: 0) */
+  labelOffsetX?: number;
+  /** Label vertical offset from calculated position (default: 0) */
+  labelOffsetY?: number;
 }
 
 /**

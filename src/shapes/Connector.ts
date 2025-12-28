@@ -155,16 +155,23 @@ function getPointAlongPath(points: Vec2[], t: number): { point: Vec2; angle: num
 }
 
 /**
- * Render a connector label with background.
+ * Render a connector label with optional background.
  */
 function renderConnectorLabel(
   ctx: CanvasRenderingContext2D,
   label: string,
   position: Vec2,
   fontSize: number,
-  color: string
+  color: string,
+  backgroundColor?: string,
+  offsetX: number = 0,
+  offsetY: number = 0
 ): void {
   ctx.save();
+
+  // Apply offset to position
+  const drawX = position.x + offsetX;
+  const drawY = position.y + offsetY;
 
   ctx.font = `${fontSize}px sans-serif`;
   ctx.textAlign = 'center';
@@ -176,28 +183,31 @@ function renderConnectorLabel(
   const bgWidth = metrics.width + padding * 2;
   const bgHeight = fontSize + padding * 2;
 
-  // Draw background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  // Draw background (use custom color or default semi-transparent white)
+  const bgColor = backgroundColor || 'rgba(255, 255, 255, 0.9)';
+  ctx.fillStyle = bgColor;
   ctx.fillRect(
-    position.x - bgWidth / 2,
-    position.y - bgHeight / 2,
+    drawX - bgWidth / 2,
+    drawY - bgHeight / 2,
     bgWidth,
     bgHeight
   );
 
-  // Draw border
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(
-    position.x - bgWidth / 2,
-    position.y - bgHeight / 2,
-    bgWidth,
-    bgHeight
-  );
+  // Draw border (only if using default background)
+  if (!backgroundColor) {
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      drawX - bgWidth / 2,
+      drawY - bgHeight / 2,
+      bgWidth,
+      bgHeight
+    );
+  }
 
   // Draw text
   ctx.fillStyle = color;
-  ctx.fillText(label, position.x, position.y);
+  ctx.fillText(label, drawX, drawY);
 
   ctx.restore();
 }
@@ -295,8 +305,11 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       const { point } = getPointAlongPath(points, labelPosition);
       const fontSize = shape.labelFontSize ?? 12;
       const color = shape.labelColor ?? stroke ?? '#000000';
+      const backgroundColor = shape.labelBackground;
+      const offsetX = shape.labelOffsetX ?? 0;
+      const offsetY = shape.labelOffsetY ?? 0;
 
-      renderConnectorLabel(ctx, shape.label, point, fontSize, color);
+      renderConnectorLabel(ctx, shape.label, point, fontSize, color, backgroundColor, offsetX, offsetY);
     }
 
     ctx.restore();
