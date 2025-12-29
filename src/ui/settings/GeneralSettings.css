@@ -1,0 +1,173 @@
+/* General Settings */
+.general-settings {
+  padding: 4px 0;
+}
+
+.settings-section-title {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.settings-group {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+.settings-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.settings-group-title {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-row {
+  margin-bottom: 16px;
+}
+
+.settings-row:last-child {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+}
+
+.settings-select {
+  width: 100%;
+  max-width: 300px;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #1e293b);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-select:hover {
+  border-color: var(--border-hover, #cbd5e1);
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.settings-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary, #94a3b8);
+}
+
+/* Checkbox rows */
+.settings-row-checkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.settings-checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent-color, #3b82f6);
+  cursor: pointer;
+}
+
+.settings-checkbox-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #1e293b);
+}
+
+/* Reset button */
+.settings-reset-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--danger-color, #ef4444);
+  background: transparent;
+  border: 1px solid var(--danger-color, #ef4444);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-reset-btn:hover {
+  background: var(--danger-color, #ef4444);
+  color: white;
+}
+
+/* Dark mode */
+:root[data-theme='dark'] .settings-section-title {
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .settings-group {
+  border-color: var(--border-color, #334155);
+}
+
+:root[data-theme='dark'] .settings-group-title {
+  color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .settings-label {
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .settings-select {
+  background: var(--bg-secondary, #1e293b);
+  border-color: var(--border-color, #334155);
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .settings-select:hover {
+  border-color: var(--border-hover, #475569);
+}
+
+:root[data-theme='dark'] .settings-select:focus {
+  border-color: var(--accent-color, #60a5fa);
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+
+:root[data-theme='dark'] .settings-hint {
+  color: var(--text-tertiary, #64748b);
+}
+
+:root[data-theme='dark'] .settings-checkbox-text {
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .settings-reset-btn {
+  color: var(--danger-color, #f87171);
+  border-color: var(--danger-color, #f87171);
+}
+
+:root[data-theme='dark'] .settings-reset-btn:hover {
+  background: var(--danger-color, #f87171);
+  color: var(--bg-primary, #0f172a);
+}

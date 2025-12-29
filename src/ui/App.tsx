@@ -3,8 +3,6 @@ import './App.css';
 import { CanvasContainer } from './CanvasContainer';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
-import { DocumentManager } from './DocumentManager';
-import { StorageManager } from './StorageManager';
 import { SettingsModal } from './SettingsModal';
 import { SplitPane } from './SplitPane';
 import { DocumentEditorPanel } from './DocumentEditorPanel';
@@ -13,44 +11,24 @@ import { StatusBar } from './StatusBar';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
+import { useDocumentStore } from '../store/documentStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 
 function App() {
   const initializeDefault = usePageStore((state) => state.initializeDefault);
   const persistenceInitializedRef = useRef(false);
 
-  // Document manager modal state
-  const [isDocumentManagerOpen, setIsDocumentManagerOpen] = useState(false);
-
-  // Storage manager modal state
-  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
-
   // Settings modal state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Get rebuild function from document store
+  const rebuildAllConnectorRoutes = useDocumentStore((state) => state.rebuildAllConnectorRoutes);
 
   // Split pane collapse state
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
 
   // Auto-save hook
   useAutoSave();
-
-  // Open document manager callback
-  const handleOpenDocumentManager = useCallback(() => {
-    setIsDocumentManagerOpen(true);
-  }, []);
-
-  const handleCloseDocumentManager = useCallback(() => {
-    setIsDocumentManagerOpen(false);
-  }, []);
-
-  // Open storage manager callback
-  const handleOpenStorageManager = useCallback(() => {
-    setIsStorageManagerOpen(true);
-  }, []);
-
-  const handleCloseStorageManager = useCallback(() => {
-    setIsStorageManagerOpen(false);
-  }, []);
 
   // Open settings callback
   const handleOpenSettings = useCallback(() => {
@@ -60,6 +38,13 @@ function App() {
   const handleCloseSettings = useCallback(() => {
     setIsSettingsOpen(false);
   }, []);
+
+  // Rebuild all connector routes callback
+  const handleRebuildConnectors = useCallback(() => {
+    if (rebuildAllConnectorRoutes) {
+      rebuildAllConnectorRoutes();
+    }
+  }, [rebuildAllConnectorRoutes]);
 
   // Collapse handler for document editor panel
   const handleCollapseEditor = useCallback(() => {
@@ -97,9 +82,8 @@ function App() {
   return (
     <div className="app">
       <UnifiedToolbar
-        onOpenDocumentManager={handleOpenDocumentManager}
-        onOpenStorageManager={handleOpenStorageManager}
         onOpenSettings={handleOpenSettings}
+        onRebuildConnectors={handleRebuildConnectors}
       />
       <main className="app-main">
         <SplitPane
@@ -121,18 +105,7 @@ function App() {
       </main>
       <StatusBar />
 
-      {/* Document Manager Modal */}
-      <DocumentManager
-        isOpen={isDocumentManagerOpen}
-        onClose={handleCloseDocumentManager}
-      />
-
-      {/* Storage Manager Modal */}
-      {isStorageManagerOpen && (
-        <StorageManager onClose={handleCloseStorageManager} />
-      )}
-
-      {/* Settings Modal */}
+      {/* Settings Modal (includes Documents, Storage, etc.) */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={handleCloseSettings}

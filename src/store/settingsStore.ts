@@ -1,0 +1,152 @@
+/**
+ * Settings store for application-wide settings.
+ *
+ * Stores user preferences for default behaviors, display options, etc.
+ */
+
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+/**
+ * Connector routing mode options.
+ */
+export type ConnectorRoutingMode = 'straight' | 'orthogonal';
+
+/**
+ * Settings state.
+ */
+export interface SettingsState {
+  /** Default connector routing mode */
+  defaultConnectorType: ConnectorRoutingMode;
+  /** Default style profile ID to apply to new shapes (null = none) */
+  defaultStyleProfileId: string | null;
+  /** Show static/read-only properties in PropertyPanel */
+  showStaticProperties: boolean;
+  /** Hide default (built-in) style profiles in the profile list */
+  hideDefaultStyleProfiles: boolean;
+  /** Include icon style when saving to style profiles */
+  saveIconStyleToProfile: boolean;
+  /** Include label style when saving to style profiles */
+  saveLabelStyleToProfile: boolean;
+}
+
+/**
+ * Settings actions.
+ */
+export interface SettingsActions {
+  /** Set default connector type */
+  setDefaultConnectorType: (type: ConnectorRoutingMode) => void;
+  /** Set default style profile ID */
+  setDefaultStyleProfileId: (profileId: string | null) => void;
+  /** Toggle showing static properties */
+  toggleShowStaticProperties: () => void;
+  /** Set showing static properties */
+  setShowStaticProperties: (show: boolean) => void;
+  /** Toggle hiding default style profiles */
+  toggleHideDefaultStyleProfiles: () => void;
+  /** Set hiding default style profiles */
+  setHideDefaultStyleProfiles: (hide: boolean) => void;
+  /** Toggle saving icon style to profiles */
+  toggleSaveIconStyleToProfile: () => void;
+  /** Set saving icon style to profiles */
+  setSaveIconStyleToProfile: (save: boolean) => void;
+  /** Toggle saving label style to profiles */
+  toggleSaveLabelStyleToProfile: () => void;
+  /** Set saving label style to profiles */
+  setSaveLabelStyleToProfile: (save: boolean) => void;
+  /** Reset all settings to defaults */
+  resetSettings: () => void;
+}
+
+/**
+ * Initial state with default values.
+ */
+const initialState: SettingsState = {
+  defaultConnectorType: 'orthogonal',
+  defaultStyleProfileId: null,
+  showStaticProperties: true,
+  hideDefaultStyleProfiles: false,
+  saveIconStyleToProfile: true,
+  saveLabelStyleToProfile: true,
+};
+
+/**
+ * Settings store.
+ *
+ * Persists application settings to localStorage.
+ *
+ * Usage:
+ * ```typescript
+ * const { defaultConnectorType, setDefaultConnectorType } = useSettingsStore();
+ *
+ * // Get current setting
+ * console.log(defaultConnectorType); // 'orthogonal'
+ *
+ * // Update setting
+ * setDefaultConnectorType('straight');
+ * ```
+ */
+export const useSettingsStore = create<SettingsState & SettingsActions>()(
+  persist(
+    (set, get) => ({
+      // State
+      ...initialState,
+
+      // Actions
+      setDefaultConnectorType: (type: ConnectorRoutingMode) => {
+        set({ defaultConnectorType: type });
+      },
+
+      setDefaultStyleProfileId: (profileId: string | null) => {
+        set({ defaultStyleProfileId: profileId });
+      },
+
+      toggleShowStaticProperties: () => {
+        set({ showStaticProperties: !get().showStaticProperties });
+      },
+
+      setShowStaticProperties: (show: boolean) => {
+        set({ showStaticProperties: show });
+      },
+
+      toggleHideDefaultStyleProfiles: () => {
+        set({ hideDefaultStyleProfiles: !get().hideDefaultStyleProfiles });
+      },
+
+      setHideDefaultStyleProfiles: (hide: boolean) => {
+        set({ hideDefaultStyleProfiles: hide });
+      },
+
+      toggleSaveIconStyleToProfile: () => {
+        set({ saveIconStyleToProfile: !get().saveIconStyleToProfile });
+      },
+
+      setSaveIconStyleToProfile: (save: boolean) => {
+        set({ saveIconStyleToProfile: save });
+      },
+
+      toggleSaveLabelStyleToProfile: () => {
+        set({ saveLabelStyleToProfile: !get().saveLabelStyleToProfile });
+      },
+
+      setSaveLabelStyleToProfile: (save: boolean) => {
+        set({ saveLabelStyleToProfile: save });
+      },
+
+      resetSettings: () => {
+        set(initialState);
+      },
+    }),
+    {
+      name: 'diagrammer-settings',
+      partialize: (state) => ({
+        defaultConnectorType: state.defaultConnectorType,
+        defaultStyleProfileId: state.defaultStyleProfileId,
+        showStaticProperties: state.showStaticProperties,
+        hideDefaultStyleProfiles: state.hideDefaultStyleProfiles,
+        saveIconStyleToProfile: state.saveIconStyleToProfile,
+        saveLabelStyleToProfile: state.saveLabelStyleToProfile,
+      }),
+    }
+  )
+);

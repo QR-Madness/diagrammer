@@ -1,0 +1,69 @@
+/* Style Profile Settings */
+.style-profile-settings {
+  padding: 4px 0;
+}
+
+.settings-description {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.5;
+}
+
+/* Info box */
+.settings-info-box {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-secondary, #f8fafc);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  margin-top: 24px;
+}
+
+.settings-info-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-color, #3b82f6);
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+}
+
+.settings-info-content {
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.5;
+}
+
+.settings-info-content strong {
+  color: var(--text-primary, #1e293b);
+}
+
+/* Dark mode */
+:root[data-theme='dark'] .settings-description {
+  color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .settings-info-box {
+  background: var(--bg-secondary, #1e293b);
+  border-color: var(--border-color, #334155);
+}
+
+:root[data-theme='dark'] .settings-info-icon {
+  color: var(--accent-color, #60a5fa);
+  background: rgba(96, 165, 250, 0.15);
+}
+
+:root[data-theme='dark'] .settings-info-content {
+  color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .settings-info-content strong {
+  color: var(--text-primary, #f1f5f9);
+}

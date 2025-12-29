@@ -335,6 +335,109 @@
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+/* Action button group */
+.toolbar-action-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Icon buttons (settings, theme) */
+.toolbar-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #6c757d);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-icon-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--text-primary, #495057);
+}
+
+.toolbar-icon-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.toolbar-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Rebuild connector button */
+.toolbar-rebuild-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-secondary, #6c757d);
+  background: transparent;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-rebuild-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--color-primary, #2196f3);
+  border-color: var(--color-primary, #2196f3);
+}
+
+.toolbar-rebuild-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.toolbar-rebuild-btn:active {
+  transform: rotate(180deg);
+}
+
+/* Full-size settings button */
+.toolbar-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary, #495057);
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-settings-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--color-primary, #2196f3);
+  color: var(--color-primary, #2196f3);
+}
+
+.toolbar-settings-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.toolbar-settings-btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 /* Dark Mode */
 [data-theme="dark"] .unified-toolbar {
   background: var(--bg-secondary, #252526);
@@ -465,4 +568,39 @@
 [data-theme="dark"] .inline-tab-input {
   background: var(--bg-primary, #1e1e1e);
   color: var(--text-primary, #cccccc);
+}
+
+/* Dark mode for icon buttons */
+[data-theme="dark"] .toolbar-icon-btn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+[data-theme="dark"] .toolbar-icon-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--text-primary, #cccccc);
+}
+
+/* Dark mode for rebuild button */
+[data-theme="dark"] .toolbar-rebuild-btn {
+  color: var(--text-secondary, #94a3b8);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .toolbar-rebuild-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--color-primary, #60a5fa);
+  border-color: var(--color-primary, #60a5fa);
+}
+
+/* Dark mode for settings button */
+[data-theme="dark"] .toolbar-settings-btn {
+  color: var(--text-primary, #cccccc);
+  background: var(--bg-secondary, #2d2d2d);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .toolbar-settings-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--color-primary, #60a5fa);
+  border-color: var(--color-primary, #60a5fa);
 }

@@ -3,18 +3,25 @@
  *
  * Features:
  * - Tab infrastructure for multiple settings sections
- * - Shape Libraries management (initial tab)
- * - Extensible for future settings
+ * - Documents management (new, open, save, import/export)
+ * - General settings (connector defaults, style profile defaults, display options, theme)
+ * - Storage management (images and icons)
+ * - Style Profile settings
+ * - Shape Libraries management
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import { ShapeLibraryManager } from './ShapeLibraryManager';
+import { DocumentsSettings } from './settings/DocumentsSettings';
+import { GeneralSettings } from './settings/GeneralSettings';
+import { StorageSettings } from './settings/StorageSettings';
+import { StyleProfileSettings } from './settings/StyleProfileSettings';
 import './SettingsModal.css';
 
 /**
  * Available settings tabs.
  */
-type SettingsTab = 'shape-libraries';
+type SettingsTab = 'documents' | 'general' | 'storage' | 'style-profiles' | 'shape-libraries';
 
 /**
  * Tab configuration.
@@ -29,11 +36,11 @@ interface TabConfig {
  * Available tabs configuration.
  */
 const TABS: TabConfig[] = [
+  { id: 'documents', label: 'Documents', icon: '📄' },
+  { id: 'general', label: 'General', icon: '⚙️' },
+  { id: 'storage', label: 'Storage', icon: '💾' },
+  { id: 'style-profiles', label: 'Style Profiles', icon: '🎨' },
   { id: 'shape-libraries', label: 'Shape Libraries', icon: '📚' },
-  // Future tabs can be added here:
-  // { id: 'appearance', label: 'Appearance', icon: '🎨' },
-  // { id: 'shortcuts', label: 'Shortcuts', icon: '⌨️' },
-  // { id: 'about', label: 'About', icon: 'ℹ️' },
 ];
 
 export interface SettingsModalProps {
@@ -42,7 +49,7 @@ export interface SettingsModalProps {
   initialTab?: SettingsTab;
 }
 
-export function SettingsModal({ isOpen, onClose, initialTab = 'shape-libraries' }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
   // Reset to initial tab when modal opens
@@ -106,6 +113,10 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'shape-libraries' 
 
           {/* Tab content */}
           <div className="settings-modal-content">
+            {activeTab === 'documents' && <DocumentsSettings />}
+            {activeTab === 'general' && <GeneralSettings />}
+            {activeTab === 'storage' && <StorageSettings />}
+            {activeTab === 'style-profiles' && <StyleProfileSettings />}
             {activeTab === 'shape-libraries' && <ShapeLibraryManager />}
           </div>
         </div>

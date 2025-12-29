@@ -320,68 +320,91 @@ implementation phase as defined in Specification.Readme.md.
   - Displays truncated label/text content below shape type
   - Works for Rectangle, Ellipse, Text, Connector, and LibraryShape
 
-#### 11.4 Common Settings
+#### 11.4 Common Settings - COMPLETE
 
-- Implement a 'Common Settings' area in the settings modal which contains the following:
-  - [ ] Default connector type (default orthogonal)
-  - [ ] Default shape style profile
-  - [ ] Show static properties in the property panel (default enabled)
-  - [ ] Hide default style profiles
-- [ ] Move the storage manager into a settings section and delete the tools toolbar entry
-- [ ] Migrate the entire file toolbar entry into a 'Files' button (grouped with the settings button) which opens a comprehensive management modal for documents
-- [ ] Style the 'Files', and 'Settings' buttons to be aesthetically pleasing
-- [ ] Add a small 'Rebuild' button which recalculates all connector routes
-- Add a 'Style Profile' settings area and implementations for the saving the following by default into a new Style Profile:
-  - [ ] Save Icon Style to Style Profile (on by default)
-  - [ ] Save Label Style to Style Profile (on by default)
+- Implemented 'Common Settings' area in the settings modal which contains the following:
+  - [x] Default connector type (default orthogonal) - ConnectorTool reads from settingsStore
+  - [x] Default shape style profile - Dropdown in GeneralSettings
+  - [x] Show static properties in the property panel (default enabled) - Setting stored in settingsStore
+  - [x] Hide default style profiles - StyleProfilePanel and GeneralSettings dropdown respect this setting
+  - [x] Theme preference (System/Light/Dark) moved to General Settings
+- [x] Move the storage manager into a settings section and delete the tools toolbar entry
+  - Storage Manager embedded as StorageSettings tab in SettingsModal
+  - Removed Tools menu from UnifiedToolbar
+- [x] Move File menu into Settings modal as Documents tab
+  - DocumentsSettings component with New, Save, Import/Export, document list
+  - Removed File dropdown from UnifiedToolbar
+- [x] Full-size "Settings" button in toolbar (replaces icon-only buttons)
+  - Consolidated Settings button with icon + text
+  - Removed separate theme toggle (now in Settings > General)
+- [x] Add a small 'Rebuild' button which recalculates all connector routes
+  - documentStore.rebuildAllConnectorRoutes() function added
+  - Rebuild button in UnifiedToolbar
+- [x] Garbage collection protects icons by default
+  - BlobGarbageCollector skips SVG files unless `includeIcons: true` option
+  - Storage Manager shows "Icon" tag and "Protected" badge for SVG blobs
+- Added 'Style Profile' settings area in SettingsModal with:
+  - [x] Save Icon Style to Style Profile (on by default)
+  - [x] Save Label Style to Style Profile (on by default)
 
-#### 11.5 Advanced Group UI
+#### 11.5 Advanced Group Style Properties
 
 - Implement the following properties for groups:
   - [ ] Background Color, and Background-Pattern Support (e.g. hazard stripes, gradients, etc.)
   - [ ] Labels (with manual offset translation capability)
   - [ ] Border styling properties
-  - [ ] 
+  - [ ] DESIRED BONUS FEATURE: Add shadows, and/or glowing animations support to apply to a group
 
 ### Phase 12: Advanced Export
 
-- [ ] Customizable PDF document export (feats: DPI, include software version, custom logo from storagebrowser, standard cover page, etc.)
+- [ ] Customizable PDF document export (feats: DPI, Version/Revision, Custom Logo [from StorageBrowser], [Basic] Cover Page, ...)
 
 ### Phase 13: Diagram Patterns
 
-- [ ] Basic flowchart patterns
-- [ ] Basic UML class diagram patterns
-- [ ] Basic ERD diagram patterns
+- [ ] ERD Shape Library (Crow's Foot preferably)
+- [ ] UML Class Diagram Shape Library
 
 ### Phase 14: Collaboration, Simple Auth, and UI Improvements
 
-- [ ] Real-time collaboration (CRDT integration)
+- [ ] Real-time collaboration (CRDT integration for host documents)
 - [ ] Presence indicators (who's viewing where)
 - [ ] Collaborative cursors
-- [ ] All documents
+- [ ] **Only** _team documents_ can be accessed for collaboration (see 14.1); we'll be pivoting in terminology to refer to standard documents as 'personal documents'
+- [ ] Files are located on the host; however ensure you keep this flexible when we start working with cloud providers/storage endpoints.
 
-#### Phase 14.1: Simple Authentication
+#### Phase 14.1: Team Documents & Simple Authentication
 
 - Add a collaboration area to the settings (if it doesn't exist yet) that contains:
   - [ ] 'Server Access': {Offline (Default)|Protected Local}
   - [ ] 'Team-Accessible Documents': Manageable list of documents accessible by team members
   - [ ] 'Team Members': Managed credential store for [local] authentication
+- [ ] Create a login page for team members to access team documents on the host's computer
 
-#### Phase 14.1 UX Improvements
+#### Phase 14.2 UX Improvements
+
+##### Phase 14.20 - UX Improvements - Chunk 1
 
 - [ ] Make the canvas not-focused effect more friendly the red border is annoying; consider a light blue top-border or similar
-- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle)
-- [ ] Context menu for style profiles (overwrite with current, delete, rename)
-- [ ] Allow group click-through to shapes for trivial editing of shapes within groups
+- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle); also add a toggle for this in settings
+- [ ] Context menu for style profiles clips overflows outside of window viewport
+
+##### Phase 14.21 - UX Improvements - Chunk 2
+
 - [ ] Smart-alignment for shape resize
 - [ ] Allow LaTeX equations for shape text by prepending `=` to the
-- [ ] Translate selected items using arrow keys
 - [ ] Return focus to canvas when the layer panel is collapsed
-- [ ] Implement a button to snap to a layer item instead of doing it on click (but add this option in the settings to enable the auto-snap again)
-- [ ] Context menu for style profiles clips overflows outside of window viewport
+
+##### Phase 14.22 - UX Improvements - Chunk 3
+
+- [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
 - [ ] Cool saving/saved icon+animation
 
-##### Phase 14.2 Rich Document Editor Upgrades
+##### Phase 14.22 - UX Improvements - Chunk 4
+
+- [ ] Translate selected items using arrow keys
+- [ ] Add a test regex button to layer view creator to check results
+
+##### Phase 14.3 Rich Document Editor Upgrades
 
 - [ ] Tables
 - [ ] LaTeX Equation Support
@@ -394,7 +417,7 @@ implementation phase as defined in Specification.Readme.md.
 
 Replace this list with your own checklists of areas needed for improvement before we get-ready for release of v.1.0
 
-- [ ]
+- [ ] TBD
 
 ### Phase 15: Version 1.0
 
@@ -416,10 +439,18 @@ Replace this list with your own checklists of areas needed for improvement befor
 - [ ] Implement a feature which can scan the GitHub repo for updates and check if a new version exists
 - [ ] Implement a feature to update the application **without** user commands or manual download+installation
 
+### Phase ??: Document Cloud Providers
+
+- [ ] Implement support
+
 ### Phase ??: Comprehensive Local Help System - Version ?.?
 
 - [ ] Implement a local help documentation system with integrated search and navigation
 - [ ] Create a comprehensive help guide for the application
+
+### Phase ???: Advanced Themes
+
+- [ ] Implement Advanced Themes
 
 ### Phase ??: Canvas Code Integration with Git – Version ?.?
 

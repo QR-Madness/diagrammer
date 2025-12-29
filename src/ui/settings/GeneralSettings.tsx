@@ -1,0 +1,178 @@
+/**
+ * General Settings component for the Settings modal.
+ *
+ * Contains:
+ * - Theme selection
+ * - Default connector type
+ * - Default style profile
+ * - Show/hide static properties
+ * - Hide default style profiles
+ */
+
+import { useSettingsStore, ConnectorRoutingMode } from '../../store/settingsStore';
+import { useStyleProfileStore } from '../../store/styleProfileStore';
+import { useThemeStore, ThemePreference } from '../../store/themeStore';
+import './GeneralSettings.css';
+
+export function GeneralSettings() {
+  const defaultConnectorType = useSettingsStore((state) => state.defaultConnectorType);
+  const setDefaultConnectorType = useSettingsStore((state) => state.setDefaultConnectorType);
+  const defaultStyleProfileId = useSettingsStore((state) => state.defaultStyleProfileId);
+  const setDefaultStyleProfileId = useSettingsStore((state) => state.setDefaultStyleProfileId);
+  const showStaticProperties = useSettingsStore((state) => state.showStaticProperties);
+  const setShowStaticProperties = useSettingsStore((state) => state.setShowStaticProperties);
+  const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
+  const setHideDefaultStyleProfiles = useSettingsStore((state) => state.setHideDefaultStyleProfiles);
+  const resetSettings = useSettingsStore((state) => state.resetSettings);
+
+  const profiles = useStyleProfileStore((state) => state.profiles);
+
+  // Theme state
+  const themePreference = useThemeStore((state) => state.preference);
+  const setThemePreference = useThemeStore((state) => state.setPreference);
+
+  const handleConnectorTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDefaultConnectorType(e.target.value as ConnectorRoutingMode);
+  };
+
+  const handleStyleProfileChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setDefaultStyleProfileId(value === '' ? null : value);
+  };
+
+  const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setThemePreference(e.target.value as ThemePreference);
+  };
+
+  return (
+    <div className="general-settings">
+      <h3 className="settings-section-title">General Settings</h3>
+
+      {/* Appearance Settings */}
+      <div className="settings-group">
+        <h4 className="settings-group-title">Appearance</h4>
+
+        <div className="settings-row">
+          <label className="settings-label" htmlFor="theme-mode">
+            Theme
+          </label>
+          <select
+            id="theme-mode"
+            className="settings-select"
+            value={themePreference}
+            onChange={handleThemeChange}
+          >
+            <option value="system">System (Auto)</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+          <span className="settings-hint">
+            Choose your preferred color theme
+          </span>
+        </div>
+      </div>
+
+      {/* Connector Settings */}
+      <div className="settings-group">
+        <h4 className="settings-group-title">Connectors</h4>
+
+        <div className="settings-row">
+          <label className="settings-label" htmlFor="default-connector-type">
+            Default Connector Type
+          </label>
+          <select
+            id="default-connector-type"
+            className="settings-select"
+            value={defaultConnectorType}
+            onChange={handleConnectorTypeChange}
+          >
+            <option value="orthogonal">Orthogonal (Right Angle)</option>
+            <option value="straight">Straight Line</option>
+          </select>
+          <span className="settings-hint">
+            New connectors will use this routing style by default
+          </span>
+        </div>
+      </div>
+
+      {/* Style Settings */}
+      <div className="settings-group">
+        <h4 className="settings-group-title">Shapes</h4>
+
+        <div className="settings-row">
+          <label className="settings-label" htmlFor="default-style-profile">
+            Default Style Profile
+          </label>
+          <select
+            id="default-style-profile"
+            className="settings-select"
+            value={defaultStyleProfileId ?? ''}
+            onChange={handleStyleProfileChange}
+          >
+            <option value="">None (Use Tool Defaults)</option>
+            {profiles
+              .filter((profile) => !hideDefaultStyleProfiles || !profile.id.startsWith('default-'))
+              .map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.name}
+                </option>
+              ))}
+          </select>
+          <span className="settings-hint">
+            New shapes will be created with this style applied
+          </span>
+        </div>
+      </div>
+
+      {/* Display Settings */}
+      <div className="settings-group">
+        <h4 className="settings-group-title">Display</h4>
+
+        <div className="settings-row settings-row-checkbox">
+          <label className="settings-checkbox-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={showStaticProperties}
+              onChange={(e) => setShowStaticProperties(e.target.checked)}
+            />
+            <span className="settings-checkbox-text">Show Static Properties</span>
+          </label>
+          <span className="settings-hint">
+            Display read-only properties (like ID) in the Property Panel
+          </span>
+        </div>
+
+        <div className="settings-row settings-row-checkbox">
+          <label className="settings-checkbox-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={hideDefaultStyleProfiles}
+              onChange={(e) => setHideDefaultStyleProfiles(e.target.checked)}
+            />
+            <span className="settings-checkbox-text">Hide Default Style Profiles</span>
+          </label>
+          <span className="settings-hint">
+            Only show custom style profiles in the Property Panel
+          </span>
+        </div>
+      </div>
+
+      {/* Reset Settings */}
+      <div className="settings-group">
+        <h4 className="settings-group-title">Reset</h4>
+        <button
+          className="settings-reset-btn"
+          onClick={() => {
+            if (confirm('Reset all settings to defaults?')) {
+              resetSettings();
+            }
+          }}
+        >
+          Reset to Defaults
+        </button>
+      </div>
+    </div>
+  );
+}

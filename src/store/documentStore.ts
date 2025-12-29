@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { Shape, GroupShape, isGroup } from '../shapes/Shape';
+import { Shape, GroupShape, ConnectorShape, isGroup } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { Box } from '../math/Box';
+import { calculateConnectorWaypoints } from '../engine/OrthogonalRouter';
 
 /**
  * Document state containing all shape data.
@@ -70,6 +71,12 @@ export interface DocumentActions {
    * @param newChildOrder - New order of child IDs
    */
   reorderChildrenInGroup: (groupId: string, newChildOrder: string[]) => void;
+
+  /**
+   * Rebuild routes for all orthogonal connectors.
+   * Useful when shapes have been moved or modified.
+   */
+  rebuildAllConnectorRoutes: () => void;
 }
 
 /**
@@ -552,6 +559,24 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
         }
 
         (state.shapes[groupId] as GroupShape).childIds = validNewOrder;
+      });
+    },
+
+    rebuildAllConnectorRoutes: () => {
+      set((state) => {
+        // Find all connectors with orthogonal routing
+        const connectors = Object.values(state.shapes).filter(
+          (shape): shape is ConnectorShape =>
+            shape.type === 'connector' && (shape as ConnectorShape).routingMode === 'orthogonal'
+        );
+
+        // Recalculate waypoints for each connector
+        for (const connector of connectors) {
+          const waypoints = calculateConnectorWaypoints(connector, state.shapes);
+          if (waypoints) {
+            (state.shapes[connector.id] as ConnectorShape).waypoints = waypoints;
+          }
+        }
       });
     },
   }))

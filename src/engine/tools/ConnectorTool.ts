@@ -6,6 +6,7 @@ import { ConnectorShape, DEFAULT_CONNECTOR, Anchor, AnchorPosition, isConnector,
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
 import { nanoid } from 'nanoid';
 import { calculateConnectorWaypoints } from '../OrthogonalRouter';
+import { useSettingsStore } from '../../store/settingsStore';
 
 /**
  * State machine states for the ConnectorTool.
@@ -208,6 +209,9 @@ export class ConnectorTool extends BaseTool {
       return;
     }
 
+    // Get the default connector type from settings
+    const defaultConnectorType = useSettingsStore.getState().defaultConnectorType;
+
     // Create the connector
     const connector: ConnectorShape = {
       id: nanoid(),
@@ -229,7 +233,7 @@ export class ConnectorTool extends BaseTool {
       endAnchor: this.hoveredAnchor?.position || 'center',
       startArrow: DEFAULT_CONNECTOR.startArrow,
       endArrow: DEFAULT_CONNECTOR.endArrow,
-      routingMode: DEFAULT_CONNECTOR.routingMode,
+      routingMode: defaultConnectorType,
     };
 
     // Calculate initial waypoints for orthogonal routing

@@ -8,6 +8,7 @@ import {
   extractStyleFromShape,
   getProfileUpdates,
 } from '../store/styleProfileStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { Shape } from '../shapes/Shape';
 import './StyleProfilePanel.css';
 
@@ -44,12 +45,16 @@ export function StyleProfilePanel() {
   const [confirmOverwriteId, setConfirmOverwriteId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
-  // Sort profiles: favorites first (alphabetically), then non-favorites (alphabetically)
-  const profiles = [...storeProfiles].sort((a, b) => {
-    if (a.favorite && !b.favorite) return -1;
-    if (!a.favorite && b.favorite) return 1;
-    return a.name.localeCompare(b.name);
-  });
+  const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
+
+  // Filter and sort profiles: optionally hide defaults, favorites first (alphabetically), then non-favorites (alphabetically)
+  const profiles = [...storeProfiles]
+    .filter((profile) => !hideDefaultStyleProfiles || !profile.id.startsWith('default-'))
+    .sort((a, b) => {
+      if (a.favorite && !b.favorite) return -1;
+      if (!a.favorite && b.favorite) return 1;
+      return a.name.localeCompare(b.name);
+    });
 
   const selectedShapes = getSelectedShapes();
   const hasSelection = selectedShapes.length > 0;

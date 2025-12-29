@@ -2,11 +2,10 @@
  * UnifiedToolbar - Consolidated toolbar combining all top-level controls.
  *
  * Notion/Linear-style minimal top bar with:
- * - File menu dropdown
  * - Tool buttons with tooltips
  * - Document name + save status
  * - Inline page tabs
- * - Theme toggle
+ * - Settings button (opens Settings modal with Documents, theme, etc.)
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -14,7 +13,6 @@ import { useSessionStore, ToolType } from '../store/sessionStore';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { usePersistenceStore } from '../store/persistenceStore';
-import { useThemeStore } from '../store/themeStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { ShapePicker } from './ShapePicker';
 import { CustomShapePicker } from './CustomShapePicker';
@@ -72,179 +70,6 @@ function ToolButton({
         <div className="tool-button-tooltip">
           {tool.name}
           <span className="tool-button-tooltip-shortcut">{tool.shortcut}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Tools menu dropdown.
- */
-function ToolsMenuButton({ onOpenStorageManager }: { onOpenStorageManager: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
-
-  // Close on escape
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  const handleStorageManager = useCallback(() => {
-    onOpenStorageManager();
-    setIsOpen(false);
-  }, [onOpenStorageManager]);
-
-  return (
-    <div className="file-menu-button" ref={menuRef}>
-      <button
-        className={`file-menu-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        Tools
-        <span className="file-menu-arrow">{isOpen ? '\u25B2' : '\u25BC'}</span>
-      </button>
-      {isOpen && (
-        <div className="file-menu-dropdown">
-          <button onClick={handleStorageManager}>Storage Manager...</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Compact file menu dropdown.
- */
-function FileMenuButton({ onOpenDocumentManager }: { onOpenDocumentManager: () => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  const saveDocument = usePersistenceStore((state) => state.saveDocument);
-  const newDocument = usePersistenceStore((state) => state.newDocument);
-  const exportJSON = usePersistenceStore((state) => state.exportJSON);
-  const importJSON = usePersistenceStore((state) => state.importJSON);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [isOpen]);
-
-  // Close on escape
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  const handleNewDocument = useCallback(() => {
-    newDocument();
-    setIsOpen(false);
-  }, [newDocument]);
-
-  const handleSave = useCallback(() => {
-    saveDocument();
-    setIsOpen(false);
-  }, [saveDocument]);
-
-  const handleOpen = useCallback(() => {
-    onOpenDocumentManager();
-    setIsOpen(false);
-  }, [onOpenDocumentManager]);
-
-  const handleExport = useCallback(() => {
-    const json = exportJSON();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'diagram.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    setIsOpen(false);
-  }, [exportJSON]);
-
-  const handleImport = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          importJSON(content);
-        };
-        reader.readAsText(file);
-      }
-    };
-    input.click();
-    setIsOpen(false);
-  }, [importJSON]);
-
-  return (
-    <div className="file-menu-button" ref={menuRef}>
-      <button
-        className={`file-menu-trigger ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        File
-        <span className="file-menu-arrow">{isOpen ? '\u25B2' : '\u25BC'}</span>
-      </button>
-      {isOpen && (
-        <div className="file-menu-dropdown">
-          <button onClick={handleNewDocument}>
-            New<span className="file-menu-shortcut">Ctrl+N</span>
-          </button>
-          <button onClick={handleOpen}>
-            Open...<span className="file-menu-shortcut">Ctrl+O</span>
-          </button>
-          <button onClick={handleSave}>
-            Save<span className="file-menu-shortcut">Ctrl+S</span>
-          </button>
-          <div className="file-menu-divider" />
-          <button onClick={handleImport}>Import...</button>
-          <button onClick={handleExport}>Export...</button>
         </div>
       )}
     </div>
@@ -515,27 +340,21 @@ function InlinePageTabs() {
  * Props for UnifiedToolbar.
  */
 interface UnifiedToolbarProps {
-  onOpenDocumentManager: () => void;
-  onOpenStorageManager: () => void;
   onOpenSettings?: () => void;
+  onRebuildConnectors?: () => void;
 }
 
 /**
  * UnifiedToolbar component.
  */
-export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager, onOpenSettings }: UnifiedToolbarProps) {
+export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedToolbarProps) {
   const activeTool = useSessionStore((state) => state.activeTool);
   const setActiveTool = useSessionStore((state) => state.setActiveTool);
-  const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
-  const toggleTheme = useThemeStore((state) => state.toggle);
 
   return (
     <div className="unified-toolbar">
-      {/* Left Section: File Menu + Tools */}
+      {/* Left Section: Tools */}
       <div className="unified-toolbar-left">
-        <FileMenuButton onOpenDocumentManager={onOpenDocumentManager} />
-        <ToolsMenuButton onOpenStorageManager={onOpenStorageManager} />
-        <div className="toolbar-divider" />
         <div className="tool-buttons">
           {TOOLS.map((tool) => (
             <ToolButton
@@ -548,6 +367,18 @@ export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager, on
           <ShapePicker />
           <CustomShapePicker />
         </div>
+        {onRebuildConnectors && (
+          <>
+            <div className="toolbar-divider" />
+            <button
+              className="toolbar-rebuild-btn"
+              onClick={onRebuildConnectors}
+              title="Rebuild all connector routes"
+            >
+              ⟳
+            </button>
+          </>
+        )}
       </div>
 
       {/* Center Section: Document Info */}
@@ -555,29 +386,33 @@ export function UnifiedToolbar({ onOpenDocumentManager, onOpenStorageManager, on
         <DocumentInfo />
       </div>
 
-      {/* Right Section: Page Tabs + Actions */}
+      {/* Right Section: Page Tabs + Settings */}
       <div className="unified-toolbar-right">
         <InlinePageTabs />
         <div className="toolbar-divider" />
         {onOpenSettings && (
           <button
-            className="toolbar-action-button"
+            className="toolbar-settings-btn"
             onClick={onOpenSettings}
-            title="Settings"
+            title="Settings (Documents, Theme, Storage, Libraries)"
           >
-            ⚙️
+            <SettingsIcon />
+            <span>Settings</span>
           </button>
         )}
-        <button
-          className="toolbar-action-button"
-          onClick={toggleTheme}
-          title={`Switch to ${resolvedTheme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {resolvedTheme === 'light' ? '\u263E' : '\u2600'}
-        </button>
       </div>
     </div>
   );
 }
 
 export default UnifiedToolbar;
+
+// Icon component for settings button
+function SettingsIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="2.5" />
+      <path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.5 2.5l1.4 1.4M12.1 12.1l1.4 1.4M2.5 13.5l1.4-1.4M12.1 3.9l1.4-1.4" />
+    </svg>
+  );
+}
