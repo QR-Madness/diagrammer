@@ -277,6 +277,7 @@ export interface TextShape extends BaseShape {
 /**
  * Group shape that contains other shapes.
  * Groups allow multiple shapes to be selected, moved, and transformed as a unit.
+ * Groups can optionally have visual styling (background, border, labels, shadows).
  */
 export interface GroupShape extends BaseShape {
   type: 'group';
@@ -286,6 +287,46 @@ export interface GroupShape extends BaseShape {
   name?: string;
   /** Optional color badge for visual organization in LayerPanel (not rendered on canvas) */
   layerColor?: string;
+
+  // Background styling
+  /** Whether to render a visible background (default: false for invisible container) */
+  showBackground?: boolean;
+  /** Background fill color */
+  backgroundColor?: string;
+  /** Pattern configuration for background (stripes, hazard, gradients) */
+  patternConfig?: import('./GroupStyles').PatternConfig;
+  /** Padding around children in pixels (default: 10) */
+  backgroundPadding?: number;
+
+  // Border styling
+  /** Border stroke color */
+  borderColor?: string;
+  /** Border stroke width in pixels (default: 0 = no border) */
+  borderWidth?: number;
+  /** Border dash pattern (e.g., [8, 4] for dashed) */
+  borderDashArray?: number[];
+  /** Corner radius for rounded background/border (default: 0) */
+  cornerRadius?: number;
+
+  // Label support
+  /** Optional text label for the group */
+  label?: string;
+  /** Label font size in pixels (default: 14) */
+  labelFontSize?: number;
+  /** Label text color (default: '#000000') */
+  labelColor?: string;
+  /** Label background color (default: transparent) */
+  labelBackground?: string;
+  /** Label horizontal offset from position (default: 0) */
+  labelOffsetX?: number;
+  /** Label vertical offset from position (default: 0) */
+  labelOffsetY?: number;
+  /** Label position anchor (default: 'top') */
+  labelPosition?: import('./GroupStyles').GroupLabelPosition;
+
+  // Shadow/Glow effects
+  /** Shadow configuration */
+  shadowConfig?: import('./GroupStyles').ShadowConfig;
 }
 
 /**
@@ -480,7 +521,7 @@ export const DEFAULT_CONNECTOR = {
 
 /**
  * Default values for group shapes.
- * Groups have no visual appearance - they only contain other shapes.
+ * By default, groups are invisible containers. Enable showBackground for visual styling.
  */
 export const DEFAULT_GROUP = {
   ...DEFAULT_SHAPE_STYLE,
@@ -488,6 +529,17 @@ export const DEFAULT_GROUP = {
   stroke: null,
   strokeWidth: 0,
   childIds: [] as string[],
+  // Background defaults
+  showBackground: false,
+  backgroundColor: '#ffffff',
+  backgroundPadding: 10,
+  // Border defaults
+  borderWidth: 0,
+  cornerRadius: 0,
+  // Label defaults
+  labelFontSize: 14,
+  labelColor: '#000000',
+  labelPosition: 'top' as import('./GroupStyles').GroupLabelPosition,
 } as const;
 
 /**
