@@ -347,13 +347,25 @@ implementation phase as defined in Specification.Readme.md.
   - [x] Save Icon Style to Style Profile (on by default)
   - [x] Save Label Style to Style Profile (on by default)
 
-#### 11.5 Advanced Group Style Properties
+#### 11.5 Advanced Group Style Properties - COMPLETE
 
-- Implement the following properties for groups:
-  - [ ] Background Color, and Background-Pattern Support (e.g. hazard stripes, gradients, etc.)
-  - [ ] Labels (with manual offset translation capability)
-  - [ ] Border styling properties
-  - [ ] DESIRED BONUS FEATURE: Add shadows, and/or glowing animations support to apply to a group
+- Implemented the following properties for groups:
+  - [x] Background Color, and Background-Pattern Support (solid, stripes, hazard stripes, linear/radial gradients)
+    - PatternPicker component with visual previews
+    - Configurable pattern colors, angle, and spacing
+    - Background padding and corner radius options
+  - [x] Labels (with manual offset translation capability)
+    - 9-grid label position picker (center, top, top-left, etc.)
+    - Label font size, color, and background
+    - Offset X/Y fine-tuning with reset button
+  - [x] Border styling properties
+    - Border color, width, and corner radius
+    - BorderStylePicker with solid, dashed, dotted, dash-dot patterns
+  - [x] BONUS FEATURE: Shadows and glow effects
+    - ShadowEditor with offset, blur, and color controls
+    - Preset options: Drop Shadow, Soft Shadow, Glow, Subtle Glow
+- Two-pass group rendering (background/border before children, label on top)
+- Hit testing updated to include background area for styled groups
 
 ### Phase 12: Advanced Export
 
