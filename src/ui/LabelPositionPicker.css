@@ -1,0 +1,78 @@
+.label-position-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label-position-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-position-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 55px;
+}
+
+.label-position-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+}
+
+.label-position-grid-row {
+  display: flex;
+  gap: 2px;
+}
+
+.label-position-cell {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+  padding: 0;
+}
+
+.label-position-cell:hover {
+  background: var(--bg-primary);
+  border-color: var(--color-primary);
+}
+
+.label-position-cell.selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.label-position-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: background-color 0.15s;
+}
+
+.label-position-cell:hover .label-position-dot {
+  background: var(--color-primary);
+}
+
+.label-position-cell.selected .label-position-dot {
+  background: white;
+}
+
+.label-position-value {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 60px;
+}

@@ -1,0 +1,127 @@
+.pattern-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pattern-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pattern-picker-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 55px;
+}
+
+.pattern-picker-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.pattern-picker-button:hover {
+  border-color: var(--color-primary);
+  background: var(--bg-secondary);
+}
+
+.pattern-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pattern-preview svg {
+  border-radius: 2px;
+}
+
+.pattern-name {
+  flex: 1;
+  text-align: left;
+}
+
+.pattern-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.pattern-picker-dropdown {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
+  min-width: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.pattern-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+.pattern-option:hover {
+  background: var(--bg-secondary);
+}
+
+.pattern-option.selected {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.pattern-input {
+  width: 60px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.pattern-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.pattern-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 20px;
+}
+
+/* Dark mode adjustments */
+:root[data-theme='dark'] .pattern-picker-dropdown {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme='dark'] .pattern-preview svg rect[stroke='#ccc'] {
+  stroke: #555;
+}

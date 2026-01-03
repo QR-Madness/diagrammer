@@ -24,7 +24,12 @@ import { AlignmentPanel } from './AlignmentPanel';
 import { StyleProfilePanel } from './StyleProfilePanel';
 import { IconPicker } from './IconPicker';
 import { NumberInput } from './NumberInput';
+import { PatternPicker } from './PatternPicker';
+import { ShadowEditor } from './ShadowEditor';
+import { BorderStylePicker } from './BorderStylePicker';
+import { LabelPositionPicker } from './LabelPositionPicker';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
+// GroupStyles types are used via the PatternPicker, ShadowEditor, LabelPositionPicker components
 import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
 import './PropertyPanel.css';
 
@@ -573,21 +578,183 @@ export function PropertyPanel() {
 
         {/* Group-specific properties */}
         {isGroupSelected && (
-          <PropertySection id="group" title="Group" defaultExpanded>
-            <CompactSliderInput
-              label="Opacity"
-              value={shape.opacity}
-              onChange={(val) => handleBulkUpdate({ opacity: val })}
-              formatValue={(v) => `${Math.round(v * 100)}%`}
-            />
-            {groupBounds && (
-              <>
-                <InfoRow label="Size" value={`${Math.round(groupBounds.width)} × ${Math.round(groupBounds.height)}`} />
-                <InfoRow label="Position" value={`${Math.round(groupBounds.minX)}, ${Math.round(groupBounds.minY)}`} />
-              </>
-            )}
-            <div className="property-hint">Ctrl+Shift+G to ungroup</div>
-          </PropertySection>
+          <>
+            <PropertySection id="group" title="Group" defaultExpanded>
+              <CompactSliderInput
+                label="Opacity"
+                value={shape.opacity}
+                onChange={(val) => handleBulkUpdate({ opacity: val })}
+                formatValue={(v) => `${Math.round(v * 100)}%`}
+              />
+              {groupBounds && (
+                <>
+                  <InfoRow label="Size" value={`${Math.round(groupBounds.width)} × ${Math.round(groupBounds.height)}`} />
+                  <InfoRow label="Position" value={`${Math.round(groupBounds.minX)}, ${Math.round(groupBounds.minY)}`} />
+                </>
+              )}
+              <div className="property-hint">Ctrl+Shift+G to ungroup</div>
+            </PropertySection>
+
+            {/* Background Section */}
+            <PropertySection id="group-background" title="Background" defaultExpanded={false}>
+              <div className="compact-checkbox-row">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={(shape as GroupShape).showBackground || false}
+                    onChange={(e) => handleBulkUpdate({ showBackground: e.target.checked })}
+                  />
+                  <span>Show Background</span>
+                </label>
+              </div>
+              {(shape as GroupShape).showBackground && (
+                <>
+                  <PatternPicker
+                    value={(shape as GroupShape).patternConfig}
+                    onChange={(config) => {
+                      if (config === undefined) {
+                        // Remove pattern config by setting type to 'none'
+                        handleBulkUpdate({ patternConfig: { type: 'none' } });
+                      } else {
+                        handleBulkUpdate({ patternConfig: config });
+                      }
+                    }}
+                  />
+                  {/* Only show standalone color when no pattern or solid pattern */}
+                  {(!(shape as GroupShape).patternConfig ||
+                    (shape as GroupShape).patternConfig?.type === 'none' ||
+                    (shape as GroupShape).patternConfig?.type === 'solid') && (
+                    <CompactColorInput
+                      label="Color"
+                      value={(shape as GroupShape).backgroundColor || '#ffffff'}
+                      onChange={(color) => handleBulkUpdate({ backgroundColor: color })}
+                    />
+                  )}
+                  <CompactNumberInput
+                    label="Padding"
+                    value={(shape as GroupShape).backgroundPadding ?? 10}
+                    onChange={(val) => handleBulkUpdate({ backgroundPadding: val })}
+                    min={0}
+                    max={100}
+                  />
+                  <CompactNumberInput
+                    label="Radius"
+                    value={(shape as GroupShape).cornerRadius ?? 0}
+                    onChange={(val) => handleBulkUpdate({ cornerRadius: val })}
+                    min={0}
+                    max={50}
+                  />
+                </>
+              )}
+            </PropertySection>
+
+            {/* Border Section */}
+            <PropertySection id="group-border" title="Border" defaultExpanded={false}>
+              <CompactColorInput
+                label="Color"
+                value={(shape as GroupShape).borderColor || '#000000'}
+                onChange={(color) => handleBulkUpdate({ borderColor: color })}
+                showNoFill
+              />
+              <CompactNumberInput
+                label="Width"
+                value={(shape as GroupShape).borderWidth ?? 0}
+                onChange={(val) => handleBulkUpdate({ borderWidth: val })}
+                min={0}
+                max={20}
+              />
+              {((shape as GroupShape).borderWidth ?? 0) > 0 && (
+                <BorderStylePicker
+                  value={(shape as GroupShape).borderDashArray}
+                  onChange={(arr) => {
+                    if (arr === undefined) {
+                      handleBulkUpdate({ borderDashArray: [] });
+                    } else {
+                      handleBulkUpdate({ borderDashArray: arr });
+                    }
+                  }}
+                />
+              )}
+            </PropertySection>
+
+            {/* Label Section */}
+            <PropertySection id="group-label" title="Label" defaultExpanded={false}>
+              <div className="compact-string-row">
+                <input
+                  type="text"
+                  value={(shape as GroupShape).label || ''}
+                  onChange={(e) => handleBulkUpdate({ label: e.target.value })}
+                  placeholder="Group label..."
+                  className="property-text-input"
+                />
+              </div>
+              {(shape as GroupShape).label && (
+                <>
+                  <CompactNumberInput
+                    label="Font Size"
+                    value={(shape as GroupShape).labelFontSize ?? 14}
+                    onChange={(val) => handleBulkUpdate({ labelFontSize: val })}
+                    min={8}
+                    max={48}
+                  />
+                  <CompactColorInput
+                    label="Color"
+                    value={(shape as GroupShape).labelColor || '#000000'}
+                    onChange={(color) => handleBulkUpdate({ labelColor: color })}
+                  />
+                  <CompactColorInput
+                    label="Background"
+                    value={(shape as GroupShape).labelBackground || ''}
+                    onChange={(color) => handleBulkUpdate({ labelBackground: color })}
+                    showNoFill
+                  />
+                  <LabelPositionPicker
+                    value={(shape as GroupShape).labelPosition}
+                    onChange={(pos) => handleBulkUpdate({ labelPosition: pos })}
+                  />
+                  <div className="label-offset-row">
+                    <CompactNumberInput
+                      label="Offset X"
+                      value={(shape as GroupShape).labelOffsetX ?? 0}
+                      onChange={(val) => handleBulkUpdate({ labelOffsetX: val })}
+                      min={-200}
+                      max={200}
+                    />
+                    <CompactNumberInput
+                      label="Y"
+                      value={(shape as GroupShape).labelOffsetY ?? 0}
+                      onChange={(val) => handleBulkUpdate({ labelOffsetY: val })}
+                      min={-200}
+                      max={200}
+                    />
+                    {((shape as GroupShape).labelOffsetX || (shape as GroupShape).labelOffsetY) && (
+                      <button
+                        className="label-offset-reset"
+                        onClick={() => handleBulkUpdate({ labelOffsetX: 0, labelOffsetY: 0 })}
+                        title="Reset offset"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </PropertySection>
+
+            {/* Shadow Section */}
+            <PropertySection id="group-shadow" title="Shadow" defaultExpanded={false}>
+              <ShadowEditor
+                value={(shape as GroupShape).shadowConfig}
+                onChange={(config) => {
+                  if (config === undefined) {
+                    handleBulkUpdate({ shadowConfig: { enabled: false, offsetX: 0, offsetY: 0, blur: 0, color: 'transparent' } });
+                  } else {
+                    handleBulkUpdate({ shadowConfig: config });
+                  }
+                }}
+              />
+            </PropertySection>
+          </>
         )}
 
         {/* Appearance Section - only for non-group, non-library shapes */}

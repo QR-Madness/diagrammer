@@ -1,0 +1,133 @@
+.shadow-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shadow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shadow-toggle-row {
+  margin-bottom: 4px;
+}
+
+.shadow-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shadow-toggle input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.shadow-toggle-label {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.shadow-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 55px;
+}
+
+.shadow-input {
+  width: 60px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.shadow-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.shadow-slider {
+  flex: 1;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.shadow-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-value {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 35px;
+  text-align: right;
+}
+
+.shadow-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 20px;
+}
+
+.shadow-presets-row {
+  margin-bottom: 4px;
+}
+
+.shadow-presets {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.shadow-preset-btn {
+  flex: 1;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.shadow-preset-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--color-primary);
+}
+
+.shadow-preset-btn:active {
+  background: var(--color-primary-light);
+}
