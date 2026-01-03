@@ -2,6 +2,7 @@ import { Camera } from './Camera';
 import { Box } from '../math/Box';
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
+import type { GroupShapeHandler } from '../shapes/Group';
 
 /**
  * Configuration options for the Renderer.
@@ -538,6 +539,7 @@ export class Renderer {
 
   /**
    * Render a group and all its children recursively.
+   * Uses two-pass rendering: background/border first, children, then label on top.
    * Children inherit the group's opacity.
    */
   private renderGroup(
@@ -552,6 +554,18 @@ export class Renderer {
     // Calculate effective opacity (multiply with parent)
     const effectiveOpacity = group.opacity * parentOpacity;
 
+    // Pass 1: Render group background, border, and shadow (before children)
+    try {
+      const groupHandler = shapeRegistry.getHandler('group') as GroupShapeHandler;
+      ctx.save();
+      ctx.globalAlpha = effectiveOpacity;
+      groupHandler.render(ctx, group);
+      ctx.restore();
+    } catch {
+      // Group handler not available
+    }
+
+    // Pass 2: Render children
     for (const childId of group.childIds) {
       const child = shapes[childId];
       if (!child || !child.visible) continue;
@@ -581,6 +595,20 @@ export class Renderer {
         }
       } catch {
         // Skip unregistered shape types
+      }
+    }
+
+    // Pass 3: Render group label on top of children
+    if (group.label) {
+      try {
+        const groupHandler = shapeRegistry.getHandler('group') as GroupShapeHandler;
+        if (groupHandler.renderLabel) {
+          ctx.save();
+          groupHandler.renderLabel(ctx, group, parentOpacity);
+          ctx.restore();
+        }
+      } catch {
+        // Group handler not available
       }
     }
 
