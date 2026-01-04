@@ -17,7 +17,9 @@ import type {
   PDFPageNumberFormat,
   PDFExportOptions,
   PDFMargins,
+  PDFDiagramPosition,
 } from '../types/PDFExport';
+import { useThemeStore } from '../store/themeStore';
 import './PDFExportDialog.css';
 
 export interface PDFExportDialogProps {
@@ -53,6 +55,16 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
   const [coverLogoMaxWidth, setCoverLogoMaxWidth] = useState(60);
   const [coverDescription, setCoverDescription] = useState('');
 
+  // Diagram embed state
+  const [diagramEmbedEnabled, setDiagramEmbedEnabled] = useState(false);
+  const [diagramEmbedExpanded, setDiagramEmbedExpanded] = useState(false);
+  const [diagramPosition, setDiagramPosition] = useState<PDFDiagramPosition>('after-cover');
+  const [diagramScale, setDiagramScale] = useState<1 | 2 | 3>(2);
+  const [diagramUseThemeBackground, setDiagramUseThemeBackground] = useState(true);
+
+  // Get theme for diagram background
+  const themeColors = useThemeStore((s) => s.colors);
+
   // UI state
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,6 +89,10 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
       setCoverLogoBlobId(initialOptions.coverPage.logoBlobId);
       setCoverLogoMaxWidth(initialOptions.coverPage.logoMaxWidth);
       setCoverDescription(initialOptions.coverPage.description);
+      setDiagramEmbedEnabled(initialOptions.diagramEmbed.enabled);
+      setDiagramPosition(initialOptions.diagramEmbed.position);
+      setDiagramScale(initialOptions.diagramEmbed.scale);
+      setDiagramUseThemeBackground(initialOptions.diagramEmbed.useThemeBackground);
       setError(null);
     }
   }, [isOpen, currentDocumentName]);
@@ -110,6 +126,12 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
           logoMaxWidth: coverLogoMaxWidth,
           description: coverDescription,
         },
+        diagramEmbed: {
+          enabled: diagramEmbedEnabled,
+          position: diagramPosition,
+          scale: diagramScale,
+          useThemeBackground: diagramUseThemeBackground,
+        },
       };
 
       // Save preferences
@@ -122,9 +144,20 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
       storePrefs.setCoverPageDefaults({
         enabled: coverPageEnabled,
         logoMaxWidth: coverLogoMaxWidth,
+        logoBlobId: coverLogoBlobId,
+        author: coverAuthor,
+        version: coverVersion,
+        description: coverDescription,
+      });
+      storePrefs.setDiagramEmbedDefaults({
+        enabled: diagramEmbedEnabled,
+        position: diagramPosition,
+        scale: diagramScale,
+        useThemeBackground: diagramUseThemeBackground,
       });
 
-      const pdfBlob = await exportToPdf(options, richTextContent);
+      // Pass theme background for diagram rendering
+      const pdfBlob = await exportToPdf(options, richTextContent, themeColors.backgroundColor);
       downloadBlob(pdfBlob, `${filename}.pdf`);
 
       onClose();
@@ -150,6 +183,11 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
     coverLogoBlobId,
     coverLogoMaxWidth,
     coverDescription,
+    diagramEmbedEnabled,
+    diagramPosition,
+    diagramScale,
+    diagramUseThemeBackground,
+    themeColors.backgroundColor,
     richTextContent,
     storePrefs,
     onClose,
@@ -159,6 +197,59 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
     const numValue = Math.max(0, Math.min(100, parseInt(value) || 0));
     setMargins((prev) => ({ ...prev, [key]: numValue }));
   }, []);
+
+  const [savedFeedback, setSavedFeedback] = useState<'saved' | 'cleared' | null>(null);
+
+  const handleSaveAsDefault = useCallback(() => {
+    storePrefs.setPageSize(pageSize);
+    storePrefs.setOrientation(orientation);
+    storePrefs.setQuality(quality);
+    storePrefs.setMargins(margins);
+    storePrefs.setShowPageNumbers(showPageNumbers);
+    storePrefs.setPageNumberFormat(pageNumberFormat);
+    storePrefs.setCoverPageDefaults({
+      enabled: coverPageEnabled,
+      logoMaxWidth: coverLogoMaxWidth,
+      logoBlobId: coverLogoBlobId,
+      author: coverAuthor,
+      version: coverVersion,
+      description: coverDescription,
+    });
+    storePrefs.setDiagramEmbedDefaults({
+      enabled: diagramEmbedEnabled,
+      position: diagramPosition,
+      scale: diagramScale,
+      useThemeBackground: diagramUseThemeBackground,
+    });
+    // Show brief feedback
+    setSavedFeedback('saved');
+    setTimeout(() => setSavedFeedback(null), 2000);
+  }, [
+    pageSize,
+    orientation,
+    quality,
+    margins,
+    showPageNumbers,
+    pageNumberFormat,
+    coverPageEnabled,
+    coverLogoMaxWidth,
+    coverLogoBlobId,
+    coverAuthor,
+    coverVersion,
+    coverDescription,
+    diagramEmbedEnabled,
+    diagramPosition,
+    diagramScale,
+    diagramUseThemeBackground,
+    storePrefs,
+  ]);
+
+  const handleClearDefaults = useCallback(() => {
+    storePrefs.resetPreferences();
+    // Show brief feedback
+    setSavedFeedback('cleared');
+    setTimeout(() => setSavedFeedback(null), 2000);
+  }, [storePrefs]);
 
   if (!isOpen) return null;
 
@@ -430,11 +521,93 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
             )}
           </div>
 
+          {/* Embed Diagram Section */}
+          <div className="pdf-export-section pdf-export-section-collapsible">
+            <button
+              className="pdf-export-section-header"
+              onClick={() => setDiagramEmbedExpanded(!diagramEmbedExpanded)}
+            >
+              <span className={`pdf-export-chevron ${diagramEmbedExpanded ? 'expanded' : ''}`}>▶</span>
+              <h3 className="pdf-export-section-title">Embed Diagram</h3>
+              <label
+                className="pdf-export-checkbox pdf-export-section-toggle"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={diagramEmbedEnabled}
+                  onChange={(e) => setDiagramEmbedEnabled(e.target.checked)}
+                />
+                Enable
+              </label>
+            </button>
+
+            {diagramEmbedExpanded && (
+              <div className="pdf-export-section-content">
+                {/* Position */}
+                <div className="pdf-export-field">
+                  <label>Position</label>
+                  <select
+                    value={diagramPosition}
+                    onChange={(e) => setDiagramPosition(e.target.value as PDFDiagramPosition)}
+                    disabled={!diagramEmbedEnabled}
+                  >
+                    <option value="after-cover">After Cover Page</option>
+                    <option value="before-content">Before Content</option>
+                    <option value="after-content">After Content</option>
+                  </select>
+                </div>
+
+                {/* Scale */}
+                <div className="pdf-export-field">
+                  <label>Scale</label>
+                  <select
+                    value={diagramScale}
+                    onChange={(e) => setDiagramScale(parseInt(e.target.value) as 1 | 2 | 3)}
+                    disabled={!diagramEmbedEnabled}
+                  >
+                    <option value={1}>1x Standard</option>
+                    <option value={2}>2x High</option>
+                    <option value={3}>3x Print</option>
+                  </select>
+                </div>
+
+                {/* Theme Background */}
+                <div className="pdf-export-field">
+                  <label className="pdf-export-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={diagramUseThemeBackground}
+                      onChange={(e) => setDiagramUseThemeBackground(e.target.checked)}
+                      disabled={!diagramEmbedEnabled}
+                    />
+                    Match canvas theme (dark background in dark mode)
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Error message */}
           {error && <div className="pdf-export-error">{error}</div>}
         </div>
 
         <div className="pdf-export-footer">
+          <div className="pdf-export-footer-left">
+            <button
+              className="pdf-export-btn pdf-export-btn-tertiary"
+              onClick={handleSaveAsDefault}
+            >
+              {savedFeedback === 'saved' ? 'Saved!' : 'Save as Default'}
+            </button>
+            <button
+              className="pdf-export-btn pdf-export-btn-tertiary"
+              onClick={handleClearDefaults}
+            >
+              {savedFeedback === 'cleared' ? 'Cleared!' : 'Clear Defaults'}
+            </button>
+          </div>
+          <div className="pdf-export-footer-spacer" />
           <button className="pdf-export-btn pdf-export-btn-secondary" onClick={onClose}>
             Cancel
           </button>

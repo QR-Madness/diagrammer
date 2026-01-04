@@ -206,3 +206,92 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Dark mode overrides */
+[data-theme="dark"] .logo-picker-modal {
+  background: var(--bg-primary);
+}
+
+[data-theme="dark"] .logo-picker-header {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .logo-picker-header h3 {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .logo-picker-close {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .logo-picker-close:hover {
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .logo-picker-upload-btn {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .logo-picker-upload-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .logo-picker-loading,
+[data-theme="dark"] .logo-picker-empty {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .logo-picker-item {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .logo-picker-item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .logo-picker-item.selected {
+  background: var(--bg-hover);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .logo-picker-preview {
+  background: var(--bg-primary);
+}
+
+[data-theme="dark"] .logo-picker-placeholder {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .logo-picker-name {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .logo-picker-size {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .logo-picker-footer {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .logo-picker-btn-primary {
+  background: var(--color-primary);
+}
+
+[data-theme="dark"] .logo-picker-btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+[data-theme="dark"] .logo-picker-btn-secondary {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .logo-picker-btn-secondary:hover:not(:disabled) {
+  background: var(--bg-hover);
+}

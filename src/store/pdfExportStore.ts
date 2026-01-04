@@ -13,8 +13,11 @@ import {
   PDFPageNumberFormat,
   PDFMargins,
   PDFCoverPage,
+  PDFDiagramEmbed,
+  PDFDiagramPosition,
   DEFAULT_MARGINS,
   DEFAULT_COVER_PAGE,
+  DEFAULT_DIAGRAM_EMBED,
 } from '../types/PDFExport';
 
 /**
@@ -37,6 +40,17 @@ export interface PDFExportState {
   coverPageDefaults: {
     enabled: boolean;
     logoMaxWidth: number;
+    logoBlobId: string | null;
+    author: string;
+    version: string;
+    description: string;
+  };
+  /** Diagram embed preferences */
+  diagramEmbedDefaults: {
+    enabled: boolean;
+    position: PDFDiagramPosition;
+    scale: 1 | 2 | 3;
+    useThemeBackground: boolean;
   };
 }
 
@@ -57,7 +71,9 @@ export interface PDFExportActions {
   /** Set page number format preference */
   setPageNumberFormat: (format: PDFPageNumberFormat) => void;
   /** Set cover page defaults */
-  setCoverPageDefaults: (defaults: { enabled?: boolean; logoMaxWidth?: number }) => void;
+  setCoverPageDefaults: (defaults: Partial<PDFExportState['coverPageDefaults']>) => void;
+  /** Set diagram embed defaults */
+  setDiagramEmbedDefaults: (defaults: Partial<PDFExportState['diagramEmbedDefaults']>) => void;
   /** Reset all preferences to defaults */
   resetPreferences: () => void;
 }
@@ -75,6 +91,13 @@ const initialState: PDFExportState = {
   coverPageDefaults: {
     enabled: false,
     logoMaxWidth: 60,
+    logoBlobId: null,
+    author: '',
+    version: '',
+    description: '',
+  },
+  diagramEmbedDefaults: {
+    ...DEFAULT_DIAGRAM_EMBED,
   },
 };
 
@@ -125,10 +148,19 @@ export const usePDFExportStore = create<PDFExportState & PDFExportActions>()(
         set({ pageNumberFormat: format });
       },
 
-      setCoverPageDefaults: (defaults: { enabled?: boolean; logoMaxWidth?: number }) => {
+      setCoverPageDefaults: (defaults: Partial<PDFExportState['coverPageDefaults']>) => {
         set({
           coverPageDefaults: {
             ...get().coverPageDefaults,
+            ...defaults,
+          },
+        });
+      },
+
+      setDiagramEmbedDefaults: (defaults: Partial<PDFExportState['diagramEmbedDefaults']>) => {
+        set({
+          diagramEmbedDefaults: {
+            ...get().diagramEmbedDefaults,
             ...defaults,
           },
         });
@@ -148,6 +180,7 @@ export const usePDFExportStore = create<PDFExportState & PDFExportActions>()(
         showPageNumbers: state.showPageNumbers,
         pageNumberFormat: state.pageNumberFormat,
         coverPageDefaults: state.coverPageDefaults,
+        diagramEmbedDefaults: state.diagramEmbedDefaults,
       }),
     }
   )
@@ -167,6 +200,7 @@ export function createInitialPDFOptions(
   showPageNumbers: boolean;
   pageNumberFormat: PDFPageNumberFormat;
   coverPage: PDFCoverPage;
+  diagramEmbed: PDFDiagramEmbed;
 } {
   const state = usePDFExportStore.getState();
   const today = new Date().toLocaleDateString('en-US', {
@@ -187,8 +221,15 @@ export function createInitialPDFOptions(
       ...DEFAULT_COVER_PAGE,
       enabled: state.coverPageDefaults.enabled,
       logoMaxWidth: state.coverPageDefaults.logoMaxWidth,
+      logoBlobId: state.coverPageDefaults.logoBlobId,
+      author: state.coverPageDefaults.author,
+      version: state.coverPageDefaults.version,
+      description: state.coverPageDefaults.description,
       title: documentName || 'Untitled Document',
       date: today,
+    },
+    diagramEmbed: {
+      ...state.diagramEmbedDefaults,
     },
   };
 }

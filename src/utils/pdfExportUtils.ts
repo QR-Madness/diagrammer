@@ -10,9 +10,12 @@ import type { RichTextContent } from '../types/RichText';
 import {
   PDFExportOptions,
   PDFCoverPage,
+  PDFDiagramEmbed,
   getPageDimensions,
 } from '../types/PDFExport';
 import { blobStorage } from '../storage/BlobStorage';
+import { exportToPng, type ExportData } from './exportUtils';
+import { useDocumentStore } from '../store/documentStore';
 
 /**
  * Font sizes for different heading levels (in points).
@@ -77,11 +80,13 @@ interface PDFRenderContext {
  *
  * @param options - PDF export options
  * @param richTextContent - Tiptap rich text content
+ * @param themeBackground - Current theme canvas background color (for diagram embedding)
  * @returns PDF blob
  */
 export async function exportToPdf(
   options: PDFExportOptions,
-  richTextContent: RichTextContent
+  richTextContent: RichTextContent,
+  themeBackground?: string
 ): Promise<Blob> {
   const { width, height } = getPageDimensions(options.pageSize, options.orientation);
 
@@ -132,11 +137,26 @@ export async function exportToPdf(
     ctx.y = options.margins.top;
   }
 
+  // Render diagram after cover page if position is 'after-cover'
+  if (options.diagramEmbed?.enabled && options.diagramEmbed.position === 'after-cover') {
+    await renderDiagramToPdf(ctx, options.diagramEmbed, themeBackground);
+  }
+
+  // Render diagram before content if position is 'before-content'
+  if (options.diagramEmbed?.enabled && options.diagramEmbed.position === 'before-content') {
+    await renderDiagramToPdf(ctx, options.diagramEmbed, themeBackground);
+  }
+
   // Render document content
   if (richTextContent.content.content) {
     for (const node of richTextContent.content.content) {
       await renderNode(ctx, node, 0);
     }
+  }
+
+  // Render diagram after content if position is 'after-content'
+  if (options.diagramEmbed?.enabled && options.diagramEmbed.position === 'after-content') {
+    await renderDiagramToPdf(ctx, options.diagramEmbed, themeBackground);
   }
 
   // Store total pages
@@ -439,6 +459,87 @@ async function renderCoverPage(
     ctx.doc.setFont('helvetica', 'italic');
     const descLines = ctx.doc.splitTextToSize(coverPage.description, ctx.contentWidth - 60);
     ctx.doc.text(descLines, centerX, y, { align: 'center' });
+  }
+}
+
+/**
+ * Render the diagram to PDF.
+ */
+async function renderDiagramToPdf(
+  ctx: PDFRenderContext,
+  embedOptions: PDFDiagramEmbed,
+  themeBackground?: string
+): Promise<void> {
+  try {
+    // Get shapes from documentStore
+    const { shapes, shapeOrder } = useDocumentStore.getState();
+
+    // Check if there are any shapes to export
+    if (shapeOrder.length === 0) {
+      console.log('[PDF Export] No shapes to embed in PDF');
+      return;
+    }
+
+    // Prepare export data
+    const exportData: ExportData = {
+      shapes,
+      shapeOrder,
+      selectedIds: [], // Export all shapes
+    };
+
+    // Determine background color
+    const backgroundColor = embedOptions.useThemeBackground && themeBackground
+      ? themeBackground
+      : '#ffffff';
+
+    // Export diagram as PNG
+    console.log('[PDF Export] Exporting diagram as PNG with scale:', embedOptions.scale);
+    const pngBlob = await exportToPng(exportData, {
+      format: 'png',
+      scope: 'all',
+      scale: embedOptions.scale,
+      background: backgroundColor,
+      padding: 20,
+      filename: 'diagram',
+    });
+
+    // Convert blob to data URL
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(pngBlob);
+    });
+
+    // Get image dimensions
+    const dimensions = await getImageDimensions(dataUrl);
+    console.log('[PDF Export] Diagram dimensions:', dimensions);
+
+    // Calculate scaled dimensions to fit on page
+    const maxWidth = ctx.contentWidth;
+    const footerSpace = ctx.showPageNumbers ? PAGE_NUMBER_FOOTER_HEIGHT : 0;
+    const maxHeight = ctx.pageHeight - ctx.marginTop - ctx.marginBottom - footerSpace - 20;
+
+    const scaled = calculateScaledDimensions(
+      dimensions.width,
+      dimensions.height,
+      maxWidth,
+      maxHeight
+    );
+
+    // Check if we need a page break
+    checkPageBreak(ctx, scaled.height + 10);
+
+    // Center the diagram
+    const x = ctx.marginLeft + (ctx.contentWidth - scaled.width) / 2;
+
+    // Add image to PDF
+    ctx.doc.addImage(dataUrl, 'PNG', x, ctx.y, scaled.width, scaled.height);
+    ctx.y += scaled.height + 10;
+
+    console.log('[PDF Export] Diagram embedded successfully');
+  } catch (error) {
+    console.error('[PDF Export] Failed to embed diagram:', error);
   }
 }
 

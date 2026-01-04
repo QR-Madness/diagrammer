@@ -67,6 +67,25 @@ export interface PDFMargins {
 }
 
 /**
+ * Position options for embedding diagram in PDF.
+ */
+export type PDFDiagramPosition = 'before-content' | 'after-content' | 'after-cover';
+
+/**
+ * Diagram embedding configuration.
+ */
+export interface PDFDiagramEmbed {
+  /** Enable diagram embedding */
+  enabled: boolean;
+  /** Position of diagram in document */
+  position: PDFDiagramPosition;
+  /** Export scale (1 = standard, 2 = high, 3 = print quality) */
+  scale: 1 | 2 | 3;
+  /** Use current theme background (dark bg in dark mode) */
+  useThemeBackground: boolean;
+}
+
+/**
  * Complete PDF export options.
  */
 export interface PDFExportOptions {
@@ -86,6 +105,8 @@ export interface PDFExportOptions {
   showPageNumbers: boolean;
   /** Page number format */
   pageNumberFormat: PDFPageNumberFormat;
+  /** Diagram embedding options */
+  diagramEmbed?: PDFDiagramEmbed;
 }
 
 /**
@@ -100,6 +121,16 @@ export const DEFAULT_COVER_PAGE: PDFCoverPage = {
   logoBlobId: null,
   logoMaxWidth: 60,
   description: '',
+};
+
+/**
+ * Default diagram embed settings.
+ */
+export const DEFAULT_DIAGRAM_EMBED: PDFDiagramEmbed = {
+  enabled: false,
+  position: 'after-cover',
+  scale: 2,
+  useThemeBackground: true,
 };
 
 /**

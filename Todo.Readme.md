@@ -367,9 +367,17 @@ implementation phase as defined in Specification.Readme.md.
 - Two-pass group rendering (background/border before children, label on top)
 - Hit testing updated to include background area for styled groups
 
-### Phase 12: Advanced Export
+### Phase 12: Advanced Export - COMPLETE
 
-- [ ] Customizable PDF document export (feats: DPI, Version/Revision, Custom Logo [from StorageBrowser], [Basic] Cover Page, ...)
+- [x] Customizable PDF document export
+  - Export rich text document content to PDF
+  - DPI/Quality settings (Standard 72dpi, High 150dpi, Print 300dpi)
+  - Page size options (A4, Letter, A3, Tabloid) with portrait/landscape orientation
+  - Configurable margins and page numbers
+  - Cover page with custom logo from blob storage, title, version/revision, author, date, and description
+  - LogoPicker component for selecting logos from IndexedDB storage
+  - PDFExportStore for persisting export preferences
+  - Tiptap JSON content parsing with support for headings, paragraphs, lists, code blocks, blockquotes, images, and horizontal rules
 
 ### Phase 13: Diagram Patterns
 
@@ -390,6 +398,8 @@ implementation phase as defined in Specification.Readme.md.
   - [ ] 'Server Access': {Offline (Default)|Protected Local}
   - [ ] 'Team-Accessible Documents': Manageable list of documents accessible by team members
   - [ ] 'Team Members': Managed credential store for [local] authentication
+  - [ ] Ensure that a permissions centre is setup that controls the following:
+    - [ ] Manage document admins,
 - [ ] Create a login page for team members to access team documents on the host's computer
 
 #### Phase 14.2 UX Improvements
@@ -433,9 +443,15 @@ Replace this list with your own checklists of areas needed for improvement befor
 
 ### Phase 15: Version 1.0
 
-- [ ] Workflow for GitHub releases (CI/CD pipeline)
+#### Phase 15.1 - Local Help System with GitHub Docs Capability
+
 - [ ] Implement a local help system (consider a markdown server of some sort)
+
+#### Phase 15.2
 - [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
+
+#### Phase 15.3
+- [ ] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
 - [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
