@@ -450,6 +450,13 @@ Replace this list with your own checklists of areas needed for improvement befor
 
 - [ ] Implement a feature which can scan the GitHub repo for updates and check if a new version exists
 - [ ] Implement a feature to update the application **without** user commands or manual download+installation
+  
+### Phase ??: Publisher Module
+
+- [ ] Implement a 'Publisher' module to implement the following requirements:
+  - [ ] Create publish configurations to manage the publisher's export locations
+  - [ ] Run a publish configuration to export various types of media (e.g. PDF, SVG, JSON) to a single, or multiple configured paths on the computer.
+  - Keep it extensible to support exporting to cloud locations in the future.
 
 ### Phase ??: Document Cloud Providers
 

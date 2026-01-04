@@ -10,6 +10,7 @@
 
 import { useState, useCallback } from 'react';
 import { usePersistenceStore } from '../../store/persistenceStore';
+import { PDFExportDialog } from '../PDFExportDialog';
 import './DocumentsSettings.css';
 
 export function DocumentsSettings() {
@@ -27,6 +28,7 @@ export function DocumentsSettings() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pdfExportOpen, setPdfExportOpen] = useState(false);
 
   const documentList = Object.entries(documents).sort((a, b) => {
     // Sort by last modified, newest first
@@ -141,6 +143,10 @@ export function DocumentsSettings() {
             <span className="documents-action-icon">📤</span>
             Export JSON
           </button>
+          <button className="documents-action-btn" onClick={() => setPdfExportOpen(true)}>
+            <span className="documents-action-icon">📄</span>
+            Export PDF
+          </button>
         </div>
       </div>
 
@@ -244,6 +250,9 @@ export function DocumentsSettings() {
           <strong>Keyboard Shortcuts:</strong> Ctrl+N (New), Ctrl+O (Open), Ctrl+S (Save)
         </div>
       </div>
+
+      {/* PDF Export Dialog */}
+      <PDFExportDialog isOpen={pdfExportOpen} onClose={() => setPdfExportOpen(false)} />
     </div>
   );
 }

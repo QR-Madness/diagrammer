@@ -30,3 +30,10 @@ export function downloadSvg(svgString: string, filename: string): void {
 export function downloadPng(blob: Blob, filename: string): void {
   downloadBlob(blob, filename);
 }
+
+/**
+ * Download a PDF blob as a file.
+ */
+export function downloadPdf(blob: Blob, filename: string): void {
+  downloadBlob(blob, filename);
+}
