@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { NodeViewWrapper } from '@tiptap/react';
 import type { NodeViewProps } from '@tiptap/react';
 import { useDocumentStore } from '../store/documentStore';
+import { useThemeStore } from '../store/themeStore';
 import { isGroup, type GroupShape, type Shape } from '../shapes/Shape';
 import { exportToPng, type ExportData } from '../utils/exportUtils';
 import './EmbeddedGroupComponent.css';
@@ -47,6 +48,9 @@ export function EmbeddedGroupComponent({ node, updateAttributes, selected }: Nod
   // Get shape data from store
   const shapes = useDocumentStore((state) => state.shapes);
   const shapeOrder = useDocumentStore((state) => state.shapeOrder);
+
+  // Get theme background color
+  const themeBackground = useThemeStore((state) => state.colors.backgroundColor);
 
   // Export group to PNG
   const exportGroup = useCallback(async () => {
@@ -87,13 +91,14 @@ export function EmbeddedGroupComponent({ node, updateAttributes, selected }: Nod
         selectedIds: [groupId], // Export the group
       };
 
-      // Export as PNG
+      // Export as PNG with theme-aware background
+      // Use larger padding to accommodate group labels that may be outside bounds
       const blob = await exportToPng(exportData, {
         format: 'png',
         scope: 'selection',
         scale: EXPORT_SCALE,
-        background: '#ffffff',
-        padding: 10,
+        background: themeBackground,
+        padding: 40,
         filename: 'group',
       });
 
@@ -109,7 +114,7 @@ export function EmbeddedGroupComponent({ node, updateAttributes, selected }: Nod
     } finally {
       setIsLoading(false);
     }
-  }, [groupId, shapes, shapeOrder, updateAttributes]);
+  }, [groupId, shapes, shapeOrder, themeBackground, updateAttributes]);
 
   // Export group on mount and when group changes
   useEffect(() => {

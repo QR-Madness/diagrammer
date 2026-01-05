@@ -21,6 +21,7 @@ import {
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { calculateCombinedBounds } from '../shapes/utils/bounds';
 import { getConnectorStartPoint, getConnectorEndPoint } from '../shapes/Connector';
+import { groupHandler } from '../shapes/Group';
 
 /**
  * Export options for PNG and SVG export.
@@ -177,13 +178,24 @@ function renderShapeForExport(
   const effectiveOpacity = shape.opacity * parentOpacity;
 
   if (isGroup(shape)) {
-    // Render children with inherited opacity
+    // 1. Render group background/border first
+    ctx.save();
+    ctx.globalAlpha = effectiveOpacity;
+    groupHandler.render(ctx, shape);
+    ctx.restore();
+
+    // 2. Render children with inherited opacity
     for (const childId of shape.childIds) {
       const child = allShapes[childId];
       if (child) {
         renderShapeForExport(ctx, child, allShapes, effectiveOpacity);
       }
     }
+
+    // 3. Render group label on top
+    ctx.save();
+    groupHandler.renderLabel(ctx, shape, effectiveOpacity);
+    ctx.restore();
   } else {
     ctx.save();
     ctx.globalAlpha = effectiveOpacity;

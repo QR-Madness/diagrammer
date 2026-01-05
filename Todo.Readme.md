@@ -394,7 +394,8 @@ implementation phase as defined in Specification.Readme.md.
 
 - [ ] ERD Shape Library (Crow's Foot preferably)
 - [ ] UML Class Diagram Shape Library
-- [ ] Misc. Feature: Add a context menu item to add the selection of shapes to the top-layer (support for nested groups) group it's contained in which allows.
+- [ ] Misc. Feature: Allow dragging a shape in-and-out of a group through the canvas (add to top-layer of the group)
+  - You may consider alternatives like quick add-to-group through context-menu which would be just as effective (add to top, or bottom layer option) or implement both
 
 ### Phase 14: Collaboration, Simple Auth, and UI Improvements
 

@@ -878,6 +878,15 @@ async function renderEmbeddedGroup(ctx: PDFRenderContext, node: JSONContent): Pr
       return;
     }
 
+    // Debug logging for group properties
+    console.log('[PDF Export] Group details:', {
+      id: groupId,
+      label: (group as GroupShape).label,
+      showBackground: (group as GroupShape).showBackground,
+      borderWidth: (group as GroupShape).borderWidth,
+      childCount: (group as GroupShape).childIds.length,
+    });
+
     // Get all shapes within this group (including nested)
     const groupShapeIds = new Set([groupId, ...getGroupShapeIds(groupId, shapes)]);
 
@@ -899,13 +908,14 @@ async function renderEmbeddedGroup(ctx: PDFRenderContext, node: JSONContent): Pr
     };
 
     // Export as PNG at 2x scale for quality
+    // Use larger padding to accommodate group labels that may be outside bounds
     console.log('[PDF Export] Exporting embedded group:', groupId);
     const pngBlob = await exportToPng(exportData, {
       format: 'png',
       scope: 'selection',
       scale: 2,
       background: '#ffffff',
-      padding: 10,
+      padding: 40,
       filename: 'group',
     });
 
