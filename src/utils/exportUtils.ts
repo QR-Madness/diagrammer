@@ -11,6 +11,7 @@ import {
   TextShape,
   ConnectorShape,
   GroupShape,
+  DEFAULT_GROUP,
   isRectangle,
   isEllipse,
   isLine,
@@ -22,6 +23,7 @@ import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { calculateCombinedBounds } from '../shapes/utils/bounds';
 import { getConnectorStartPoint, getConnectorEndPoint } from '../shapes/Connector';
 import { groupHandler } from '../shapes/Group';
+import type { GroupLabelPosition } from '../shapes/GroupStyles';
 
 /**
  * Export options for PNG and SVG export.
@@ -70,6 +72,38 @@ function getShapesToExport(data: ExportData, scope: 'all' | 'selection'): Shape[
 }
 
 /**
+ * Estimate label bounds expansion based on label position.
+ * Returns the additional padding needed on each side [top, right, bottom, left].
+ */
+function estimateLabelExpansion(
+  labelPosition: GroupLabelPosition,
+  fontSize: number
+): [number, number, number, number] {
+  // Estimate label height (fontSize + some padding for text metrics)
+  const labelHeight = fontSize * 1.5;
+  // Estimate approximate label width (varies by text, use generous estimate)
+  const labelWidth = 200;
+
+  switch (labelPosition) {
+    case 'top':
+    case 'top-left':
+    case 'top-right':
+      return [labelHeight + 8, 0, 0, 0]; // Top expansion
+    case 'bottom':
+    case 'bottom-left':
+    case 'bottom-right':
+      return [0, 0, labelHeight + 8, 0]; // Bottom expansion
+    case 'left':
+      return [0, 0, 0, labelWidth]; // Left expansion
+    case 'right':
+      return [0, labelWidth, 0, 0]; // Right expansion
+    case 'center':
+    default:
+      return [0, 0, 0, 0]; // No expansion needed
+  }
+}
+
+/**
  * Calculate the bounds for export.
  */
 export function getExportBounds(data: ExportData, scope: 'all' | 'selection'): Box | null {
@@ -78,8 +112,15 @@ export function getExportBounds(data: ExportData, scope: 'all' | 'selection'): B
 
   // For groups, we need to include children in bounds calculation
   const allShapes: Shape[] = [];
+  // Track groups with labels for bounds expansion
+  const groupsWithLabels: GroupShape[] = [];
+
   const addShapeAndChildren = (shape: Shape) => {
     if (isGroup(shape)) {
+      // Track groups that have labels for bounds expansion
+      if (shape.label) {
+        groupsWithLabels.push(shape);
+      }
       for (const childId of shape.childIds) {
         const child = data.shapes[childId];
         if (child && child.visible) {
@@ -95,7 +136,35 @@ export function getExportBounds(data: ExportData, scope: 'all' | 'selection'): B
     addShapeAndChildren(shape);
   }
 
-  return calculateCombinedBounds(allShapes);
+  let bounds = calculateCombinedBounds(allShapes);
+  if (!bounds) return null;
+
+  // Expand bounds to include group labels and backgrounds
+  for (const group of groupsWithLabels) {
+    // Get group background padding
+    const bgPadding = group.backgroundPadding ?? DEFAULT_GROUP.backgroundPadding;
+    // Expand for background first
+    bounds = bounds.expand(bgPadding);
+
+    // Get label position and font size
+    const labelPosition = group.labelPosition ?? DEFAULT_GROUP.labelPosition;
+    const fontSize = group.labelFontSize ?? DEFAULT_GROUP.labelFontSize;
+
+    // Calculate label expansion
+    const [top, right, bottom, left] = estimateLabelExpansion(labelPosition, fontSize);
+
+    // Expand bounds for label
+    if (top > 0 || right > 0 || bottom > 0 || left > 0) {
+      bounds = new Box(
+        bounds.minX - left,
+        bounds.minY - top,
+        bounds.maxX + right,
+        bounds.maxY + bottom
+      );
+    }
+  }
+
+  return bounds;
 }
 
 // ============ PNG Export ============
