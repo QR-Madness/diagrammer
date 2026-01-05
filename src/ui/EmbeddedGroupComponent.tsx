@@ -14,17 +14,6 @@ import { exportToPng, type ExportData } from '../utils/exportUtils';
 import './EmbeddedGroupComponent.css';
 
 /**
- * Maximum width for embedded group images (in pixels).
- * The image will scale to fit within this width while preserving aspect ratio.
- */
-const MAX_IMAGE_WIDTH = 800;
-
-/**
- * Maximum height for embedded group images (in pixels).
- */
-const MAX_IMAGE_HEIGHT = 600;
-
-/**
  * Export scale for high-quality rendering.
  */
 const EXPORT_SCALE = 2;
@@ -170,15 +159,13 @@ export function EmbeddedGroupComponent({ node, updateAttributes, selected }: Nod
     <NodeViewWrapper className="embedded-group-wrapper">
       <div className={`embedded-group ${selected ? 'embedded-group-selected' : ''}`}>
         {groupName && <div className="embedded-group-name">{groupName}</div>}
-        <img
-          src={imageUrl || ''}
-          alt={groupName || 'Embedded diagram group'}
-          className="embedded-group-image"
-          style={{
-            maxWidth: MAX_IMAGE_WIDTH,
-            maxHeight: MAX_IMAGE_HEIGHT,
-          }}
-        />
+        <div className="embedded-group-image-container">
+          <img
+            src={imageUrl || ''}
+            alt={groupName || 'Embedded diagram group'}
+            className="embedded-group-image"
+          />
+        </div>
         <button
           className="embedded-group-refresh-btn"
           onClick={handleRefresh}

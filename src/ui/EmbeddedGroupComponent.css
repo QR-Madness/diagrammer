@@ -4,17 +4,21 @@
 
 .embedded-group-wrapper {
   margin: 1rem 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .embedded-group {
   position: relative;
-  display: inline-block;
+  display: block;
   max-width: 100%;
+  overflow: hidden;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 8px;
   transition: border-color 0.15s ease;
+  box-sizing: border-box;
 }
 
 .embedded-group:hover {
@@ -38,12 +42,20 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+/* Main image container */
+.embedded-group-image-container {
+  max-height: 500px;
+  overflow: auto;
+}
+
 /* Main image */
 .embedded-group-image {
   display: block;
   max-width: 100%;
+  width: 100%;
   height: auto;
   border-radius: 4px;
+  object-fit: contain;
 }
 
 /* Refresh button */
