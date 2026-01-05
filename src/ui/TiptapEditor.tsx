@@ -7,15 +7,18 @@
  * - Bullet and numbered lists
  * - Horizontal rules
  * - Images (stored in IndexedDB with blob:// URLs)
+ * - Embedded groups from canvas
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Image from '@tiptap/extension-image';
 import { useRichTextStore } from '../store/richTextStore';
 import { blobStorage } from '../storage/BlobStorage';
+import { EmbeddedGroup } from '../tiptap/EmbeddedGroupExtension';
+import { DocumentEditorContextMenu } from './DocumentEditorContextMenu';
 import './TiptapEditor.css';
 
 /**
@@ -81,7 +84,17 @@ const extensions = [
       class: 'tiptap-image',
     },
   }),
+  EmbeddedGroup,
 ];
+
+/**
+ * Context menu state for the document editor.
+ */
+interface ContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+}
 
 export interface TiptapEditorProps {
   /** Optional class name */
@@ -91,6 +104,13 @@ export interface TiptapEditorProps {
 export function TiptapEditor({ className }: TiptapEditorProps) {
   const content = useRichTextStore((state) => state.content);
   const setContent = useRichTextStore((state) => state.setContent);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+  });
 
   const editor = useEditor({
     extensions,
@@ -104,6 +124,20 @@ export function TiptapEditor({ className }: TiptapEditorProps) {
       },
     },
   });
+
+  // Handle context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({
+      isOpen: true,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu((prev) => ({ ...prev, isOpen: false }));
+  }, []);
 
   // Update editor content when loaded from document
   useEffect(() => {
@@ -189,8 +223,16 @@ export function TiptapEditor({ className }: TiptapEditorProps) {
   }, [editor]);
 
   return (
-    <div className={`tiptap-editor ${className ?? ''}`}>
+    <div className={`tiptap-editor ${className ?? ''}`} onContextMenu={handleContextMenu}>
       <EditorContent editor={editor} />
+      {contextMenu.isOpen && (
+        <DocumentEditorContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={handleCloseContextMenu}
+          editor={editor}
+        />
+      )}
     </div>
   );
 }

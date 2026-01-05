@@ -1,0 +1,152 @@
+/**
+ * Styles for EmbeddedGroupComponent in Tiptap editor.
+ */
+
+.embedded-group-wrapper {
+  margin: 1rem 0;
+}
+
+.embedded-group {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  transition: border-color 0.15s ease;
+}
+
+.embedded-group:hover {
+  border-color: var(--color-primary);
+}
+
+.embedded-group-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+/* Group name label */
+.embedded-group-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px 4px 0 0;
+  margin: -8px -8px 8px -8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Main image */
+.embedded-group-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* Refresh button */
+.embedded-group-refresh-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.embedded-group:hover .embedded-group-refresh-btn {
+  opacity: 1;
+}
+
+.embedded-group-refresh-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--color-primary);
+}
+
+/* Loading state */
+.embedded-group-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--text-muted);
+}
+
+.embedded-group-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: embedded-group-spin 0.8s linear infinite;
+}
+
+@keyframes embedded-group-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error state */
+.embedded-group-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+}
+
+.embedded-group-error-icon {
+  font-size: 24px;
+  color: #f59e0b;
+}
+
+.embedded-group-retry-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.embedded-group-retry-btn:hover {
+  background: var(--bg-secondary);
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .embedded-group {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .embedded-group-name {
+  background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .embedded-group-refresh-btn {
+  background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .embedded-group-refresh-btn:hover {
+  background: var(--bg-secondary);
+}

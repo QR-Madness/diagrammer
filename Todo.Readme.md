@@ -379,10 +379,22 @@ implementation phase as defined in Specification.Readme.md.
   - PDFExportStore for persisting export preferences
   - Tiptap JSON content parsing with support for headings, paragraphs, lists, code blocks, blockquotes, images, and horizontal rules
 
+#### Phase 12.2: Embeddable Diagram Groups - COMPLETE
+
+- [x] Implement an embeddable diagram system into the tiptap editor that allows users to:
+  - Open the context menu and add a group to the rich text document at the cursor
+  - Custom Tiptap node extension for embedded groups (EmbeddedGroupExtension.ts)
+  - React component for rendering group previews (EmbeddedGroupComponent.tsx)
+  - Context menu in document editor to select from available groups
+  - PDF export support for embedded group nodes
+  - Maximum width/height constraints with aspect ratio preservation
+  - Refresh button to re-render group after canvas changes
+
 ### Phase 13: Diagram Patterns
 
 - [ ] ERD Shape Library (Crow's Foot preferably)
 - [ ] UML Class Diagram Shape Library
+- [ ] Misc. Feature: Add a context menu item to add the selection of shapes to the top-layer (support for nested groups) group it's contained in which allows.
 
 ### Phase 14: Collaboration, Simple Auth, and UI Improvements
 
@@ -398,8 +410,7 @@ implementation phase as defined in Specification.Readme.md.
   - [ ] 'Server Access': {Offline (Default)|Protected Local}
   - [ ] 'Team-Accessible Documents': Manageable list of documents accessible by team members
   - [ ] 'Team Members': Managed credential store for [local] authentication
-  - [ ] Ensure that a permissions centre is setup that controls the following:
-    - [ ] Manage document admins,
+  - [ ] Implement a permissions centre that controls the following:
 - [ ] Create a login page for team members to access team documents on the host's computer
 
 #### Phase 14.2 UX Improvements
@@ -420,6 +431,7 @@ implementation phase as defined in Specification.Readme.md.
 
 - [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
 - [ ] Cool saving/saved icon+animation
+- [ ] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
 
 ##### Phase 14.22 - UX Improvements - Chunk 4
 
@@ -428,7 +440,7 @@ implementation phase as defined in Specification.Readme.md.
 
 ##### Phase 14.3 Rich Document Editor Upgrades
 
-- [ ] Tables
+- [ ] Tiptap Tables
 - [ ] LaTeX Equation Support
 - [ ] Interactive Tasks Lists
 - [ ] Image resizing handles

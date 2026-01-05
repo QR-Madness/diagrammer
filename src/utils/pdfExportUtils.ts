@@ -16,6 +16,7 @@ import {
 import { blobStorage } from '../storage/BlobStorage';
 import { exportToPng, type ExportData } from './exportUtils';
 import { useDocumentStore } from '../store/documentStore';
+import { isGroup, type GroupShape, type Shape } from '../shapes/Shape';
 
 /**
  * Font sizes for different heading levels (in points).
@@ -589,6 +590,10 @@ async function renderNode(
       renderHorizontalRule(ctx);
       break;
 
+    case 'embeddedGroup':
+      await renderEmbeddedGroup(ctx, node);
+      break;
+
     default:
       // For unknown nodes with content, render children
       if (node.content) {
@@ -832,6 +837,114 @@ async function renderImage(ctx: PDFRenderContext, node: JSONContent): Promise<vo
     ctx.y += scaled.height + 6;
   } catch (error) {
     console.error('Failed to add image to PDF:', error);
+  }
+}
+
+/**
+ * Get all shape IDs within a group (recursive for nested groups).
+ */
+function getGroupShapeIds(groupId: string, shapes: Record<string, unknown>): string[] {
+  const group = shapes[groupId] as GroupShape | undefined;
+  if (!group || !isGroup(group)) return [];
+
+  const ids: string[] = [];
+  for (const childId of group.childIds) {
+    ids.push(childId);
+    const child = shapes[childId];
+    if (child && isGroup(child as GroupShape)) {
+      ids.push(...getGroupShapeIds(childId, shapes));
+    }
+  }
+  return ids;
+}
+
+/**
+ * Render an embedded group node to PDF.
+ */
+async function renderEmbeddedGroup(ctx: PDFRenderContext, node: JSONContent): Promise<void> {
+  const groupId = node.attrs?.['groupId'] as string | undefined;
+  if (!groupId) {
+    console.warn('[PDF Export] Embedded group node has no groupId');
+    return;
+  }
+
+  try {
+    // Get shapes from documentStore
+    const { shapes, shapeOrder } = useDocumentStore.getState();
+
+    const group = shapes[groupId];
+    if (!group || !isGroup(group)) {
+      console.warn('[PDF Export] Group not found:', groupId);
+      return;
+    }
+
+    // Get all shapes within this group (including nested)
+    const groupShapeIds = new Set([groupId, ...getGroupShapeIds(groupId, shapes)]);
+
+    // Filter shapes to only include those in this group
+    const groupShapes: Record<string, Shape> = {};
+    for (const id of groupShapeIds) {
+      if (shapes[id]) {
+        groupShapes[id] = shapes[id];
+      }
+    }
+
+    // Order shapes according to shapeOrder (maintain z-order)
+    const groupShapeOrder = shapeOrder.filter((id) => groupShapeIds.has(id));
+
+    const exportData: ExportData = {
+      shapes: groupShapes,
+      shapeOrder: groupShapeOrder,
+      selectedIds: [groupId],
+    };
+
+    // Export as PNG at 2x scale for quality
+    console.log('[PDF Export] Exporting embedded group:', groupId);
+    const pngBlob = await exportToPng(exportData, {
+      format: 'png',
+      scope: 'selection',
+      scale: 2,
+      background: '#ffffff',
+      padding: 10,
+      filename: 'group',
+    });
+
+    // Convert blob to data URL
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(pngBlob);
+    });
+
+    // Get image dimensions
+    const dimensions = await getImageDimensions(dataUrl);
+
+    // Calculate scaled dimensions to fit on page
+    const maxWidth = ctx.contentWidth;
+    const footerSpace = ctx.showPageNumbers ? PAGE_NUMBER_FOOTER_HEIGHT : 0;
+    const maxHeight = ctx.pageHeight - ctx.marginTop - ctx.marginBottom - footerSpace - 20;
+
+    const scaled = calculateScaledDimensions(
+      dimensions.width,
+      dimensions.height,
+      maxWidth,
+      maxHeight
+    );
+
+    // Check if we need a page break
+    checkPageBreak(ctx, scaled.height + 10);
+
+    // Center the image
+    const x = ctx.marginLeft + (ctx.contentWidth - scaled.width) / 2;
+
+    // Add image to PDF
+    ctx.doc.addImage(dataUrl, 'PNG', x, ctx.y, scaled.width, scaled.height);
+    ctx.y += scaled.height + 8;
+
+    console.log('[PDF Export] Embedded group rendered successfully');
+  } catch (error) {
+    console.error('[PDF Export] Failed to render embedded group:', error);
   }
 }
 
