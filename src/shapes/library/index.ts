@@ -34,3 +34,45 @@ export {
   offPageConnectorShape,
   flowchartShapes,
 } from './flowchartShapes';
+
+// UML Use-Case shapes
+export {
+  actorShape,
+  useCaseShape,
+  systemBoundaryShape,
+  includeRelationShape,
+  extendRelationShape,
+  umlUseCaseShapes,
+} from './umlUseCaseShapes';
+
+// ERD shapes (Crow's Foot notation)
+export {
+  erdEntityShape,
+  erdWeakEntityShape,
+  erdRelationshipShape,
+  erdAttributeShape,
+  erdKeyAttributeShape,
+  erdOneShape,
+  erdManyShape,
+  erdZeroOneShape,
+  erdZeroManyShape,
+  erdOneManyShape,
+  erdShapes,
+} from './erdShapes';
+
+// UML Class Diagram shapes
+export {
+  umlClassShape,
+  umlInterfaceShape,
+  umlAbstractClassShape,
+  umlEnumShape,
+  umlPackageShape,
+  umlNoteShape,
+  umlAssociationShape,
+  umlAggregationShape,
+  umlCompositionShape,
+  umlInheritanceShape,
+  umlRealizationShape,
+  umlDependencyShape,
+  umlClassShapes,
+} from './umlClassShapes';

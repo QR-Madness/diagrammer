@@ -36,6 +36,7 @@ const PREVIEW_SIZES: Record<ViewSize, number> = {
 const CATEGORY_LABELS: Record<ShapeLibraryCategory, string> = {
   basic: 'Basic',
   flowchart: 'Flowchart',
+  erd: 'ERD',
   'uml-class': 'UML Class',
   'uml-usecase': 'UML Use Case',
   'uml-sequence': 'UML Sequence',
@@ -45,7 +46,7 @@ const CATEGORY_LABELS: Record<ShapeLibraryCategory, string> = {
 /**
  * Categories to show in the picker (ordered).
  */
-const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'uml-usecase'];
+const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'erd', 'uml-class', 'uml-usecase'];
 
 /**
  * ShapePicker component.
@@ -89,6 +90,7 @@ export function ShapePicker() {
     const counts: Record<ShapeLibraryCategory, number> = {
       basic: 0,
       flowchart: 0,
+      erd: 0,
       'uml-class': 0,
       'uml-usecase': 0,
       'uml-sequence': 0,

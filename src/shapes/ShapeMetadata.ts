@@ -14,8 +14,9 @@ import type { Shape } from './Shape';
 export type ShapeLibraryCategory =
   | 'basic'        // Rectangle, Ellipse, Line, Text
   | 'flowchart'    // Process, Decision, Terminator, etc.
-  | 'uml-class'    // Future: Class diagrams
-  | 'uml-usecase'  // Future: Use case diagrams
+  | 'erd'          // Entity-Relationship diagrams (Crow's Foot)
+  | 'uml-class'    // Class diagrams
+  | 'uml-usecase'  // Use case diagrams
   | 'uml-sequence' // Future: Sequence diagrams
   | 'custom';      // User-defined shapes
 

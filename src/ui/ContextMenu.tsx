@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { useHistoryStore } from '../store/historyStore';
-import { isGroup, isConnector, RoutingMode } from '../shapes/Shape';
+import { isGroup, isConnector, RoutingMode, GroupShape } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 import './ContextMenu.css';
 
@@ -110,6 +110,8 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
   const deleteShapes = useDocumentStore((state) => state.deleteShapes);
   const bringToFrontMultiple = useDocumentStore((state) => state.bringToFrontMultiple);
   const sendToBackMultiple = useDocumentStore((state) => state.sendToBackMultiple);
+  const getParentGroup = useDocumentStore((state) => state.getParentGroup);
+  const moveShapeInHierarchy = useDocumentStore((state) => state.moveShapeInHierarchy);
   const push = useHistoryStore((state) => state.push);
 
   const selectedArray = Array.from(selectedIds);
@@ -133,6 +135,44 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
   const allLocked = selectedShapes.every(s => s?.locked);
   const allPositionLocked = selectedShapes.every(s => s?.lockedPosition);
   const allSizeLocked = selectedShapes.every(s => s?.lockedSize);
+
+  // Check if any selected shape is inside a group
+  const selectedInGroup = useMemo(() => {
+    return selectedArray.some(id => getParentGroup(id) !== null);
+  }, [selectedArray, getParentGroup]);
+
+  // Get all groups in the document for "Add to Group" submenu
+  const availableGroups = useMemo(() => {
+    const allGroups = Object.values(shapes).filter(s => isGroup(s)) as GroupShape[];
+    // Filter out:
+    // 1. Groups that are currently selected (can't add to itself)
+    // 2. Groups that are descendants of selected shapes (would create cycle)
+    return allGroups.filter(group => {
+      // Can't add a shape to itself
+      if (selectedArray.includes(group.id)) return false;
+
+      // Check for cycles: can't add a group to its own descendant
+      // (if any selected shape is an ancestor of this group)
+      const isDescendant = (groupId: string, potentialAncestorIds: string[]): boolean => {
+        for (const id of potentialAncestorIds) {
+          const shape = shapes[id];
+          if (shape && isGroup(shape)) {
+            if (shape.childIds.includes(groupId)) return true;
+            // Recursively check children
+            for (const childId of shape.childIds) {
+              const child = shapes[childId];
+              if (child && isGroup(child)) {
+                if (isDescendant(groupId, [childId])) return true;
+              }
+            }
+          }
+        }
+        return false;
+      };
+
+      return !isDescendant(group.id, selectedArray);
+    });
+  }, [shapes, selectedArray]);
 
   // Close menu on click outside or escape
   useEffect(() => {
@@ -286,6 +326,26 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
     },
   ];
 
+  // Add to Group submenu items
+  const addToGroupItems: SubmenuItem[] = availableGroups.map(group => ({
+    label: group.name || `Group ${group.id.slice(0, 6)}`,
+    onClick: () => {
+      push('Add to group');
+      selectedArray.forEach(id => {
+        moveShapeInHierarchy(id, group.id, 0);
+      });
+    },
+  }));
+
+  // Handle remove from group
+  const handleRemoveFromGroup = useCallback(() => {
+    push('Remove from group');
+    selectedArray.forEach(id => {
+      moveShapeInHierarchy(id, null);
+    });
+    onClose();
+  }, [selectedArray, push, moveShapeInHierarchy, onClose]);
+
   return (
     <div
       className="context-menu"
@@ -306,7 +366,19 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
         </button>
       )}
 
-      {(canGroup || singleGroupSelected) && hasSelection && (
+      {/* Add to Group submenu - show when groups exist and shapes are selected */}
+      {hasSelection && availableGroups.length > 0 && (
+        <Submenu label="Add to Group" items={addToGroupItems} onClose={onClose} />
+      )}
+
+      {/* Remove from Group - show when selected shapes are in a group */}
+      {hasSelection && selectedInGroup && (
+        <button className="context-menu-item" onClick={handleRemoveFromGroup}>
+          <span className="context-menu-label">Remove from Group</span>
+        </button>
+      )}
+
+      {(canGroup || singleGroupSelected || (hasSelection && availableGroups.length > 0) || selectedInGroup) && hasSelection && (
         <div className="context-menu-separator" />
       )}
 

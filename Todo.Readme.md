@@ -390,12 +390,20 @@ implementation phase as defined in Specification.Readme.md.
   - Maximum width/height constraints with aspect ratio preservation
   - Refresh button to re-render group after canvas changes
 
-### Phase 13: Diagram Patterns
+### Phase 13: Diagram Patterns - COMPLETE
 
-- [ ] ERD Shape Library (Crow's Foot preferably)
-- [ ] UML Class Diagram Shape Library
-- [ ] Misc. Feature: Allow dragging a shape in-and-out of a group through the canvas (add to top-layer of the group)
-  - You may consider alternatives like quick add-to-group through context-menu which would be just as effective (add to top, or bottom layer option) or implement both
+- [x] ERD Shape Library (Crow's Foot)
+  - Entity, Weak Entity, Relationship, Attribute, Key Attribute shapes
+  - Cardinality indicators: One, Many, Zero-One, Zero-Many, One-Many
+  - 10 shapes total with proper anchors and hit testing
+- [x] UML Class Diagram Shape Library
+  - Class (3-compartment), Interface, Abstract Class, Enum, Package, Note shapes
+  - Relationship indicators: Association, Aggregation, Composition, Inheritance, Realization, Dependency
+  - 12 shapes total with proper anchors and hit testing
+- [x] Misc. Feature: Add/Remove shapes from groups via context menu
+  - "Add to Group" submenu lists available groups (with cycle detection)
+  - "Remove from Group" option for shapes inside groups
+  - Uses existing moveShapeInHierarchy() store method
 
 ### Phase 14: Collaboration, Simple Auth, and UI Improvements
 
@@ -421,6 +429,7 @@ implementation phase as defined in Specification.Readme.md.
 - [ ] Make the canvas not-focused effect more friendly the red border is annoying; consider a light blue top-border or similar
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle); also add a toggle for this in settings
 - [ ] Context menu for style profiles clips overflows outside of window viewport
+- [ ] Add border radius for group-labels
 
 ##### Phase 14.21 - UX Improvements - Chunk 2
 
@@ -461,9 +470,11 @@ Replace this list with your own checklists of areas needed for improvement befor
 - [ ] Implement a local help system (consider a markdown server of some sort)
 
 #### Phase 15.2
+
 - [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
 
 #### Phase 15.3
+
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
@@ -479,7 +490,7 @@ Replace this list with your own checklists of areas needed for improvement befor
 
 - [ ] Implement a feature which can scan the GitHub repo for updates and check if a new version exists
 - [ ] Implement a feature to update the application **without** user commands or manual download+installation
-  
+
 ### Phase ??: Publisher Module
 
 - [ ] Implement a 'Publisher' module to implement the following requirements:

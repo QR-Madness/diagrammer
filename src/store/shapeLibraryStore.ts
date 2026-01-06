@@ -12,6 +12,8 @@ import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { createLibraryShapeHandler } from '../shapes/library/LibraryShapeHandler';
 import { flowchartShapes } from '../shapes/library/flowchartShapes';
 import { umlUseCaseShapes } from '../shapes/library/umlUseCaseShapes';
+import { erdShapes } from '../shapes/library/erdShapes';
+import { umlClassShapes } from '../shapes/library/umlClassShapes';
 import type { LibraryShapeDefinition } from '../shapes/library/ShapeLibraryTypes';
 import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
 
@@ -82,6 +84,12 @@ export const useShapeLibraryStore = create<ShapeLibraryState & ShapeLibraryActio
 
       // Register UML use-case shapes
       get().registerShapes(umlUseCaseShapes);
+
+      // Register ERD shapes (Crow's Foot notation)
+      get().registerShapes(erdShapes);
+
+      // Register UML Class Diagram shapes
+      get().registerShapes(umlClassShapes);
 
       set({ isInitialized: true });
     },
