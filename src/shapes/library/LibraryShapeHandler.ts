@@ -111,6 +111,11 @@ export function createLibraryShapeHandler(
         ctx.stroke(path);
       }
 
+      // Call custom render if defined
+      if (definition.customRender) {
+        definition.customRender(ctx, shape, path);
+      }
+
       // Draw icon if present
       const halfWidth = width / 2;
       const halfHeight = height / 2;
@@ -153,8 +158,8 @@ export function createLibraryShapeHandler(
         drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
       }
 
-      // Draw label if present
-      if (shape.label) {
+      // Draw label if present (unless custom rendering handles it)
+      if (shape.label && !definition.customLabelRendering) {
         const fontSize = shape.labelFontSize || DEFAULT_LIBRARY_SHAPE.labelFontSize;
         const labelColor = shape.labelColor || stroke || '#000000';
         const labelBackground = shape.labelBackground;

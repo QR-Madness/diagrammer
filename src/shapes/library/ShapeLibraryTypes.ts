@@ -6,7 +6,7 @@
  */
 
 import type { ShapeMetadata } from '../ShapeMetadata';
-import type { AnchorPosition } from '../Shape';
+import type { AnchorPosition, LibraryShape } from '../Shape';
 
 /**
  * Path builder function that creates a Path2D from shape dimensions.
@@ -17,6 +17,20 @@ import type { AnchorPosition } from '../Shape';
  * @returns A Path2D representing the shape geometry
  */
 export type PathBuilder = (width: number, height: number) => Path2D;
+
+/**
+ * Custom render function for shapes that need specialized rendering.
+ * Called after the path is drawn but before labels/icons.
+ *
+ * @param ctx - Canvas context (already translated to shape center, rotated)
+ * @param shape - The shape being rendered
+ * @param path - The path that was built
+ */
+export type CustomRenderFunction = (
+  ctx: CanvasRenderingContext2D,
+  shape: LibraryShape,
+  path: Path2D
+) => void;
 
 /**
  * Anchor definition for connector attachment points.
@@ -65,6 +79,19 @@ export interface LibraryShapeDefinition {
    * - 'bounds': Use bounding box (faster, less accurate)
    */
   hitTestMode?: 'path' | 'bounds';
+
+  /**
+   * Optional custom render function for specialized rendering.
+   * Called after fill/stroke but before icons/labels.
+   * Useful for shapes with compartments, member lists, etc.
+   */
+  customRender?: CustomRenderFunction;
+
+  /**
+   * If true, disables default label rendering.
+   * Use when customRender handles all text rendering.
+   */
+  customLabelRendering?: boolean;
 }
 
 /**

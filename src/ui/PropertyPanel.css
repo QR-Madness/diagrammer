@@ -718,3 +718,208 @@
 [data-theme="dark"] .label-offset-reset:hover {
   background: var(--bg-tertiary, #333333);
 }
+
+/* ERD Entity Members List */
+.erd-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.erd-member-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.erd-member-pk {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.erd-member-name {
+  flex: 1;
+  min-width: 60px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.erd-member-type {
+  flex: 1;
+  min-width: 50px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.erd-member-name:focus,
+.erd-member-type:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.erd-member-remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.erd-member-remove:hover {
+  opacity: 1;
+  color: var(--color-error, #e53e3e);
+  background: rgba(229, 62, 62, 0.1);
+}
+
+.erd-add-member {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.erd-add-member:hover {
+  background: rgba(33, 150, 243, 0.05);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .erd-member-name,
+[data-theme="dark"] .erd-member-type {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+/* UML Class Members List */
+.uml-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.uml-member-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uml-member-visibility {
+  flex-shrink: 0;
+  width: 32px;
+  padding: 4px 2px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.uml-member-name {
+  flex: 2;
+  min-width: 50px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.uml-member-type {
+  flex: 1;
+  min-width: 40px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.uml-member-static {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.uml-member-visibility:focus,
+.uml-member-name:focus,
+.uml-member-type:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.uml-member-remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.uml-member-remove:hover {
+  opacity: 1;
+  color: var(--color-error, #e53e3e);
+  background: rgba(229, 62, 62, 0.1);
+}
+
+.uml-add-member {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uml-add-member:hover {
+  background: rgba(33, 150, 243, 0.05);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .uml-member-visibility,
+[data-theme="dark"] .uml-member-name,
+[data-theme="dark"] .uml-member-type {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}

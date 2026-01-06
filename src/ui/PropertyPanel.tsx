@@ -17,7 +17,10 @@ import {
   VerticalAlign,
   RoutingMode,
   IconPosition,
+  ERDCardinality,
 } from '../shapes/Shape';
+import type { ERDEntityMember } from '../shapes/library/erdShapes';
+import type { UMLClassMember } from '../shapes/library/umlClassShapes';
 import { PropertySection } from './PropertySection';
 import { CompactColorInput } from './CompactColorInput';
 import { AlignmentPanel } from './AlignmentPanel';
@@ -439,6 +442,303 @@ function LibraryShapeProperties({
 }
 
 /**
+ * ERD Entity properties editor for title and members.
+ */
+function ERDEntityProperties({
+  shape,
+  updateShape,
+}: {
+  shape: LibraryShape;
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  // Get custom properties
+  const customProps = (shape.customProperties || {}) as {
+    entityTitle?: string;
+    members?: ERDEntityMember[];
+  };
+
+  const entityTitle = customProps.entityTitle || '';
+  const members = customProps.members || [];
+
+  const updateCustomProps = useCallback((updates: Partial<typeof customProps>) => {
+    updateShape(shape.id, {
+      customProperties: {
+        ...customProps,
+        ...updates,
+      },
+    } as Partial<Shape>);
+  }, [shape.id, customProps, updateShape]);
+
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    updateCustomProps({ entityTitle: e.target.value });
+  }, [updateCustomProps]);
+
+  const handleAddMember = useCallback(() => {
+    const newMember: ERDEntityMember = { name: '', type: '', isPrimaryKey: false };
+    updateCustomProps({ members: [...members, newMember] });
+  }, [members, updateCustomProps]);
+
+  const handleRemoveMember = useCallback((index: number) => {
+    const newMembers = members.filter((_, i) => i !== index);
+    updateCustomProps({ members: newMembers });
+  }, [members, updateCustomProps]);
+
+  const handleUpdateMember = useCallback((index: number, updates: Partial<ERDEntityMember>) => {
+    const newMembers = members.map((m, i) => (i === index ? { ...m, ...updates } : m));
+    updateCustomProps({ members: newMembers });
+  }, [members, updateCustomProps]);
+
+  return (
+    <>
+      <PropertySection id="erd-entity" title="Entity" defaultExpanded>
+        <div className="compact-string-row">
+          <label className="compact-string-label">Name</label>
+          <input
+            type="text"
+            value={entityTitle}
+            onChange={handleTitleChange}
+            className="property-text-input"
+            placeholder="Entity name..."
+          />
+        </div>
+      </PropertySection>
+
+      <PropertySection id="erd-members" title="Attributes" defaultExpanded>
+        <div className="erd-members-list">
+          {members.map((member, index) => (
+            <div key={index} className="erd-member-row">
+              <input
+                type="checkbox"
+                checked={member.isPrimaryKey}
+                onChange={(e) => handleUpdateMember(index, { isPrimaryKey: e.target.checked })}
+                title="Primary Key"
+                className="erd-member-pk"
+              />
+              <input
+                type="text"
+                value={member.name}
+                onChange={(e) => handleUpdateMember(index, { name: e.target.value })}
+                className="erd-member-name"
+                placeholder="name"
+              />
+              <input
+                type="text"
+                value={member.type}
+                onChange={(e) => handleUpdateMember(index, { type: e.target.value })}
+                className="erd-member-type"
+                placeholder="type"
+              />
+              <button
+                className="erd-member-remove"
+                onClick={() => handleRemoveMember(index)}
+                title="Remove attribute"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="erd-add-member" onClick={handleAddMember}>
+          + Add Attribute
+        </button>
+        <div className="property-hint">
+          Check box marks attribute as primary key (underlined)
+        </div>
+      </PropertySection>
+    </>
+  );
+}
+
+/**
+ * UML Class properties editor for class name, attributes, and methods.
+ */
+function UMLClassProperties({
+  shape,
+  updateShape,
+}: {
+  shape: LibraryShape;
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  // Get custom properties
+  const customProps = (shape.customProperties || {}) as {
+    className?: string;
+    attributes?: UMLClassMember[];
+    methods?: UMLClassMember[];
+  };
+
+  const className = customProps.className || '';
+  const attributes = customProps.attributes || [];
+  const methods = customProps.methods || [];
+
+  const updateCustomProps = useCallback((updates: Partial<typeof customProps>) => {
+    updateShape(shape.id, {
+      customProperties: {
+        ...customProps,
+        ...updates,
+      },
+    } as Partial<Shape>);
+  }, [shape.id, customProps, updateShape]);
+
+  const handleClassNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    updateCustomProps({ className: e.target.value });
+  }, [updateCustomProps]);
+
+  // Attribute handlers
+  const handleAddAttribute = useCallback(() => {
+    const newAttr: UMLClassMember = { name: '', type: '', visibility: '-', isStatic: false };
+    updateCustomProps({ attributes: [...attributes, newAttr] });
+  }, [attributes, updateCustomProps]);
+
+  const handleRemoveAttribute = useCallback((index: number) => {
+    const newAttrs = attributes.filter((_, i) => i !== index);
+    updateCustomProps({ attributes: newAttrs });
+  }, [attributes, updateCustomProps]);
+
+  const handleUpdateAttribute = useCallback((index: number, updates: Partial<UMLClassMember>) => {
+    const newAttrs = attributes.map((a, i) => (i === index ? { ...a, ...updates } : a));
+    updateCustomProps({ attributes: newAttrs });
+  }, [attributes, updateCustomProps]);
+
+  // Method handlers
+  const handleAddMethod = useCallback(() => {
+    const newMethod: UMLClassMember = { name: '', type: '', visibility: '+', isStatic: false };
+    updateCustomProps({ methods: [...methods, newMethod] });
+  }, [methods, updateCustomProps]);
+
+  const handleRemoveMethod = useCallback((index: number) => {
+    const newMethods = methods.filter((_, i) => i !== index);
+    updateCustomProps({ methods: newMethods });
+  }, [methods, updateCustomProps]);
+
+  const handleUpdateMethod = useCallback((index: number, updates: Partial<UMLClassMember>) => {
+    const newMethods = methods.map((m, i) => (i === index ? { ...m, ...updates } : m));
+    updateCustomProps({ methods: newMethods });
+  }, [methods, updateCustomProps]);
+
+  return (
+    <>
+      <PropertySection id="uml-class" title="Class" defaultExpanded>
+        <div className="compact-string-row">
+          <label className="compact-string-label">Name</label>
+          <input
+            type="text"
+            value={className}
+            onChange={handleClassNameChange}
+            className="property-text-input"
+            placeholder="ClassName"
+          />
+        </div>
+      </PropertySection>
+
+      <PropertySection id="uml-attributes" title="Attributes" defaultExpanded>
+        <div className="uml-members-list">
+          {attributes.map((attr, index) => (
+            <div key={index} className="uml-member-row">
+              <select
+                value={attr.visibility}
+                onChange={(e) => handleUpdateAttribute(index, { visibility: e.target.value as UMLClassMember['visibility'] })}
+                className="uml-member-visibility"
+                title="Visibility"
+              >
+                <option value="+">+</option>
+                <option value="-">-</option>
+                <option value="#">#</option>
+                <option value="~">~</option>
+              </select>
+              <input
+                type="text"
+                value={attr.name}
+                onChange={(e) => handleUpdateAttribute(index, { name: e.target.value })}
+                className="uml-member-name"
+                placeholder="name"
+              />
+              <input
+                type="text"
+                value={attr.type}
+                onChange={(e) => handleUpdateAttribute(index, { type: e.target.value })}
+                className="uml-member-type"
+                placeholder="type"
+              />
+              <input
+                type="checkbox"
+                checked={attr.isStatic}
+                onChange={(e) => handleUpdateAttribute(index, { isStatic: e.target.checked })}
+                title="Static (underlined)"
+                className="uml-member-static"
+              />
+              <button
+                className="uml-member-remove"
+                onClick={() => handleRemoveAttribute(index)}
+                title="Remove"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="uml-add-member" onClick={handleAddAttribute}>
+          + Add Attribute
+        </button>
+      </PropertySection>
+
+      <PropertySection id="uml-methods" title="Methods" defaultExpanded>
+        <div className="uml-members-list">
+          {methods.map((method, index) => (
+            <div key={index} className="uml-member-row">
+              <select
+                value={method.visibility}
+                onChange={(e) => handleUpdateMethod(index, { visibility: e.target.value as UMLClassMember['visibility'] })}
+                className="uml-member-visibility"
+                title="Visibility"
+              >
+                <option value="+">+</option>
+                <option value="-">-</option>
+                <option value="#">#</option>
+                <option value="~">~</option>
+              </select>
+              <input
+                type="text"
+                value={method.name}
+                onChange={(e) => handleUpdateMethod(index, { name: e.target.value })}
+                className="uml-member-name"
+                placeholder="method()"
+              />
+              <input
+                type="text"
+                value={method.type}
+                onChange={(e) => handleUpdateMethod(index, { type: e.target.value })}
+                className="uml-member-type"
+                placeholder="return"
+              />
+              <input
+                type="checkbox"
+                checked={method.isStatic}
+                onChange={(e) => handleUpdateMethod(index, { isStatic: e.target.checked })}
+                title="Static (underlined)"
+                className="uml-member-static"
+              />
+              <button
+                className="uml-member-remove"
+                onClick={() => handleRemoveMethod(index)}
+                title="Remove"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+        <button className="uml-add-member" onClick={handleAddMethod}>
+          + Add Method
+        </button>
+        <div className="property-hint">
+          Visibility: + public, - private, # protected, ~ package
+        </div>
+      </PropertySection>
+    </>
+  );
+}
+
+/**
  * PropertyPanel component for editing selected shape properties.
  *
  * Features:
@@ -572,6 +872,26 @@ export function PropertyPanel() {
             shape={shape as LibraryShape}
             metadata={shapeMetadata}
             selectedShapes={selectedShapes}
+            updateShape={updateShape}
+          />
+        )}
+
+        {/* ERD Entity properties - title and members */}
+        {isLibraryShapeSelected && (shape.type === 'erd-entity' || shape.type === 'erd-weak-entity') && (
+          <ERDEntityProperties
+            shape={shape as LibraryShape}
+            updateShape={updateShape}
+          />
+        )}
+
+        {/* UML Class properties - name, attributes, methods */}
+        {isLibraryShapeSelected && (
+          shape.type === 'uml-class' ||
+          shape.type === 'uml-interface' ||
+          shape.type === 'uml-abstract-class'
+        ) && (
+          <UMLClassProperties
+            shape={shape as LibraryShape}
             updateShape={updateShape}
           />
         )}
@@ -1141,6 +1461,59 @@ export function PropertyPanel() {
                 <option value="straight">Straight</option>
                 <option value="orthogonal">Orthogonal</option>
               </select>
+            </div>
+          </PropertySection>
+        )}
+
+        {/* Connector Cardinality Section (ERD Crow's Foot) */}
+        {isConnector(shape) && (
+          <PropertySection id="connector-cardinality" title="ERD Cardinality" defaultExpanded={false}>
+            <div className="compact-select-row">
+              <label className="compact-select-label">Start</label>
+              <select
+                value={shape.startCardinality || 'none'}
+                onChange={(e) => {
+                  const val = e.target.value as ERDCardinality;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, { startCardinality: val });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="none">None (Arrow)</option>
+                <option value="one">One (|)</option>
+                <option value="many">Many (Crow's Foot)</option>
+                <option value="zero-one">Zero or One (o|)</option>
+                <option value="zero-many">Zero or Many (o&lt;)</option>
+                <option value="one-many">One or Many (|&lt;)</option>
+              </select>
+            </div>
+            <div className="compact-select-row">
+              <label className="compact-select-label">End</label>
+              <select
+                value={shape.endCardinality || 'none'}
+                onChange={(e) => {
+                  const val = e.target.value as ERDCardinality;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, { endCardinality: val });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="none">None (Arrow)</option>
+                <option value="one">One (|)</option>
+                <option value="many">Many (Crow's Foot)</option>
+                <option value="zero-one">Zero or One (o|)</option>
+                <option value="zero-many">Zero or Many (o&lt;)</option>
+                <option value="one-many">One or Many (|&lt;)</option>
+              </select>
+            </div>
+            <div className="property-hint">
+              Crow's Foot notation for entity-relationship diagrams
             </div>
           </PropertySection>
         )}

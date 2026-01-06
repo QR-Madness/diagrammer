@@ -10,9 +10,156 @@
  * - Cardinality indicators (One, Many, Zero-One, Zero-Many, One-Many)
  */
 
-import type { LibraryShapeDefinition } from './ShapeLibraryTypes';
+import type { LibraryShapeDefinition, CustomRenderFunction } from './ShapeLibraryTypes';
 import { createStandardAnchors, createDiamondAnchors } from './ShapeLibraryTypes';
 import { createStandardProperties } from '../ShapeMetadata';
+import type { PropertyDefinition } from '../ShapeMetadata';
+
+/**
+ * ERD entity member (attribute).
+ */
+export interface ERDEntityMember {
+  name: string;
+  type: string;
+  isPrimaryKey: boolean;
+}
+
+/**
+ * Custom render function for ERD entities.
+ * Renders title in header and members in body.
+ */
+const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
+  const { width, height, stroke } = shape;
+  const hw = width / 2;
+  const hh = height / 2;
+  const headerHeight = Math.min(30, height * 0.35);
+
+  // Get custom properties
+  const customProps = shape.customProperties as {
+    entityTitle?: string;
+    members?: ERDEntityMember[];
+  } | undefined;
+
+  const title = customProps?.entityTitle || shape.label || 'Entity';
+  const members = customProps?.members || [];
+
+  // Draw title in header
+  const titleFontSize = Math.min(14, headerHeight * 0.6);
+  ctx.font = `bold ${titleFontSize}px sans-serif`;
+  ctx.fillStyle = shape.labelColor || stroke || '#000000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, 0, -hh + headerHeight / 2, width - 10);
+
+  // Draw members in body
+  if (members.length > 0) {
+    const bodyTop = -hh + headerHeight + 5;
+    const bodyHeight = height - headerHeight - 10;
+    const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
+    const lineHeight = memberFontSize * 1.4;
+
+    ctx.font = `${memberFontSize}px sans-serif`;
+    ctx.textAlign = 'left';
+
+    members.forEach((member, index) => {
+      const y = bodyTop + (index + 0.5) * lineHeight;
+      if (y > hh - 5) return; // Don't overflow
+
+      const text = member.type ? `${member.name}: ${member.type}` : member.name;
+      const x = -hw + 8;
+
+      // Underline for primary key
+      if (member.isPrimaryKey) {
+        ctx.fillText(text, x, y);
+        const metrics = ctx.measureText(text);
+        ctx.beginPath();
+        ctx.moveTo(x, y + memberFontSize * 0.3);
+        ctx.lineTo(x + metrics.width, y + memberFontSize * 0.3);
+        ctx.strokeStyle = shape.labelColor || stroke || '#000000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillText(text, x, y);
+      }
+    });
+  }
+};
+
+/**
+ * Custom render function for ERD weak entities.
+ * Similar to entity but with double border consideration.
+ */
+const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
+  const { width, height, stroke } = shape;
+  const hw = width / 2;
+  const hh = height / 2;
+  const gap = 4;
+  const headerHeight = Math.min(30, height * 0.35);
+
+  // Get custom properties
+  const customProps = shape.customProperties as {
+    entityTitle?: string;
+    members?: ERDEntityMember[];
+  } | undefined;
+
+  const title = customProps?.entityTitle || shape.label || 'Weak Entity';
+  const members = customProps?.members || [];
+
+  // Draw title in header (inside inner rectangle)
+  const titleFontSize = Math.min(14, (headerHeight - gap) * 0.6);
+  ctx.font = `bold ${titleFontSize}px sans-serif`;
+  ctx.fillStyle = shape.labelColor || stroke || '#000000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, 0, -hh + headerHeight / 2, width - gap * 2 - 10);
+
+  // Draw members in body
+  if (members.length > 0) {
+    const bodyTop = -hh + headerHeight + 5;
+    const bodyHeight = height - headerHeight - 10;
+    const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
+    const lineHeight = memberFontSize * 1.4;
+
+    ctx.font = `${memberFontSize}px sans-serif`;
+    ctx.textAlign = 'left';
+
+    members.forEach((member, index) => {
+      const y = bodyTop + (index + 0.5) * lineHeight;
+      if (y > hh - gap - 5) return; // Don't overflow
+
+      const text = member.type ? `${member.name}: ${member.type}` : member.name;
+      const x = -hw + gap + 8;
+
+      // Underline for primary key
+      if (member.isPrimaryKey) {
+        ctx.fillText(text, x, y);
+        const metrics = ctx.measureText(text);
+        ctx.beginPath();
+        ctx.moveTo(x, y + memberFontSize * 0.3);
+        ctx.lineTo(x + metrics.width, y + memberFontSize * 0.3);
+        ctx.strokeStyle = shape.labelColor || stroke || '#000000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillText(text, x, y);
+      }
+    });
+  }
+};
+
+/**
+ * ERD entity properties with custom fields.
+ */
+const erdEntityProperties: PropertyDefinition[] = [
+  ...createStandardProperties({ includeLabel: false }),
+  {
+    key: 'customProperties.entityTitle',
+    label: 'Entity Name',
+    type: 'string',
+    section: 'custom',
+    placeholder: 'Enter entity name...',
+  },
+];
 
 /**
  * Entity shape - rectangle with header divider.
@@ -25,11 +172,11 @@ export const erdEntityShape: LibraryShapeDefinition = {
     name: 'Entity',
     category: 'erd',
     icon: '▭',
-    properties: createStandardProperties({ includeLabel: true }),
-    supportsLabel: true,
+    properties: erdEntityProperties,
+    supportsLabel: false, // Custom rendering handles text
     supportsIcon: false,
     defaultWidth: 140,
-    defaultHeight: 80,
+    defaultHeight: 100,
     description: 'Database table or domain entity',
   },
   pathBuilder: (width, height) => {
@@ -48,6 +195,8 @@ export const erdEntityShape: LibraryShapeDefinition = {
     return path;
   },
   anchors: createStandardAnchors(),
+  customRender: renderERDEntity,
+  customLabelRendering: true,
 };
 
 /**
@@ -61,11 +210,11 @@ export const erdWeakEntityShape: LibraryShapeDefinition = {
     name: 'Weak Entity',
     category: 'erd',
     icon: '▣',
-    properties: createStandardProperties({ includeLabel: true }),
-    supportsLabel: true,
+    properties: erdEntityProperties,
+    supportsLabel: false, // Custom rendering handles text
     supportsIcon: false,
     defaultWidth: 140,
-    defaultHeight: 80,
+    defaultHeight: 100,
     description: 'Entity dependent on another for identification',
   },
   pathBuilder: (width, height) => {
@@ -88,6 +237,8 @@ export const erdWeakEntityShape: LibraryShapeDefinition = {
     return path;
   },
   anchors: createStandardAnchors(),
+  customRender: renderERDWeakEntity,
+  customLabelRendering: true,
 };
 
 /**

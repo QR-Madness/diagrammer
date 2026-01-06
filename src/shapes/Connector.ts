@@ -7,6 +7,7 @@ import {
   Anchor,
   Shape,
   DEFAULT_CONNECTOR,
+  ERDCardinality,
 } from './Shape';
 
 /**
@@ -82,6 +83,118 @@ function drawArrowHead(
   );
   ctx.closePath();
   ctx.fill();
+}
+
+/**
+ * Draw ERD cardinality symbol at a connector endpoint.
+ * The symbol is drawn perpendicular to the line direction.
+ *
+ * @param ctx - Canvas context
+ * @param point - The endpoint position
+ * @param angle - The angle of the line approaching this point (in radians)
+ * @param cardinality - The cardinality type to draw
+ * @param strokeWidth - Base stroke width for scaling
+ */
+function drawCardinalitySymbol(
+  ctx: CanvasRenderingContext2D,
+  point: Vec2,
+  angle: number,
+  cardinality: ERDCardinality,
+  strokeWidth: number
+): void {
+  if (cardinality === 'none') return;
+
+  const size = Math.max(12, strokeWidth * 4);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.rotate(angle);
+
+  // All symbols drawn with line coming from the left, symbol at origin
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = 'round';
+
+  switch (cardinality) {
+    case 'one': {
+      // Single vertical line
+      ctx.beginPath();
+      ctx.moveTo(-4, -size / 2);
+      ctx.lineTo(-4, size / 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'many': {
+      // Crow's foot (three lines spreading out)
+      ctx.beginPath();
+      // Center line
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, 0);
+      // Top line
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, -size / 2);
+      // Bottom line
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, size / 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'zero-one': {
+      // Circle (zero) + vertical line (one)
+      const circleRadius = size / 4;
+      // Circle
+      ctx.beginPath();
+      ctx.arc(-size / 2, 0, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      // Vertical line
+      ctx.beginPath();
+      ctx.moveTo(-4, -size / 2);
+      ctx.lineTo(-4, size / 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'zero-many': {
+      // Circle (zero) + crow's foot (many)
+      const circleRadius = size / 4;
+      // Circle further back
+      ctx.beginPath();
+      ctx.arc(-size - circleRadius - 4, 0, circleRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      // Crow's foot
+      ctx.beginPath();
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, 0);
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, -size / 2);
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, size / 2);
+      ctx.stroke();
+      break;
+    }
+
+    case 'one-many': {
+      // Vertical line (one) + crow's foot (many)
+      // Vertical line further back
+      ctx.beginPath();
+      ctx.moveTo(-size - 4, -size / 2);
+      ctx.lineTo(-size - 4, size / 2);
+      ctx.stroke();
+      // Crow's foot
+      ctx.beginPath();
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, 0);
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, -size / 2);
+      ctx.moveTo(-size, 0);
+      ctx.lineTo(0, size / 2);
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -275,27 +388,40 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
 
       ctx.stroke();
 
-      // Calculate angles for arrows
+      // Calculate angles for arrows/cardinality
       const arrowSize = strokeWidth * 4;
 
-      // Draw arrows
-      if (startArrow || endArrow) {
-        ctx.fillStyle = stroke;
-      }
-
-      if (startArrow && points.length >= 2) {
+      // Draw start endpoint (cardinality takes precedence over arrow)
+      if (points.length >= 2) {
         const p0 = points[0]!;
         const p1 = points[1]!;
         const startAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
-        drawArrowHead(ctx, p0, startAngle + Math.PI, arrowSize);
+
+        if (shape.startCardinality && shape.startCardinality !== 'none') {
+          // Draw ERD cardinality symbol
+          drawCardinalitySymbol(ctx, p0, startAngle + Math.PI, shape.startCardinality, strokeWidth);
+        } else if (startArrow) {
+          // Draw regular arrow
+          ctx.fillStyle = stroke;
+          drawArrowHead(ctx, p0, startAngle + Math.PI, arrowSize);
+        }
       }
 
-      if (endArrow && points.length >= 2) {
+      // Draw end endpoint (cardinality takes precedence over arrow)
+      if (points.length >= 2) {
         const lastIdx = points.length - 1;
         const lastPt = points[lastIdx]!;
         const secondLastPt = points[lastIdx - 1]!;
         const endAngle = Math.atan2(lastPt.y - secondLastPt.y, lastPt.x - secondLastPt.x);
-        drawArrowHead(ctx, lastPt, endAngle, arrowSize);
+
+        if (shape.endCardinality && shape.endCardinality !== 'none') {
+          // Draw ERD cardinality symbol
+          drawCardinalitySymbol(ctx, lastPt, endAngle, shape.endCardinality, strokeWidth);
+        } else if (endArrow) {
+          // Draw regular arrow
+          ctx.fillStyle = stroke;
+          drawArrowHead(ctx, lastPt, endAngle, arrowSize);
+        }
       }
     }
 

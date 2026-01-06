@@ -203,6 +203,18 @@ export interface LineShape extends BaseShape {
 export type RoutingMode = 'straight' | 'orthogonal';
 
 /**
+ * ERD (Entity-Relationship Diagram) cardinality notation.
+ * Used for Crow's Foot notation on connector endpoints.
+ */
+export type ERDCardinality =
+  | 'none'      // No cardinality symbol (default arrow behavior)
+  | 'one'       // Single vertical line (exactly one)
+  | 'many'      // Crow's foot (many)
+  | 'zero-one'  // Circle + line (zero or one)
+  | 'zero-many' // Circle + crow's foot (zero or many)
+  | 'one-many'; // Line + crow's foot (one or many)
+
+/**
  * Connector shape that connects two shapes.
  */
 export interface ConnectorShape extends BaseShape {
@@ -241,6 +253,10 @@ export interface ConnectorShape extends BaseShape {
   labelOffsetX?: number;
   /** Label vertical offset from calculated position (default: 0) */
   labelOffsetY?: number;
+  /** ERD cardinality notation at start point (overrides startArrow) */
+  startCardinality?: ERDCardinality;
+  /** ERD cardinality notation at end point (overrides endArrow) */
+  endCardinality?: ERDCardinality;
 }
 
 /**
