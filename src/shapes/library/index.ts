@@ -46,17 +46,13 @@ export {
 } from './umlUseCaseShapes';
 
 // ERD shapes (Crow's Foot notation)
+// Note: Cardinality notation is handled via connector properties, not standalone shapes
 export {
   erdEntityShape,
   erdWeakEntityShape,
   erdRelationshipShape,
   erdAttributeShape,
   erdKeyAttributeShape,
-  erdOneShape,
-  erdManyShape,
-  erdZeroOneShape,
-  erdZeroManyShape,
-  erdOneManyShape,
   erdShapes,
 } from './erdShapes';
 

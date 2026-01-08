@@ -10,10 +10,31 @@
  * - Cardinality indicators (One, Many, Zero-One, Zero-Many, One-Many)
  */
 
-import type { LibraryShapeDefinition, CustomRenderFunction } from './ShapeLibraryTypes';
+import type { LibraryShapeDefinition, CustomRenderFunction, AnchorDefinition } from './ShapeLibraryTypes';
 import { createStandardAnchors, createDiamondAnchors } from './ShapeLibraryTypes';
 import { createStandardProperties } from '../ShapeMetadata';
 import type { PropertyDefinition } from '../ShapeMetadata';
+
+/**
+ * Create ellipse anchors with 8 points on the ellipse edge.
+ * Anchors are placed at cardinal and intercardinal positions.
+ */
+function createEllipseAnchors(): AnchorDefinition[] {
+  return [
+    { position: 'center', x: () => 0, y: () => 0 },
+    { position: 'top', x: () => 0, y: (_, h) => -h / 2 },
+    { position: 'right', x: (w) => w / 2, y: () => 0 },
+    { position: 'bottom', x: () => 0, y: (_, h) => h / 2 },
+    { position: 'left', x: (w) => -w / 2, y: () => 0 },
+    // Intercardinal anchors on ellipse edge
+    // For ellipse: x = a*cos(θ), y = b*sin(θ) where a=w/2, b=h/2
+    // At 45°: cos(45°) = sin(45°) = √2/2 ≈ 0.707
+    { position: 'top', x: (w) => w / 2 * 0.707, y: (_, h) => -h / 2 * 0.707 },     // top-right
+    { position: 'bottom', x: (w) => w / 2 * 0.707, y: (_, h) => h / 2 * 0.707 },   // bottom-right
+    { position: 'bottom', x: (w) => -w / 2 * 0.707, y: (_, h) => h / 2 * 0.707 },  // bottom-left
+    { position: 'top', x: (w) => -w / 2 * 0.707, y: (_, h) => -h / 2 * 0.707 },    // top-left
+  ];
+}
 
 /**
  * ERD entity member (attribute).
@@ -149,15 +170,15 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
 
 /**
  * ERD entity properties with custom fields.
+ * Note: Entity name is edited via the custom ERDEntityProperties component.
  */
 const erdEntityProperties: PropertyDefinition[] = [
   ...createStandardProperties({ includeLabel: false }),
   {
-    key: 'customProperties.entityTitle',
-    label: 'Entity Name',
-    type: 'string',
+    key: 'labelColor',
+    label: 'Text Color',
+    type: 'color',
     section: 'custom',
-    placeholder: 'Enter entity name...',
   },
 ];
 
@@ -312,7 +333,7 @@ export const erdAttributeShape: LibraryShapeDefinition = {
 
     return path;
   },
-  anchors: createStandardAnchors(),
+  anchors: createEllipseAnchors(),
 };
 
 /**
@@ -357,251 +378,13 @@ export const erdKeyAttributeShape: LibraryShapeDefinition = {
 
     return path;
   },
-  anchors: createStandardAnchors(),
-};
-
-/**
- * Cardinality: One (single vertical line).
- * Indicates exactly one in a relationship.
- */
-export const erdOneShape: LibraryShapeDefinition = {
-  type: 'erd-one',
-  metadata: {
-    type: 'erd-one',
-    name: 'One',
-    category: 'erd',
-    icon: '│',
-    properties: createStandardProperties({ includeLabel: false }),
-    supportsLabel: false,
-    supportsIcon: false,
-    defaultWidth: 40,
-    defaultHeight: 24,
-    description: 'Cardinality: exactly one',
-  },
-  pathBuilder: (width, height) => {
-    const path = new Path2D();
-    const hw = width / 2;
-    const hh = height / 2;
-
-    // Horizontal line
-    path.moveTo(-hw, 0);
-    path.lineTo(hw, 0);
-
-    // Vertical line at right end
-    path.moveTo(hw - 4, -hh);
-    path.lineTo(hw - 4, hh);
-
-    return path;
-  },
-  anchors: [
-    { position: 'center', x: () => 0, y: () => 0 },
-    { position: 'left', x: (w) => -w / 2, y: () => 0 },
-    { position: 'right', x: (w) => w / 2, y: () => 0 },
-  ],
-  hitTestMode: 'bounds',
-};
-
-/**
- * Cardinality: Many (crow's foot).
- * Indicates many/multiple in a relationship.
- */
-export const erdManyShape: LibraryShapeDefinition = {
-  type: 'erd-many',
-  metadata: {
-    type: 'erd-many',
-    name: 'Many',
-    category: 'erd',
-    icon: '⋔',
-    properties: createStandardProperties({ includeLabel: false }),
-    supportsLabel: false,
-    supportsIcon: false,
-    defaultWidth: 40,
-    defaultHeight: 24,
-    description: 'Cardinality: many (crow\'s foot)',
-  },
-  pathBuilder: (width, height) => {
-    const path = new Path2D();
-    const hw = width / 2;
-    const hh = height / 2;
-    const forkX = hw - 8;
-
-    // Main horizontal line
-    path.moveTo(-hw, 0);
-    path.lineTo(forkX, 0);
-
-    // Crow's foot (three lines to right edge)
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, -hh);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, 0);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, hh);
-
-    return path;
-  },
-  anchors: [
-    { position: 'center', x: () => 0, y: () => 0 },
-    { position: 'left', x: (w) => -w / 2, y: () => 0 },
-    { position: 'right', x: (w) => w / 2, y: () => 0 },
-  ],
-  hitTestMode: 'bounds',
-};
-
-/**
- * Cardinality: Zero or One (circle + line).
- * Indicates optional single relationship.
- */
-export const erdZeroOneShape: LibraryShapeDefinition = {
-  type: 'erd-zero-one',
-  metadata: {
-    type: 'erd-zero-one',
-    name: 'Zero or One',
-    category: 'erd',
-    icon: '○│',
-    properties: createStandardProperties({ includeLabel: false }),
-    supportsLabel: false,
-    supportsIcon: false,
-    defaultWidth: 50,
-    defaultHeight: 24,
-    description: 'Cardinality: zero or one (optional)',
-  },
-  pathBuilder: (width, height) => {
-    const path = new Path2D();
-    const hw = width / 2;
-    const hh = height / 2;
-    const circleRadius = 5;
-    const lineX = hw - 4;
-
-    // Horizontal line
-    path.moveTo(-hw, 0);
-    path.lineTo(hw, 0);
-
-    // Circle (zero indicator)
-    path.arc(-hw + circleRadius + 4, 0, circleRadius, 0, Math.PI * 2);
-
-    // Vertical line at right (one indicator)
-    path.moveTo(lineX, -hh);
-    path.lineTo(lineX, hh);
-
-    return path;
-  },
-  anchors: [
-    { position: 'center', x: () => 0, y: () => 0 },
-    { position: 'left', x: (w) => -w / 2, y: () => 0 },
-    { position: 'right', x: (w) => w / 2, y: () => 0 },
-  ],
-  hitTestMode: 'bounds',
-};
-
-/**
- * Cardinality: Zero or Many (circle + crow's foot).
- * Indicates optional multiple relationship.
- */
-export const erdZeroManyShape: LibraryShapeDefinition = {
-  type: 'erd-zero-many',
-  metadata: {
-    type: 'erd-zero-many',
-    name: 'Zero or Many',
-    category: 'erd',
-    icon: '○⋔',
-    properties: createStandardProperties({ includeLabel: false }),
-    supportsLabel: false,
-    supportsIcon: false,
-    defaultWidth: 50,
-    defaultHeight: 24,
-    description: 'Cardinality: zero or many',
-  },
-  pathBuilder: (width, height) => {
-    const path = new Path2D();
-    const hw = width / 2;
-    const hh = height / 2;
-    const circleRadius = 5;
-    const forkX = hw - 8;
-
-    // Main horizontal line
-    path.moveTo(-hw, 0);
-    path.lineTo(forkX, 0);
-
-    // Circle (zero indicator) on left
-    path.arc(-hw + circleRadius + 4, 0, circleRadius, 0, Math.PI * 2);
-
-    // Crow's foot on right
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, -hh);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, 0);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, hh);
-
-    return path;
-  },
-  anchors: [
-    { position: 'center', x: () => 0, y: () => 0 },
-    { position: 'left', x: (w) => -w / 2, y: () => 0 },
-    { position: 'right', x: (w) => w / 2, y: () => 0 },
-  ],
-  hitTestMode: 'bounds',
-};
-
-/**
- * Cardinality: One or Many (line + crow's foot).
- * Indicates required multiple relationship (at least one).
- */
-export const erdOneManyShape: LibraryShapeDefinition = {
-  type: 'erd-one-many',
-  metadata: {
-    type: 'erd-one-many',
-    name: 'One or Many',
-    category: 'erd',
-    icon: '│⋔',
-    properties: createStandardProperties({ includeLabel: false }),
-    supportsLabel: false,
-    supportsIcon: false,
-    defaultWidth: 50,
-    defaultHeight: 24,
-    description: 'Cardinality: one or many (at least one)',
-  },
-  pathBuilder: (width, height) => {
-    const path = new Path2D();
-    const hw = width / 2;
-    const hh = height / 2;
-    const lineX = -hw + 8;
-    const forkX = hw - 8;
-
-    // Main horizontal line
-    path.moveTo(-hw, 0);
-    path.lineTo(forkX, 0);
-
-    // Vertical line on left (one indicator)
-    path.moveTo(lineX, -hh);
-    path.lineTo(lineX, hh);
-
-    // Crow's foot on right
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, -hh);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, 0);
-
-    path.moveTo(forkX, 0);
-    path.lineTo(hw, hh);
-
-    return path;
-  },
-  anchors: [
-    { position: 'center', x: () => 0, y: () => 0 },
-    { position: 'left', x: (w) => -w / 2, y: () => 0 },
-    { position: 'right', x: (w) => w / 2, y: () => 0 },
-  ],
-  hitTestMode: 'bounds',
+  anchors: createEllipseAnchors(),
 };
 
 /**
  * All ERD shape definitions.
+ * Note: Cardinality notation is handled via connector properties (ERD Cardinality),
+ * not standalone shapes.
  */
 export const erdShapes: LibraryShapeDefinition[] = [
   erdEntityShape,
@@ -609,9 +392,4 @@ export const erdShapes: LibraryShapeDefinition[] = [
   erdRelationshipShape,
   erdAttributeShape,
   erdKeyAttributeShape,
-  erdOneShape,
-  erdManyShape,
-  erdZeroOneShape,
-  erdZeroManyShape,
-  erdOneManyShape,
 ];

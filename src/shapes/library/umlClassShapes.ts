@@ -127,25 +127,31 @@ const renderUMLClass: CustomRenderFunction = (ctx, shape) => {
 
 /**
  * Custom render function for UML interfaces.
+ * Shows stereotype, name, attributes, and methods compartments.
  */
 const renderUMLInterface: CustomRenderFunction = (ctx, shape) => {
   const { width, height, stroke } = shape;
   const hw = width / 2;
   const hh = height / 2;
   const stereotypeHeight = 20;
-  const compartmentHeight = (height - stereotypeHeight) / 2;
+  const nameHeight = 25;
+  const bodyHeight = height - stereotypeHeight - nameHeight;
+  const attrHeight = bodyHeight / 2;
+  const methodHeight = bodyHeight / 2;
 
   // Get custom properties
   const customProps = shape.customProperties as {
     className?: string;
+    attributes?: UMLClassMember[];
     methods?: UMLClassMember[];
   } | undefined;
 
   const className = customProps?.className || shape.label || 'IInterface';
+  const attributes = customProps?.attributes || [];
   const methods = customProps?.methods || [];
 
-  const nameFontSize = Math.min(14, compartmentHeight * 0.4);
-  const memberFontSize = Math.min(11, compartmentHeight * 0.3);
+  const nameFontSize = Math.min(14, nameHeight * 0.5);
+  const memberFontSize = Math.min(11, Math.min(attrHeight, methodHeight) * 0.4);
   const lineHeight = memberFontSize * 1.3;
 
   ctx.fillStyle = shape.labelColor || stroke || '#000000';
@@ -158,13 +164,23 @@ const renderUMLInterface: CustomRenderFunction = (ctx, shape) => {
 
   // Draw interface name
   ctx.font = `bold ${nameFontSize}px sans-serif`;
-  ctx.fillText(className, 0, -hh + stereotypeHeight + compartmentHeight / 2, width - 10);
+  ctx.fillText(className, 0, -hh + stereotypeHeight + nameHeight / 2, width - 10);
 
-  // Draw methods
+  // Draw attributes
   ctx.font = `${memberFontSize}px sans-serif`;
   ctx.textAlign = 'left';
 
-  const methodStartY = -hh + stereotypeHeight + compartmentHeight + 5;
+  const attrStartY = -hh + stereotypeHeight + nameHeight + 5;
+  attributes.forEach((attr, index) => {
+    const y = attrStartY + (index + 0.5) * lineHeight;
+    if (y > -hh + stereotypeHeight + nameHeight + attrHeight - 5) return;
+
+    const text = `${attr.visibility} ${attr.name}${attr.type ? ': ' + attr.type : ''}`;
+    ctx.fillText(text, -hw + 6, y);
+  });
+
+  // Draw methods
+  const methodStartY = -hh + stereotypeHeight + nameHeight + attrHeight + 5;
   methods.forEach((method, index) => {
     const y = methodStartY + (index + 0.5) * lineHeight;
     if (y > hh - 5) return;
@@ -279,11 +295,10 @@ const renderUMLEnum: CustomRenderFunction = (ctx, shape) => {
 const umlClassProperties: PropertyDefinition[] = [
   ...createStandardProperties({ includeLabel: false }),
   {
-    key: 'customProperties.className',
-    label: 'Class Name',
-    type: 'string',
+    key: 'labelColor',
+    label: 'Text Color',
+    type: 'color',
     section: 'custom',
-    placeholder: 'ClassName',
   },
 ];
 
@@ -331,7 +346,7 @@ export const umlClassShape: LibraryShapeDefinition = {
 
 /**
  * Interface shape - class with stereotype indicator.
- * Represents an interface contract.
+ * Represents an interface contract with attributes and methods.
  */
 export const umlInterfaceShape: LibraryShapeDefinition = {
   type: 'uml-interface',
@@ -344,7 +359,7 @@ export const umlInterfaceShape: LibraryShapeDefinition = {
     supportsLabel: false, // Custom rendering handles text
     supportsIcon: false,
     defaultWidth: 160,
-    defaultHeight: 120,
+    defaultHeight: 140,
     description: 'UML interface with <<interface>> stereotype',
   },
   pathBuilder: (width, height) => {
@@ -352,7 +367,9 @@ export const umlInterfaceShape: LibraryShapeDefinition = {
     const hw = width / 2;
     const hh = height / 2;
     const stereotypeHeight = 20;
-    const compartmentHeight = (height - stereotypeHeight) / 2;
+    const nameHeight = 25;
+    const bodyHeight = height - stereotypeHeight - nameHeight;
+    const attrHeight = bodyHeight / 2;
 
     // Main rectangle
     path.rect(-hw, -hh, width, height);
@@ -361,9 +378,13 @@ export const umlInterfaceShape: LibraryShapeDefinition = {
     path.moveTo(-hw, -hh + stereotypeHeight);
     path.lineTo(hw, -hh + stereotypeHeight);
 
-    // Second divider (name/methods)
-    path.moveTo(-hw, -hh + stereotypeHeight + compartmentHeight);
-    path.lineTo(hw, -hh + stereotypeHeight + compartmentHeight);
+    // Name divider (after stereotype + name section)
+    path.moveTo(-hw, -hh + stereotypeHeight + nameHeight);
+    path.lineTo(hw, -hh + stereotypeHeight + nameHeight);
+
+    // Attributes/Methods divider
+    path.moveTo(-hw, -hh + stereotypeHeight + nameHeight + attrHeight);
+    path.lineTo(hw, -hh + stereotypeHeight + nameHeight + attrHeight);
 
     return path;
   },
