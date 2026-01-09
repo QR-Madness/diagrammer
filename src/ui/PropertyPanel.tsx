@@ -19,7 +19,7 @@ import {
   IconPosition,
   ERDCardinality,
 } from '../shapes/Shape';
-import type { ERDEntityMember } from '../shapes/library/erdShapes';
+import type { ERDEntityMember, ERDEntityCustomProps } from '../shapes/library/erdShapes';
 import type { UMLClassMember } from '../shapes/library/umlClassShapes';
 import { PropertySection } from './PropertySection';
 import { CompactColorInput } from './CompactColorInput';
@@ -442,7 +442,7 @@ function LibraryShapeProperties({
 }
 
 /**
- * ERD Entity properties editor for title and members.
+ * ERD Entity properties editor for title, members, and table styling.
  */
 function ERDEntityProperties({
   shape,
@@ -451,16 +451,17 @@ function ERDEntityProperties({
   shape: LibraryShape;
   updateShape: (id: string, updates: Partial<Shape>) => void;
 }) {
-  // Get custom properties
-  const customProps = (shape.customProperties || {}) as {
-    entityTitle?: string;
-    members?: ERDEntityMember[];
-  };
+  // Get custom properties with table styling
+  const customProps = (shape.customProperties || {}) as ERDEntityCustomProps;
 
   const entityTitle = customProps.entityTitle || '';
   const members = customProps.members || [];
+  const rowSeparatorEnabled = customProps.rowSeparatorEnabled ?? true;
+  const rowSeparatorColor = customProps.rowSeparatorColor || '';
+  const rowBackgroundColor = customProps.rowBackgroundColor || '';
+  const rowAlternateColor = customProps.rowAlternateColor || '';
 
-  const updateCustomProps = useCallback((updates: Partial<typeof customProps>) => {
+  const updateCustomProps = useCallback((updates: Partial<ERDEntityCustomProps>) => {
     updateShape(shape.id, {
       customProperties: {
         ...customProps,
@@ -544,6 +545,39 @@ function ERDEntityProperties({
         <div className="property-hint">
           Check box marks attribute as primary key (underlined)
         </div>
+      </PropertySection>
+
+      <PropertySection id="erd-table-style" title="Table Style" defaultExpanded={false}>
+        <div className="compact-checkbox-row">
+          <label className="compact-checkbox-label">
+            <input
+              type="checkbox"
+              checked={rowSeparatorEnabled}
+              onChange={(e) => updateCustomProps({ rowSeparatorEnabled: e.target.checked })}
+            />
+            Row Separators
+          </label>
+        </div>
+        {rowSeparatorEnabled && (
+          <CompactColorInput
+            label="Separator Color"
+            value={rowSeparatorColor}
+            onChange={(color) => updateCustomProps({ rowSeparatorColor: color })}
+            showNoFill
+          />
+        )}
+        <CompactColorInput
+          label="Row Background"
+          value={rowBackgroundColor}
+          onChange={(color) => updateCustomProps({ rowBackgroundColor: color })}
+          showNoFill
+        />
+        <CompactColorInput
+          label="Alternate Row"
+          value={rowAlternateColor}
+          onChange={(color) => updateCustomProps({ rowAlternateColor: color })}
+          showNoFill
+        />
       </PropertySection>
     </>
   );

@@ -14,16 +14,49 @@ import { Shape, ConnectorShape, AnchorPosition } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 
 /**
- * Direction vectors for each anchor position.
+ * Direction vectors for standard anchor positions.
  * Defines the initial exit direction from an anchor.
  */
-const ANCHOR_DIRECTIONS: Record<AnchorPosition, Vec2> = {
+const STANDARD_ANCHOR_DIRECTIONS: Record<string, Vec2> = {
   top: new Vec2(0, -1),
   bottom: new Vec2(0, 1),
   left: new Vec2(-1, 0),
   right: new Vec2(1, 0),
   center: new Vec2(0, 0), // Center anchor - direction determined by target
 };
+
+/**
+ * Get the direction vector for an anchor position.
+ * Handles both standard anchors ('top', 'left', etc.) and custom anchors
+ * with direction suffixes (e.g., 'attr-0-left', 'attr-2-right').
+ *
+ * @param anchor - The anchor position string
+ * @returns Direction vector, or undefined if direction should be inferred
+ */
+function getAnchorDirection(anchor: AnchorPosition): Vec2 | undefined {
+  // Check standard anchors first
+  if (anchor in STANDARD_ANCHOR_DIRECTIONS) {
+    return STANDARD_ANCHOR_DIRECTIONS[anchor];
+  }
+
+  // Handle custom anchors with direction suffixes
+  // Pattern: '*-left', '*-right', '*-top', '*-bottom'
+  if (anchor.endsWith('-left')) {
+    return STANDARD_ANCHOR_DIRECTIONS['left'];
+  }
+  if (anchor.endsWith('-right')) {
+    return STANDARD_ANCHOR_DIRECTIONS['right'];
+  }
+  if (anchor.endsWith('-top')) {
+    return STANDARD_ANCHOR_DIRECTIONS['top'];
+  }
+  if (anchor.endsWith('-bottom')) {
+    return STANDARD_ANCHOR_DIRECTIONS['bottom'];
+  }
+
+  // Unknown anchor format - return undefined to trigger inference
+  return undefined;
+}
 
 /**
  * Minimum distance to extend from anchor before turning.
@@ -58,11 +91,12 @@ export function calculateOrthogonalPath(
 ): Array<{ x: number; y: number }> {
   // Get exit and entry directions
   // For center anchor or no anchor, infer from relative position
+  // Use getAnchorDirection to handle both standard and custom anchors
   const startDir = startAnchor && startAnchor !== 'center'
-    ? ANCHOR_DIRECTIONS[startAnchor]
+    ? (getAnchorDirection(startAnchor) ?? inferDirection(startPoint, endPoint))
     : inferDirection(startPoint, endPoint);
   const endDir = endAnchor && endAnchor !== 'center'
-    ? ANCHOR_DIRECTIONS[endAnchor]
+    ? (getAnchorDirection(endAnchor) ?? inferDirection(endPoint, startPoint))
     : inferDirection(endPoint, startPoint);
 
   // Calculate stub points (extend from anchors before turning)

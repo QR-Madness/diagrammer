@@ -325,9 +325,15 @@ export function createLibraryShapeHandler(
 
     /**
      * Get connector anchor points.
+     * Uses dynamicAnchors function if provided, otherwise falls back to static anchors array.
      */
     getAnchors(shape: LibraryShape): Anchor[] {
-      return definition.anchors.map((anchorDef) => {
+      // Use dynamic anchors if available (for shapes with instance-dependent anchors like ERD entities)
+      const anchorDefs = definition.dynamicAnchors
+        ? definition.dynamicAnchors(shape, shape.width, shape.height)
+        : definition.anchors;
+
+      return anchorDefs.map((anchorDef) => {
         const localX = anchorDef.x(shape.width, shape.height);
         const localY = anchorDef.y(shape.width, shape.height);
         const world = localToWorld(new Vec2(localX, localY), shape);

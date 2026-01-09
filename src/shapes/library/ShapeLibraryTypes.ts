@@ -37,13 +37,28 @@ export type CustomRenderFunction = (
  * Positions are calculated relative to shape center.
  */
 export interface AnchorDefinition {
-  /** Semantic position (top, right, bottom, left, center) */
+  /** Semantic position identifier (e.g., 'top', 'right', 'attr-0-left') */
   position: AnchorPosition;
   /** X offset calculator from shape center */
   x: (width: number, height: number) => number;
   /** Y offset calculator from shape center */
   y: (width: number, height: number) => number;
 }
+
+/**
+ * Dynamic anchor calculator function.
+ * Use when anchors depend on shape instance data (e.g., member count in ERD entities).
+ *
+ * @param shape - The shape instance to calculate anchors for
+ * @param width - Shape width in world units
+ * @param height - Shape height in world units
+ * @returns Array of anchor definitions for this specific shape instance
+ */
+export type DynamicAnchorsFunction = (
+  shape: LibraryShape,
+  width: number,
+  height: number
+) => AnchorDefinition[];
 
 /**
  * Definition for a library shape type.
@@ -92,6 +107,13 @@ export interface LibraryShapeDefinition {
    * Use when customRender handles all text rendering.
    */
   customLabelRendering?: boolean;
+
+  /**
+   * Optional dynamic anchor calculator.
+   * Use when anchors depend on shape instance data (e.g., member count in ERD entities).
+   * When provided, this function is called instead of using the static 'anchors' array.
+   */
+  dynamicAnchors?: DynamicAnchorsFunction;
 }
 
 /**

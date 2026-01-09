@@ -10,10 +10,11 @@
  * - Cardinality indicators (One, Many, Zero-One, Zero-Many, One-Many)
  */
 
-import type { LibraryShapeDefinition, CustomRenderFunction, AnchorDefinition } from './ShapeLibraryTypes';
+import type { LibraryShapeDefinition, CustomRenderFunction, AnchorDefinition, DynamicAnchorsFunction } from './ShapeLibraryTypes';
 import { createStandardAnchors, createDiamondAnchors } from './ShapeLibraryTypes';
 import { createStandardProperties } from '../ShapeMetadata';
 import type { PropertyDefinition } from '../ShapeMetadata';
+import type { LibraryShape } from '../Shape';
 
 /**
  * Create ellipse anchors with 8 points on the ellipse edge.
@@ -46,8 +47,114 @@ export interface ERDEntityMember {
 }
 
 /**
+ * Custom properties for ERD entity shapes.
+ * Includes entity data and table styling options.
+ */
+export interface ERDEntityCustomProps {
+  /** Entity name displayed in the header */
+  entityTitle?: string;
+  /** List of entity attributes/members */
+  members?: ERDEntityMember[];
+  /** Whether to show row separator lines (default: true) */
+  rowSeparatorEnabled?: boolean;
+  /** Color for row separator lines */
+  rowSeparatorColor?: string;
+  /** Background color for rows */
+  rowBackgroundColor?: string;
+  /** Alternate background color for zebra-striping */
+  rowAlternateColor?: string;
+}
+
+/**
+ * Helper to calculate a row's Y position for anchor placement.
+ * Uses the same logic as renderERDEntity for consistency.
+ */
+function calculateAttributeRowY(height: number, memberCount: number, rowIndex: number, gap: number = 0): number {
+  const headerHeight = Math.min(30, height * 0.35);
+  const hh = height / 2;
+  const bodyTop = -hh + headerHeight + 5;
+  const bodyHeight = height - headerHeight - 10 - gap;
+  const memberFontSize = memberCount > 0 ? Math.min(12, bodyHeight / memberCount * 0.8) : 12;
+  const lineHeight = memberFontSize * 1.4;
+  return bodyTop + (rowIndex + 0.5) * lineHeight;
+}
+
+/**
+ * Create dynamic anchors for ERD entity shapes.
+ * Includes standard anchors plus per-attribute row anchors on left and right sides.
+ */
+const createERDEntityAnchors: DynamicAnchorsFunction = (shape: LibraryShape, _width: number, _height: number): AnchorDefinition[] => {
+  const anchors = [...createStandardAnchors()]; // Start with standard anchors
+
+  const customProps = shape.customProperties as ERDEntityCustomProps | undefined;
+  const members = customProps?.members || [];
+
+  if (members.length === 0) return anchors;
+
+  const memberCount = members.length;
+
+  // Add left and right anchors for each attribute row
+  // Use height parameter in the y function to ensure proper recalculation
+  for (let index = 0; index < memberCount; index++) {
+    const idx = index; // Capture index for closure
+    const count = memberCount; // Capture count for closure
+
+    anchors.push({
+      position: `attr-${idx}-left`,
+      x: (w) => -w / 2,
+      y: (_, h) => calculateAttributeRowY(h, count, idx, 0),
+    });
+
+    anchors.push({
+      position: `attr-${idx}-right`,
+      x: (w) => w / 2,
+      y: (_, h) => calculateAttributeRowY(h, count, idx, 0),
+    });
+  }
+
+  return anchors;
+};
+
+/**
+ * Create dynamic anchors for ERD weak entity shapes.
+ * Same as entity anchors but accounts for the double-border gap.
+ */
+const createERDWeakEntityAnchors: DynamicAnchorsFunction = (shape: LibraryShape, _width: number, _height: number): AnchorDefinition[] => {
+  const anchors = [...createStandardAnchors()]; // Start with standard anchors
+
+  const customProps = shape.customProperties as ERDEntityCustomProps | undefined;
+  const members = customProps?.members || [];
+  const gap = 4; // Same gap as used in pathBuilder
+
+  if (members.length === 0) return anchors;
+
+  const memberCount = members.length;
+
+  // Add left and right anchors for each attribute row
+  // Use height parameter in the y function to ensure proper recalculation
+  for (let index = 0; index < memberCount; index++) {
+    const idx = index; // Capture index for closure
+    const count = memberCount; // Capture count for closure
+
+    anchors.push({
+      position: `attr-${idx}-left`,
+      x: (w) => -w / 2,
+      y: (_, h) => calculateAttributeRowY(h, count, idx, gap),
+    });
+
+    anchors.push({
+      position: `attr-${idx}-right`,
+      x: (w) => w / 2,
+      y: (_, h) => calculateAttributeRowY(h, count, idx, gap),
+    });
+  }
+
+  return anchors;
+};
+
+/**
  * Custom render function for ERD entities.
- * Renders title in header and members in body.
+ * Renders title in header, members in body, with optional table styling.
  */
 const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
   const { width, height, stroke } = shape;
@@ -55,14 +162,17 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
   const hh = height / 2;
   const headerHeight = Math.min(30, height * 0.35);
 
-  // Get custom properties
-  const customProps = shape.customProperties as {
-    entityTitle?: string;
-    members?: ERDEntityMember[];
-  } | undefined;
+  // Get custom properties with table styling
+  const customProps = shape.customProperties as ERDEntityCustomProps | undefined;
 
   const title = customProps?.entityTitle || shape.label || 'Entity';
   const members = customProps?.members || [];
+
+  // Table styling options
+  const rowSeparatorEnabled = customProps?.rowSeparatorEnabled ?? true;
+  const rowSeparatorColor = customProps?.rowSeparatorColor || stroke || '#cccccc';
+  const rowBgColor = customProps?.rowBackgroundColor;
+  const rowAltColor = customProps?.rowAlternateColor;
 
   // Draw title in header
   const titleFontSize = Math.min(14, headerHeight * 0.6);
@@ -79,6 +189,32 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
     const lineHeight = memberFontSize * 1.4;
 
+    // Draw row backgrounds (if configured)
+    if (rowBgColor || rowAltColor) {
+      members.forEach((_, index) => {
+        const rowTop = bodyTop + index * lineHeight - lineHeight * 0.2;
+        const bgColor = (index % 2 === 0) ? rowBgColor : (rowAltColor || rowBgColor);
+        if (bgColor) {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(-hw + 2, rowTop, width - 4, lineHeight);
+        }
+      });
+    }
+
+    // Draw row separator lines (if enabled)
+    if (rowSeparatorEnabled && members.length > 1) {
+      ctx.strokeStyle = rowSeparatorColor;
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i < members.length; i++) {
+        const y = bodyTop + i * lineHeight - lineHeight * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(-hw + 4, y);
+        ctx.lineTo(hw - 4, y);
+        ctx.stroke();
+      }
+    }
+
+    // Draw member text
     ctx.font = `${memberFontSize}px sans-serif`;
     ctx.textAlign = 'left';
 
@@ -88,6 +224,8 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
       const x = -hw + 8;
+
+      ctx.fillStyle = shape.labelColor || stroke || '#000000';
 
       // Underline for primary key
       if (member.isPrimaryKey) {
@@ -108,7 +246,7 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
 
 /**
  * Custom render function for ERD weak entities.
- * Similar to entity but with double border consideration.
+ * Similar to entity but with double border consideration and table styling.
  */
 const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
   const { width, height, stroke } = shape;
@@ -117,14 +255,17 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
   const gap = 4;
   const headerHeight = Math.min(30, height * 0.35);
 
-  // Get custom properties
-  const customProps = shape.customProperties as {
-    entityTitle?: string;
-    members?: ERDEntityMember[];
-  } | undefined;
+  // Get custom properties with table styling
+  const customProps = shape.customProperties as ERDEntityCustomProps | undefined;
 
   const title = customProps?.entityTitle || shape.label || 'Weak Entity';
   const members = customProps?.members || [];
+
+  // Table styling options
+  const rowSeparatorEnabled = customProps?.rowSeparatorEnabled ?? true;
+  const rowSeparatorColor = customProps?.rowSeparatorColor || stroke || '#cccccc';
+  const rowBgColor = customProps?.rowBackgroundColor;
+  const rowAltColor = customProps?.rowAlternateColor;
 
   // Draw title in header (inside inner rectangle)
   const titleFontSize = Math.min(14, (headerHeight - gap) * 0.6);
@@ -141,6 +282,32 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
     const lineHeight = memberFontSize * 1.4;
 
+    // Draw row backgrounds (if configured)
+    if (rowBgColor || rowAltColor) {
+      members.forEach((_, index) => {
+        const rowTop = bodyTop + index * lineHeight - lineHeight * 0.2;
+        const bgColor = (index % 2 === 0) ? rowBgColor : (rowAltColor || rowBgColor);
+        if (bgColor) {
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(-hw + gap + 2, rowTop, width - gap * 2 - 4, lineHeight);
+        }
+      });
+    }
+
+    // Draw row separator lines (if enabled)
+    if (rowSeparatorEnabled && members.length > 1) {
+      ctx.strokeStyle = rowSeparatorColor;
+      ctx.lineWidth = 0.5;
+      for (let i = 1; i < members.length; i++) {
+        const y = bodyTop + i * lineHeight - lineHeight * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(-hw + gap + 4, y);
+        ctx.lineTo(hw - gap - 4, y);
+        ctx.stroke();
+      }
+    }
+
+    // Draw member text
     ctx.font = `${memberFontSize}px sans-serif`;
     ctx.textAlign = 'left';
 
@@ -150,6 +317,8 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
       const x = -hw + gap + 8;
+
+      ctx.fillStyle = shape.labelColor || stroke || '#000000';
 
       // Underline for primary key
       if (member.isPrimaryKey) {
@@ -216,6 +385,7 @@ export const erdEntityShape: LibraryShapeDefinition = {
     return path;
   },
   anchors: createStandardAnchors(),
+  dynamicAnchors: createERDEntityAnchors,
   customRender: renderERDEntity,
   customLabelRendering: true,
 };
@@ -258,6 +428,7 @@ export const erdWeakEntityShape: LibraryShapeDefinition = {
     return path;
   },
   anchors: createStandardAnchors(),
+  dynamicAnchors: createERDWeakEntityAnchors,
   customRender: renderERDWeakEntity,
   customLabelRendering: true,
 };

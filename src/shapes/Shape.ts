@@ -58,9 +58,20 @@ export const CORE_SHAPE_TYPES: readonly CoreShapeType[] = [
 export type ShapeType = CoreShapeType | string;
 
 /**
- * Anchor position on a shape for connectors.
+ * Anchor position identifier on a shape for connectors.
+ *
+ * Well-known values: 'top', 'right', 'bottom', 'left', 'center'
+ * Custom values for per-attribute anchors: 'attr-{index}-left', 'attr-{index}-right'
+ *
+ * String type allows shapes to define custom anchor positions beyond the standard 5.
  */
-export type AnchorPosition = 'top' | 'right' | 'bottom' | 'left' | 'center';
+export type AnchorPosition = string;
+
+/**
+ * Well-known anchor positions.
+ * These are the standard positions available on most shapes.
+ */
+export const STANDARD_ANCHOR_POSITIONS = ['top', 'right', 'bottom', 'left', 'center'] as const;
 
 /**
  * Anchor point on a shape.
