@@ -492,6 +492,20 @@ function ERDEntityProperties({
     updateCustomProps({ members: newMembers });
   }, [members, updateCustomProps]);
 
+  const handleMoveMember = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= members.length) return;
+    const newMembers = [...members];
+    const [moved] = newMembers.splice(fromIndex, 1);
+    if (moved) {
+      newMembers.splice(toIndex, 0, moved);
+      updateCustomProps({ members: newMembers });
+    }
+  }, [members, updateCustomProps]);
+
+  // Drag state for reordering
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   return (
     <>
       <PropertySection id="erd-entity" title="Entity" defaultExpanded>
@@ -510,7 +524,31 @@ function ERDEntityProperties({
       <PropertySection id="erd-members" title="Attributes" defaultExpanded>
         <div className="erd-members-list">
           {members.map((member, index) => (
-            <div key={index} className="erd-member-row">
+            <div
+              key={index}
+              className={`erd-member-row${dragIndex === index ? ' dragging' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
+              draggable
+              onDragStart={(e) => {
+                setDragIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => {
+                if (dragIndex !== null && dragOverIndex !== null) {
+                  handleMoveMember(dragIndex, dragOverIndex);
+                }
+                setDragIndex(null);
+                setDragOverIndex(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDragOverIndex(index);
+              }}
+              onDragLeave={() => {
+                setDragOverIndex(null);
+              }}
+            >
+              <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
               <input
                 type="checkbox"
                 checked={member.isPrimaryKey}
@@ -546,7 +584,7 @@ function ERDEntityProperties({
           + Add Attribute
         </button>
         <div className="property-hint">
-          Check box marks attribute as primary key (underlined)
+          Check box marks attribute as primary key (underlined). Drag to reorder.
         </div>
       </PropertySection>
 
@@ -652,6 +690,35 @@ function UMLClassProperties({
     updateCustomProps({ methods: newMethods });
   }, [methods, updateCustomProps]);
 
+  // Move handlers for reordering
+  const handleMoveAttribute = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= attributes.length) return;
+    const newAttrs = [...attributes];
+    const [moved] = newAttrs.splice(fromIndex, 1);
+    if (moved) {
+      newAttrs.splice(toIndex, 0, moved);
+      updateCustomProps({ attributes: newAttrs });
+    }
+  }, [attributes, updateCustomProps]);
+
+  const handleMoveMethod = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= methods.length) return;
+    const newMethods = [...methods];
+    const [moved] = newMethods.splice(fromIndex, 1);
+    if (moved) {
+      newMethods.splice(toIndex, 0, moved);
+      updateCustomProps({ methods: newMethods });
+    }
+  }, [methods, updateCustomProps]);
+
+  // Drag state for attributes
+  const [attrDragIndex, setAttrDragIndex] = useState<number | null>(null);
+  const [attrDragOverIndex, setAttrDragOverIndex] = useState<number | null>(null);
+
+  // Drag state for methods
+  const [methodDragIndex, setMethodDragIndex] = useState<number | null>(null);
+  const [methodDragOverIndex, setMethodDragOverIndex] = useState<number | null>(null);
+
   return (
     <>
       <PropertySection id="uml-class" title="Class" defaultExpanded>
@@ -670,7 +737,31 @@ function UMLClassProperties({
       <PropertySection id="uml-attributes" title="Attributes" defaultExpanded>
         <div className="uml-members-list">
           {attributes.map((attr, index) => (
-            <div key={index} className="uml-member-row">
+            <div
+              key={index}
+              className={`uml-member-row${attrDragIndex === index ? ' dragging' : ''}${attrDragOverIndex === index ? ' drag-over' : ''}`}
+              draggable
+              onDragStart={(e) => {
+                setAttrDragIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => {
+                if (attrDragIndex !== null && attrDragOverIndex !== null) {
+                  handleMoveAttribute(attrDragIndex, attrDragOverIndex);
+                }
+                setAttrDragIndex(null);
+                setAttrDragOverIndex(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setAttrDragOverIndex(index);
+              }}
+              onDragLeave={() => {
+                setAttrDragOverIndex(null);
+              }}
+            >
+              <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
               <select
                 value={attr.visibility}
                 onChange={(e) => handleUpdateAttribute(index, { visibility: e.target.value as UMLClassMember['visibility'] })}
@@ -721,7 +812,31 @@ function UMLClassProperties({
       <PropertySection id="uml-methods" title="Methods" defaultExpanded>
         <div className="uml-members-list">
           {methods.map((method, index) => (
-            <div key={index} className="uml-member-row">
+            <div
+              key={index}
+              className={`uml-member-row${methodDragIndex === index ? ' dragging' : ''}${methodDragOverIndex === index ? ' drag-over' : ''}`}
+              draggable
+              onDragStart={(e) => {
+                setMethodDragIndex(index);
+                e.dataTransfer.effectAllowed = 'move';
+              }}
+              onDragEnd={() => {
+                if (methodDragIndex !== null && methodDragOverIndex !== null) {
+                  handleMoveMethod(methodDragIndex, methodDragOverIndex);
+                }
+                setMethodDragIndex(null);
+                setMethodDragOverIndex(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setMethodDragOverIndex(index);
+              }}
+              onDragLeave={() => {
+                setMethodDragOverIndex(null);
+              }}
+            >
+              <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
               <select
                 value={method.visibility}
                 onChange={(e) => handleUpdateMethod(index, { visibility: e.target.value as UMLClassMember['visibility'] })}
@@ -768,7 +883,7 @@ function UMLClassProperties({
           + Add Method
         </button>
         <div className="property-hint">
-          Visibility: + public, - private, # protected, ~ package
+          Visibility: + public, - private, # protected, ~ package. Drag to reorder.
         </div>
       </PropertySection>
     </>

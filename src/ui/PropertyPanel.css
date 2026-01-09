@@ -731,6 +731,22 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  cursor: grab;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.erd-member-row:active {
+  cursor: grabbing;
+}
+
+.erd-member-row.dragging {
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+}
+
+.erd-member-row.drag-over {
+  background: var(--color-primary-light, rgba(33, 150, 243, 0.15));
+  border-radius: 4px;
 }
 
 .erd-member-pk {
@@ -826,6 +842,22 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  cursor: grab;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.uml-member-row:active {
+  cursor: grabbing;
+}
+
+.uml-member-row.dragging {
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+}
+
+.uml-member-row.drag-over {
+  background: var(--color-primary-light, rgba(33, 150, 243, 0.15));
+  border-radius: 4px;
 }
 
 .uml-member-visibility {
@@ -963,4 +995,30 @@
 
 [data-theme="dark"] .preset-button:hover {
   background: var(--bg-hover, #2a2d2e);
+}
+
+/* Drag Handle for Member Reordering */
+.member-drag-handle {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 0.75rem;
+  color: var(--text-muted, var(--text-secondary));
+  cursor: grab;
+  user-select: none;
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.member-drag-handle:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
+.member-drag-handle:active {
+  cursor: grabbing;
+}
+
+.erd-member-row.dragging .member-drag-handle,
+.uml-member-row.dragging .member-drag-handle {
+  opacity: 0.3;
 }
