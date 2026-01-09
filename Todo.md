@@ -56,7 +56,7 @@ implementation phase as defined in Specification.Readme.md.
 - [x] Dark mode with system detection
 - [x] Immersive controls (WASD/Arrow pan, Q/E zoom)
 
-### High Priority - Core Improvements
+### Phase 6: Core Improvements - COMPLETE
 
 #### Text Editing
 
@@ -77,8 +77,6 @@ implementation phase as defined in Specification.Readme.md.
   - Align selected shapes (left, center, right, top, middle, bottom)
   - Distribute selected shapes (horizontal, vertical)
   - AlignmentPanel component with visual icon buttons
-
-### Medium Priority - Extended Features
 
 #### Layer Management
 
@@ -111,8 +109,6 @@ implementation phase as defined in Specification.Readme.md.
   - Transform group as single unit
   - Select individual shapes within group
 
-### Lower Priority - Export & Polish
-
 #### Export Features
 
 - [x] Export to PNG
@@ -138,7 +134,7 @@ implementation phase as defined in Specification.Readme.md.
   - Tool-specific options when no selection
   - Styled to match dark/light theme
 
-### Phase 7: Multi-Page & Persistence
+### Phase 7: Multi-Page & Persistence - COMPLETE
 
 - [x] Multi-page documents
 - [x] Offline-first with localStorage persistence
@@ -146,7 +142,7 @@ implementation phase as defined in Specification.Readme.md.
 - [x] Export/import document JSON
 - [x] Local path for saving documents (optional)
 
-### Phase 8: Rich Documentation
+### Phase 8: Rich Documentation - COMPLETE
 
 - [x] RTF document editor (similar to Eraser.io)
   - Headings, paragraphs, bold, italic
@@ -227,7 +223,7 @@ implementation phase as defined in Specification.Readme.md.
   - Icons rendered using cached HTMLImageElement for performance
   - StorageManager updated with Icons tab for management
 
-### Phase 10.5: Shape Libraries
+### Phase 10.5: Shape Libraries - COMPLETE
 
 - [x] Shape libraries (basics, flowcharts, UML barebones, and **eventually** stuff like BPMN, swimlanes, etc.)
   - _Concepts to keep in mind:_
@@ -268,9 +264,9 @@ implementation phase as defined in Specification.Readme.md.
 - [x] Fix group layer-order visibility issues; when I grouped a text and shape together with my text on top, the grouping moved my text to the bottom and went invisible even though it was above the shape within the layer-order
 - [x] Shapes have no available icons in the property panel
 
-### Phase 11: Advanced Shape Toolsets
+### Phase 11: Advanced Shape Toolsets - COMPLETE
 
-#### 11.1 - Property Panel Overhaul - COMPLETE
+#### Phase 11.1: Property Panel Overhaul - COMPLETE
 
 - [x] Icon picker dropdown is buried underneath property panel elements (messed-up-z-order)
   - Fixed using React Portal to render dropdown at document body level
@@ -291,7 +287,7 @@ implementation phase as defined in Specification.Readme.md.
   - Label offset X/Y properties for positioning labels away from center
   - PropertyPanel controls for all label styling options
 
-#### 11.2 Context Menu Upgrades - COMPLETE
+#### Phase 11.2: Context Menu Upgrades - COMPLETE
 
 - [x] Implement multi-option entries support (submenu on hover)
   - Created reusable Submenu component with hover delay
@@ -300,7 +296,7 @@ implementation phase as defined in Specification.Readme.md.
   - Lock Position, Lock Size, Lock All options
   - SelectTool respects lock properties
 
-#### 11.3 Layer Panel Upgrades - COMPLETE
+#### Phase 11.3: Layer Panel Upgrades - COMPLETE
 
 - [x] Color layers/groups (layers inherit colors of a group if they don't have a color, ensure inherited colors lose their inheritance when moved out of a group, and remember group->group inheritance)
   - Added `layerColor` property to GroupShape
@@ -320,7 +316,7 @@ implementation phase as defined in Specification.Readme.md.
   - Displays truncated label/text content below shape type
   - Works for Rectangle, Ellipse, Text, Connector, and LibraryShape
 
-#### 11.4 Common Settings - COMPLETE
+#### Phase 11.4: Common Settings - COMPLETE
 
 - Implemented 'Common Settings' area in the settings modal which contains the following:
   - [x] Default connector type (default orthogonal) - ConnectorTool reads from settingsStore
@@ -347,7 +343,7 @@ implementation phase as defined in Specification.Readme.md.
   - [x] Save Icon Style to Style Profile (on by default)
   - [x] Save Label Style to Style Profile (on by default)
 
-#### 11.5 Advanced Group Style Properties - COMPLETE
+#### Phase 11.5: Advanced Group Style Properties - COMPLETE
 
 - Implemented the following properties for groups:
   - [x] Background Color, and Background-Pattern Support (solid, stripes, hazard stripes, linear/radial gradients)
@@ -379,7 +375,7 @@ implementation phase as defined in Specification.Readme.md.
   - PDFExportStore for persisting export preferences
   - Tiptap JSON content parsing with support for headings, paragraphs, lists, code blocks, blockquotes, images, and horizontal rules
 
-#### Phase 12.2: Embeddable Diagram Groups - COMPLETE
+### Phase 12.2: Embeddable Diagram Groups - COMPLETE
 
 - [x] Implement an embeddable diagram system into the tiptap editor that allows users to:
   - Open the context menu and add a group to the rich text document at the cursor
@@ -422,33 +418,33 @@ implementation phase as defined in Specification.Readme.md.
   - [ ] Implement a permissions centre that controls the following:
 - [ ] Create a login page for team members to access team documents on the host's computer
 
-#### Phase 14.2 UX Improvements
+#### Phase 14.2: UX Improvements
 
-##### Phase 14.20 - UX Improvements - Chunk 1
+##### Phase 14.2.1: UX Improvements - Chunk 1
 
 - [ ] Make the canvas not-focused effect more friendly the red border is annoying; consider a light blue top-border or similar
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle); also add a toggle for this in settings
 - [ ] Context menu for style profiles clips overflows outside of window viewport
 - [ ] Add border radius for group-labels
 
-##### Phase 14.21 - UX Improvements - Chunk 2
+##### Phase 14.2.2: UX Improvements - Chunk 2
 
 - [ ] Smart-alignment for shape resize
 - [ ] Allow LaTeX equations for shape text by prepending `=` to the
 - [ ] Return focus to canvas when the layer panel is collapsed
 
-##### Phase 14.22 - UX Improvements - Chunk 3
+##### Phase 14.2.3: UX Improvements - Chunk 3
 
 - [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
 - [ ] Cool saving/saved icon+animation
 - [ ] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
 
-##### Phase 14.22 - UX Improvements - Chunk 4
+##### Phase 14.2.4: UX Improvements - Chunk 4
 
 - [ ] Translate selected items using arrow keys
 - [ ] Add a test regex button to layer view creator to check results
 
-##### Phase 14.3 Rich Document Editor Upgrades
+#### Phase 14.3: Rich Document Editor Upgrades
 
 - [ ] Tiptap Tables
 - [ ] LaTeX Equation Support
@@ -465,53 +461,53 @@ Replace this list with your own checklists of areas needed for improvement befor
 
 ### Phase 15: Version 1.0
 
-#### Phase 15.1 - Local Help System with GitHub Docs Capability
+#### Phase 15.1: Local Help System with GitHub Docs Capability
 
 - [ ] Implement a local help system (consider a markdown server of some sort)
 
-#### Phase 15.2
+#### Phase 15.2: Release Build
 
 - [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
 
-#### Phase 15.3
+#### Phase 15.3: Release Pipeline
 
 - [ ] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
 - [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
 
-### Phase 16: Advanced Diagram Patterns – Version 1.1
+### Phase 16: Advanced Diagram Patterns (Version 1.1)
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns
 - [ ] Swimlane customization
 
-### Phase ??: Auto-Update
+### Future: Auto-Update
 
 - [ ] Implement a feature which can scan the GitHub repo for updates and check if a new version exists
 - [ ] Implement a feature to update the application **without** user commands or manual download+installation
 
-### Phase ??: Publisher Module
+### Future: Publisher Module
 
 - [ ] Implement a 'Publisher' module to implement the following requirements:
   - [ ] Create publish configurations to manage the publisher's export locations
   - [ ] Run a publish configuration to export various types of media (e.g. PDF, SVG, JSON) to a single, or multiple configured paths on the computer.
   - Keep it extensible to support exporting to cloud locations in the future.
 
-### Phase ??: Document Cloud Providers
+### Future: Document Cloud Providers
 
 - [ ] Implement support
 
-### Phase ??: Comprehensive Local Help System - Version ?.?
+### Future: Comprehensive Local Help System
 
 - [ ] Implement a local help documentation system with integrated search and navigation
 - [ ] Create a comprehensive help guide for the application
 
-### Phase ???: Advanced Themes
+### Future: Advanced Themes
 
 - [ ] Implement Advanced Themes
 
-### Phase ??: Canvas Code Integration with Git – Version ?.?
+### Future: Canvas Code Integration with Git
 
 - [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and
       others in the future
@@ -520,7 +516,7 @@ Replace this list with your own checklists of areas needed for improvement befor
       /docs/diagrammer.json)
 - [ ] Feat: Spawn a VS Code instance with access to Git repo
 
-### Phase ??: FUTURE: AI Model Integration (Epic - Large Task with Multiple Components) – Version ?.?
+### Future: AI Model Integration
 
 - [ ] Implement a pipeline for model usage and integration with the application
 - [ ] Implement AI-powered diagram analysis

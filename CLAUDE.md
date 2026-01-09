@@ -186,7 +186,7 @@ Completed phases:
 
 Current: Phase 11.5 (Common Settings) and beyond.
 
-See Todo.Readme.md for detailed task tracking.
+See Todo.md for detailed task tracking.
 
 ## Key Architectural Decisions
 

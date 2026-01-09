@@ -3,7 +3,7 @@
 A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API.
 
 > **Note:** This project is currently in development.
-> See the complete roadmap [here](Todo.Readme.md).
+> See the complete roadmap [here](Todo.md).
 
 ## Quick Start
 
@@ -38,7 +38,7 @@ bun run build
 
 ## Development
 
-See `Todo.Readme.md` for the implementation roadmap.
+See `Todo.md` for the implementation roadmap.
 
 See `Specification.Readme.md` for detailed architecture and specifications.
 
