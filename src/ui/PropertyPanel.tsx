@@ -18,6 +18,9 @@ import {
   RoutingMode,
   IconPosition,
   ERDCardinality,
+  ConnectorType,
+  LineStyle,
+  UMLClassMarker,
 } from '../shapes/Shape';
 import type { ERDEntityMember, ERDEntityCustomProps } from '../shapes/library/erdShapes';
 import type { UMLClassMember } from '../shapes/library/umlClassShapes';
@@ -1499,9 +1502,212 @@ export function PropertyPanel() {
           </PropertySection>
         )}
 
-        {/* Connector Cardinality Section (ERD Crow's Foot) */}
+        {/* Connector Type Section */}
         {isConnector(shape) && (
-          <PropertySection id="connector-cardinality" title="ERD Cardinality" defaultExpanded={false}>
+          <PropertySection id="connector-type" title="Connector Type" defaultExpanded>
+            <div className="compact-select-row">
+              <label className="compact-select-label">Type</label>
+              <select
+                value={shape.connectorType || 'default'}
+                onChange={(e) => {
+                  const val = e.target.value as ConnectorType;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      // Reset type-specific properties when changing type
+                      // Use 'none' as reset value (effectively disables the markers)
+                      const updates: Partial<typeof s> = { connectorType: val };
+                      if (val !== 'erd') {
+                        updates.startCardinality = 'none';
+                        updates.endCardinality = 'none';
+                      }
+                      if (val !== 'uml-class') {
+                        updates.startUMLMarker = 'none';
+                        updates.endUMLMarker = 'none';
+                      }
+                      updateShape(s.id, updates);
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="default">Default (Arrows)</option>
+                <option value="erd">ERD (Crow's Foot)</option>
+                <option value="uml-class">UML Class Diagram</option>
+              </select>
+            </div>
+            <div className="compact-select-row">
+              <label className="compact-select-label">Line Style</label>
+              <select
+                value={shape.lineStyle || 'solid'}
+                onChange={(e) => {
+                  const val = e.target.value as LineStyle;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, { lineStyle: val });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+              </select>
+            </div>
+          </PropertySection>
+        )}
+
+        {/* UML Class Diagram Markers Section */}
+        {isConnector(shape) && shape.connectorType === 'uml-class' && (
+          <PropertySection id="uml-markers" title="UML Markers" defaultExpanded>
+            <div className="compact-select-row">
+              <label className="compact-select-label">Start</label>
+              <select
+                value={shape.startUMLMarker || 'none'}
+                onChange={(e) => {
+                  const val = e.target.value as UMLClassMarker;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, { startUMLMarker: val });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="none">None</option>
+                <option value="arrow">Arrow (navigable)</option>
+                <option value="triangle">Triangle (inheritance)</option>
+                <option value="triangle-filled">Triangle Filled</option>
+                <option value="diamond">Diamond (aggregation)</option>
+                <option value="diamond-filled">Diamond Filled (composition)</option>
+                <option value="circle">Circle (interface)</option>
+                <option value="socket">Socket (required interface)</option>
+              </select>
+            </div>
+            <div className="compact-select-row">
+              <label className="compact-select-label">End</label>
+              <select
+                value={shape.endUMLMarker || 'none'}
+                onChange={(e) => {
+                  const val = e.target.value as UMLClassMarker;
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, { endUMLMarker: val });
+                    }
+                  });
+                }}
+                className="compact-select"
+              >
+                <option value="none">None</option>
+                <option value="arrow">Arrow (navigable)</option>
+                <option value="triangle">Triangle (inheritance)</option>
+                <option value="triangle-filled">Triangle Filled</option>
+                <option value="diamond">Diamond (aggregation)</option>
+                <option value="diamond-filled">Diamond Filled (composition)</option>
+                <option value="circle">Circle (interface)</option>
+                <option value="socket">Socket (required interface)</option>
+              </select>
+            </div>
+            <div className="property-hint">
+              Quick presets:
+            </div>
+            <div className="preset-buttons">
+              <button
+                className="preset-button"
+                title="Association (solid line)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'solid',
+                        startUMLMarker: 'none',
+                        endUMLMarker: 'none',
+                      });
+                    }
+                  });
+                }}
+              >—</button>
+              <button
+                className="preset-button"
+                title="Aggregation (hollow diamond)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'solid',
+                        startUMLMarker: 'diamond',
+                        endUMLMarker: 'none',
+                      });
+                    }
+                  });
+                }}
+              >◇—</button>
+              <button
+                className="preset-button"
+                title="Composition (filled diamond)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'solid',
+                        startUMLMarker: 'diamond-filled',
+                        endUMLMarker: 'none',
+                      });
+                    }
+                  });
+                }}
+              >◆—</button>
+              <button
+                className="preset-button"
+                title="Inheritance (hollow triangle)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'solid',
+                        startUMLMarker: 'none',
+                        endUMLMarker: 'triangle',
+                      });
+                    }
+                  });
+                }}
+              >—▷</button>
+              <button
+                className="preset-button"
+                title="Realization (dashed + triangle)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'dashed',
+                        startUMLMarker: 'none',
+                        endUMLMarker: 'triangle',
+                      });
+                    }
+                  });
+                }}
+              >- -▷</button>
+              <button
+                className="preset-button"
+                title="Dependency (dashed + arrow)"
+                onClick={() => {
+                  selectedShapes.forEach((s) => {
+                    if (isConnector(s)) {
+                      updateShape(s.id, {
+                        lineStyle: 'dashed',
+                        startUMLMarker: 'none',
+                        endUMLMarker: 'arrow',
+                      });
+                    }
+                  });
+                }}
+              >- -&gt;</button>
+            </div>
+          </PropertySection>
+        )}
+
+        {/* Connector Cardinality Section (ERD Crow's Foot) - only show when connectorType is 'erd' */}
+        {isConnector(shape) && (shape.connectorType === 'erd' || (!shape.connectorType && (shape.startCardinality || shape.endCardinality))) && (
+          <PropertySection id="connector-cardinality" title="ERD Cardinality" defaultExpanded>
             <div className="compact-select-row">
               <label className="compact-select-label">Start</label>
               <select

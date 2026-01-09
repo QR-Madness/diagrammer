@@ -64,11 +64,5 @@ export {
   umlEnumShape,
   umlPackageShape,
   umlNoteShape,
-  umlAssociationShape,
-  umlAggregationShape,
-  umlCompositionShape,
-  umlInheritanceShape,
-  umlRealizationShape,
-  umlDependencyShape,
   umlClassShapes,
 } from './umlClassShapes';

@@ -923,3 +923,44 @@
   background: var(--bg-secondary, #252526);
   border-color: var(--border-color, #404040);
 }
+
+/* UML Preset Buttons */
+.preset-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.preset-button {
+  padding: 4px 8px;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 32px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.preset-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.preset-button:active {
+  background: var(--color-primary-light, rgba(33, 150, 243, 0.15));
+}
+
+[data-theme="dark"] .preset-button {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .preset-button:hover {
+  background: var(--bg-hover, #2a2d2e);
+}

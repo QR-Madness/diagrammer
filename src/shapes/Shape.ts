@@ -226,6 +226,35 @@ export type ERDCardinality =
   | 'one-many'; // Line + crow's foot (one or many)
 
 /**
+ * Connector type for diagram-specific connector behavior.
+ * Determines which marker/cardinality systems are available.
+ */
+export type ConnectorType =
+  | 'default'       // Standard connector with arrows
+  | 'erd'           // ERD Crow's Foot notation
+  | 'uml-class'     // UML Class Diagram relationships
+  | 'uml-sequence'; // Future: UML Sequence Diagram
+
+/**
+ * Line style for connectors.
+ */
+export type LineStyle = 'solid' | 'dashed';
+
+/**
+ * UML Class Diagram marker styles for connector endpoints.
+ * Used for start and end markers on UML class connectors.
+ */
+export type UMLClassMarker =
+  | 'none'              // No marker
+  | 'arrow'             // Open arrow (V shape) - for navigable association
+  | 'triangle'          // Hollow triangle - for inheritance/generalization
+  | 'triangle-filled'   // Filled triangle - rarely used, but available
+  | 'diamond'           // Hollow diamond - for aggregation
+  | 'diamond-filled'    // Filled diamond - for composition
+  | 'circle'            // Small circle - for interface ball notation
+  | 'socket';           // Arc/socket - for interface socket notation
+
+/**
  * Connector shape that connects two shapes.
  */
 export interface ConnectorShape extends BaseShape {
@@ -268,6 +297,14 @@ export interface ConnectorShape extends BaseShape {
   startCardinality?: ERDCardinality;
   /** ERD cardinality notation at end point (overrides endArrow) */
   endCardinality?: ERDCardinality;
+  /** Connector type for diagram-specific behavior */
+  connectorType?: ConnectorType;
+  /** Line style: solid or dashed */
+  lineStyle?: LineStyle;
+  /** UML Class marker at start point (used when connectorType is 'uml-class') */
+  startUMLMarker?: UMLClassMarker;
+  /** UML Class marker at end point (used when connectorType is 'uml-class') */
+  endUMLMarker?: UMLClassMarker;
 }
 
 /**
@@ -544,6 +581,8 @@ export const DEFAULT_CONNECTOR = {
   startArrow: false,
   endArrow: true,
   routingMode: 'orthogonal' as RoutingMode,
+  connectorType: 'default' as ConnectorType,
+  lineStyle: 'solid' as LineStyle,
 } as const;
 
 /**

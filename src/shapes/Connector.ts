@@ -8,6 +8,7 @@ import {
   Shape,
   DEFAULT_CONNECTOR,
   ERDCardinality,
+  UMLClassMarker,
 } from './Shape';
 
 /**
@@ -198,6 +199,123 @@ function drawCardinalitySymbol(
 }
 
 /**
+ * Draw UML class marker at a connector endpoint.
+ * The symbol is drawn aligned with the line direction.
+ *
+ * @param ctx - Canvas context
+ * @param point - The endpoint position
+ * @param angle - The angle of the line approaching this point (in radians)
+ * @param marker - The UML marker type to draw
+ * @param strokeWidth - Base stroke width for scaling
+ * @param strokeColor - Stroke color for the marker
+ * @param fillColor - Fill color for hollow markers (typically background color)
+ */
+function drawUMLClassMarker(
+  ctx: CanvasRenderingContext2D,
+  point: Vec2,
+  angle: number,
+  marker: UMLClassMarker,
+  strokeWidth: number,
+  strokeColor: string,
+  fillColor: string | null
+): void {
+  if (marker === 'none') return;
+
+  const size = Math.max(12, strokeWidth * 4);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.rotate(angle);
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  switch (marker) {
+    case 'arrow': {
+      // Open arrow (V shape, not filled) - for navigable association
+      const arrowAngle = Math.PI / 6; // 30 degrees
+      ctx.beginPath();
+      ctx.moveTo(-size * Math.cos(arrowAngle), -size * Math.sin(arrowAngle));
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-size * Math.cos(arrowAngle), size * Math.sin(arrowAngle));
+      ctx.stroke();
+      break;
+    }
+
+    case 'triangle':
+    case 'triangle-filled': {
+      // Hollow or filled triangle - for inheritance/generalization
+      const triHeight = size;
+      const triWidth = size * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-triHeight, -triWidth / 2);
+      ctx.lineTo(-triHeight, triWidth / 2);
+      ctx.closePath();
+
+      if (marker === 'triangle-filled') {
+        ctx.fillStyle = strokeColor;
+        ctx.fill();
+      } else {
+        // Hollow triangle - fill with background color
+        ctx.fillStyle = fillColor || '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'diamond':
+    case 'diamond-filled': {
+      // Hollow or filled diamond - for aggregation/composition
+      const diamondLength = size;
+      const diamondWidth = size * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-diamondLength / 2, -diamondWidth / 2);
+      ctx.lineTo(-diamondLength, 0);
+      ctx.lineTo(-diamondLength / 2, diamondWidth / 2);
+      ctx.closePath();
+
+      if (marker === 'diamond-filled') {
+        ctx.fillStyle = strokeColor;
+        ctx.fill();
+      } else {
+        // Hollow diamond - fill with background color
+        ctx.fillStyle = fillColor || '#ffffff';
+        ctx.fill();
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case 'circle': {
+      // Small circle - for interface ball notation
+      const radius = size / 3;
+      ctx.beginPath();
+      ctx.arc(-radius - 2, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = fillColor || '#ffffff';
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
+    case 'socket': {
+      // Arc/socket - for interface socket notation (required interface)
+      const radius = size / 2;
+      ctx.beginPath();
+      ctx.arc(-radius, 0, radius, Math.PI / 2, -Math.PI / 2);
+      ctx.stroke();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
  * Get all points in the connector path (start, waypoints, end).
  */
 function getPathPoints(shape: ConnectorShape): Vec2[] {
@@ -362,7 +480,7 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
    * The actual rendering uses cached x, y, x2, y2 values.
    */
   render(ctx: CanvasRenderingContext2D, shape: ConnectorShape): void {
-    const { stroke, strokeWidth, opacity, startArrow, endArrow } = shape;
+    const { stroke, strokeWidth, opacity, startArrow, endArrow, lineStyle } = shape;
 
     ctx.save();
     ctx.globalAlpha = opacity;
@@ -377,6 +495,13 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
+      // Apply line style (solid or dashed)
+      if (lineStyle === 'dashed') {
+        ctx.setLineDash([8, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
       const firstPoint = points[0]!;
       ctx.beginPath();
       ctx.moveTo(firstPoint.x, firstPoint.y);
@@ -388,16 +513,30 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
 
       ctx.stroke();
 
-      // Calculate angles for arrows/cardinality
+      // Reset dash for markers (they should always be solid)
+      ctx.setLineDash([]);
+
+      // Calculate angles for arrows/cardinality/markers
       const arrowSize = strokeWidth * 4;
 
-      // Draw start endpoint (cardinality takes precedence over arrow)
+      // Infer connectorType for backwards compatibility
+      // If cardinality is set but no connectorType, treat as 'erd'
+      // If UML markers are set but no connectorType, treat as 'uml-class'
+      const connectorType = shape.connectorType ||
+        ((shape.startCardinality || shape.endCardinality) ? 'erd' :
+        ((shape.startUMLMarker || shape.endUMLMarker) ? 'uml-class' : 'default'));
+
+      // Draw start endpoint
+      // Priority: UML markers > ERD cardinality > arrows
       if (points.length >= 2) {
         const p0 = points[0]!;
         const p1 = points[1]!;
         const startAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
 
-        if (shape.startCardinality && shape.startCardinality !== 'none') {
+        if (connectorType === 'uml-class' && shape.startUMLMarker && shape.startUMLMarker !== 'none') {
+          // Draw UML class marker
+          drawUMLClassMarker(ctx, p0, startAngle + Math.PI, shape.startUMLMarker, strokeWidth, stroke, shape.fill);
+        } else if (connectorType === 'erd' && shape.startCardinality && shape.startCardinality !== 'none') {
           // Draw ERD cardinality symbol
           drawCardinalitySymbol(ctx, p0, startAngle + Math.PI, shape.startCardinality, strokeWidth);
         } else if (startArrow) {
@@ -407,14 +546,18 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
         }
       }
 
-      // Draw end endpoint (cardinality takes precedence over arrow)
+      // Draw end endpoint
+      // Priority: UML markers > ERD cardinality > arrows
       if (points.length >= 2) {
         const lastIdx = points.length - 1;
         const lastPt = points[lastIdx]!;
         const secondLastPt = points[lastIdx - 1]!;
         const endAngle = Math.atan2(lastPt.y - secondLastPt.y, lastPt.x - secondLastPt.x);
 
-        if (shape.endCardinality && shape.endCardinality !== 'none') {
+        if (connectorType === 'uml-class' && shape.endUMLMarker && shape.endUMLMarker !== 'none') {
+          // Draw UML class marker
+          drawUMLClassMarker(ctx, lastPt, endAngle, shape.endUMLMarker, strokeWidth, stroke, shape.fill);
+        } else if (connectorType === 'erd' && shape.endCardinality && shape.endCardinality !== 'none') {
           // Draw ERD cardinality symbol
           drawCardinalitySymbol(ctx, lastPt, endAngle, shape.endCardinality, strokeWidth);
         } else if (endArrow) {
