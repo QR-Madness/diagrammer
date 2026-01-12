@@ -403,20 +403,141 @@ implementation phase as defined in Specification.Readme.md.
 
 ### Phase 14: Collaboration, Simple Auth, and UI Improvements
 
-- [ ] Real-time collaboration (CRDT integration for host documents)
-- [ ] Presence indicators (who's viewing where)
-- [ ] Collaborative cursors
-- [ ] **Only** _team documents_ can be accessed for collaboration (see 14.1); we'll be pivoting in terminology to refer to standard documents as 'personal documents'
-- [ ] Files are located on the host; however ensure you keep this flexible when we start working with cloud providers/storage endpoints.
+#### Architecture Overview
 
-#### Phase 14.1: Team Documents & Simple Authentication
+The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
+- **Offline (Default)**: Personal documents stored locally, no network features
+- **Protected Local**: Host exposes Team Documents storage; clients connect over network (LAN, VPN, or tunneled via Cloudflare/similar)
 
-- Add a collaboration area to the settings (if it doesn't exist yet) that contains:
-  - [ ] 'Server Access': {Offline (Default)|Protected Local}
-  - [ ] 'Team-Accessible Documents': Manageable list of documents accessible by team members
-  - [ ] 'Team Members': Managed credential store for [local] authentication
-  - [ ] Implement a permissions centre that controls the following:
-- [ ] Create a login page for team members to access team documents on the host's computer
+**Host-Client Model:**
+- Host runs Diagrammer in Protected Local mode, acts as single source of truth for Team Documents
+- Clients authenticate via host's login page and receive **JWT session tokens**
+- CRDT (Yjs/yrs recommended due to existing Tiptap integration) negotiates real-time changes
+- Team Documents are decoupled from Personal Documents; any document can be moved to Team Documents
+- Future: targeted plugins may only work on Team Documents or Personal Documents
+
+**Ownership & Permissions Model:**
+- **Roles**: Admin and User (future: extensible role system as permission interfaces)
+- **Documents**: Owned by SYSTEM, controlled by ADMINS
+  - Admins can restrict: document creation, modifications, deletions
+- **Groups**: Can have ownership; owner MAY add restrictions:
+  - Ownership editing locks (prevent others from changing ownership)
+  - User-selective editing (restrict which users can edit)
+  - Default: allow-all (no restrictions unless owner adds them)
+- **Style Profiles**: Can have ownership; owner can lock profiles to prevent modification
+- **Admins**: Can supersede any owner by unlocking objects; control who can save default export settings
+- **Session Validation**: JWT tokens validated server-side; reject mutations from invalid/expired tokens
+
+**Technical Decisions:**
+- **Desktop Runtime**: Tauri (Rust backend, React frontend)
+- **Auth Tokens**: JWT (HS256 initially, extensible to RS256/OAuth later)
+- **Credential Storage**: bcrypt-hashed passwords (decoupled for future identity provider integration)
+- **Real-time Sync**: WebSocket transport, CRDT for conflict resolution
+- **CRDT Library**: Yjs (client) / yrs (Rust server) - leverages existing Tiptap Y.js ecosystem
+
+#### Phase 14.Pre: Tauri Migration
+
+##### Project Setup
+
+- [ ] Initialize Tauri alongside existing Vite configuration
+  - `src-tauri/` directory with Cargo.toml and tauri.conf.json
+  - Preserve existing `bun run dev` workflow during migration
+  - Configure Tauri to use Vite dev server in development mode
+- [ ] Configure build pipeline
+  - Development: Tauri wraps Vite dev server
+  - Production: Tauri bundles Vite build output
+  - Cross-platform builds (Windows, macOS, Linux)
+
+##### Rust Backend Scaffolding
+
+- [ ] Core Tauri application structure
+  - Main entry point with window configuration
+  - App state management for server mode toggle
+- [ ] IPC bridge between React frontend and Rust backend
+  - Tauri command definitions for frontend→backend calls
+  - Event system for backend→frontend notifications
+- [ ] WebSocket server foundation (for Protected Local mode)
+  - Tokio async runtime setup
+  - Axum or Warp for HTTP/WebSocket handling
+  - Server starts only when Protected Local mode enabled
+- [ ] File system access layer
+  - Team Documents storage directory configuration
+  - Read/write operations via Tauri fs API
+
+##### Storage Backend Abstraction
+
+- [ ] Create pluggable storage interface
+  - `StorageBackend` trait for document persistence
+  - `LocalStorageBackend`: Current localStorage/IndexedDB (Personal Documents)
+  - `FileSystemBackend`: Tauri fs API (Team Documents on host)
+- [ ] Migrate existing persistence to use storage abstraction
+  - PersistenceStore uses backend interface
+  - No breaking changes to Personal Documents flow
+
+##### Development Workflow
+
+- [ ] Update package.json scripts
+  - `bun run dev` - Vite only (web development, no Tauri)
+  - `bun run tauri dev` - Full Tauri development mode
+  - `bun run tauri build` - Production build
+- [ ] Documentation for Tauri development setup
+  - Rust toolchain requirements
+  - Platform-specific dependencies
+
+#### Phase 14.0: Collaboration Infrastructure
+
+- [ ] CRDT integration for real-time collaboration on Team Documents
+  - Host storage as single source of truth for persistence
+  - Conflict resolution via CRDT protocol
+  - Offline queue for changes when disconnected (sync on reconnect)
+  - Integrate y-prosemirror for rich text document collaboration
+  - Y.Map binding for DocumentStore shapes
+- [ ] Presence indicators (who's viewing which page)
+- [ ] Collaborative cursors (show other users' cursor positions)
+- [ ] Network transport layer (WebSocket via Tauri backend)
+  - Keep flexible for future cloud provider/storage endpoint support
+
+#### Phase 14.1: Team Documents & Foundational IAM
+
+##### Data Model Extensions
+
+- [ ] Extend DiagramDocument with collaboration metadata:
+  - `isTeamDocument: boolean` - distinguishes team vs personal
+  - `lockedBy?: string` - admin lock indicator
+- [ ] Extend GroupShape with ownership:
+  - `ownerId?: string` - owner who can modify permissions
+  - `permissions?: { canEdit: string[] }` - allow-by-default, restrict list
+- [ ] Extend StyleProfile with ownership:
+  - `ownerId?: string` - owner who can lock/modify
+  - `locked?: boolean` - prevents non-owner modification
+- [ ] Session token model:
+  - Token linked to authenticated user
+  - Reject mutations from invalid/expired tokens
+
+##### New Stores
+
+- [ ] **UserStore**: Current user, session token, authentication state
+- [ ] **TeamStore**: Team members list, roles (admin vs user)
+- [ ] **PermissionStore**: Permission checks, admin overrides
+
+##### Settings Modal - Collaboration Tab
+
+- [ ] 'Server Access' toggle: {Offline (Default) | Protected Local}
+- [ ] 'Host Port' configuration (when Protected Local enabled)
+- [ ] 'Team-Accessible Documents': Team document manager
+  - List team documents, move personal→team, manage access
+- [ ] 'Team Members': Credential store for authentication
+  - Add/remove users, assign admin role
+  - Password management (hashed storage)
+- [ ] 'Default Export Permissions': Admin control for who can save export defaults
+
+##### Authentication
+
+- [ ] Login page for clients connecting to host
+  - Username/password authentication
+  - Session token generation and validation
+- [ ] Session management (token expiry, refresh)
+- [ ] Logout functionality
 
 #### Phase 14.2: UX Improvements
 
