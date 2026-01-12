@@ -435,36 +435,36 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - **Real-time Sync**: WebSocket transport, CRDT for conflict resolution
 - **CRDT Library**: Yjs (client) / yrs (Rust server) - leverages existing Tiptap Y.js ecosystem
 
-#### Phase 14.Pre: Tauri Migration
+#### Phase 14.Pre: Tauri Migration - IN PROGRESS
 
-##### Project Setup
+##### Project Setup - COMPLETE
 
-- [ ] Initialize Tauri alongside existing Vite configuration
+- [x] Initialize Tauri alongside existing Vite configuration
   - `src-tauri/` directory with Cargo.toml and tauri.conf.json
   - Preserve existing `bun run dev` workflow during migration
   - Configure Tauri to use Vite dev server in development mode
-- [ ] Configure build pipeline
+- [x] Configure build pipeline
   - Development: Tauri wraps Vite dev server
   - Production: Tauri bundles Vite build output
   - Cross-platform builds (Windows, macOS, Linux)
 
-##### Rust Backend Scaffolding
+##### Rust Backend Scaffolding - PARTIAL
 
-- [ ] Core Tauri application structure
+- [x] Core Tauri application structure
   - Main entry point with window configuration
   - App state management for server mode toggle
-- [ ] IPC bridge between React frontend and Rust backend
+- [x] IPC bridge between React frontend and Rust backend
   - Tauri command definitions for frontend→backend calls
-  - Event system for backend→frontend notifications
+  - TypeScript bindings in src/tauri/commands.ts
 - [ ] WebSocket server foundation (for Protected Local mode)
-  - Tokio async runtime setup
-  - Axum or Warp for HTTP/WebSocket handling
+  - Tokio async runtime setup (dependency added)
+  - Axum or Warp for HTTP/WebSocket handling (deps commented, ready to enable)
   - Server starts only when Protected Local mode enabled
-- [ ] File system access layer
-  - Team Documents storage directory configuration
+- [x] File system access layer
+  - Tauri fs plugin configured with capabilities
   - Read/write operations via Tauri fs API
 
-##### Storage Backend Abstraction
+##### Storage Backend Abstraction - DEFERRED TO PHASE 14.0
 
 - [ ] Create pluggable storage interface
   - `StorageBackend` trait for document persistence
@@ -474,15 +474,15 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - PersistenceStore uses backend interface
   - No breaking changes to Personal Documents flow
 
-##### Development Workflow
+##### Development Workflow - COMPLETE
 
-- [ ] Update package.json scripts
+- [x] Update package.json scripts
   - `bun run dev` - Vite only (web development, no Tauri)
-  - `bun run tauri dev` - Full Tauri development mode
-  - `bun run tauri build` - Production build
-- [ ] Documentation for Tauri development setup
-  - Rust toolchain requirements
-  - Platform-specific dependencies
+  - `bun run tauri:dev` - Full Tauri development mode
+  - `bun run tauri:build` - Production build
+- [x] Documentation for Tauri development setup
+  - Rust toolchain requirements documented in CLAUDE.md
+  - Taskfile.yml added for task automation
 
 #### Phase 14.0: Collaboration Infrastructure
 
