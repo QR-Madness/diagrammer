@@ -1,0 +1,135 @@
+# Taskfile for Diagrammer development
+# Install task runner: https://taskfile.dev/installation/
+# Run: task <command> or task --list
+
+version: '3'
+
+vars:
+  BUN: '{{.HOME}}/.bun/bin/bun'
+
+tasks:
+  # ============================================
+  # Development
+  # ============================================
+
+  dev:
+    desc: Start Vite development server (web only)
+    cmds:
+      - '{{.BUN}} run dev'
+
+  dev:tauri:
+    desc: Start Tauri development mode (desktop app)
+    cmds:
+      - '{{.BUN}} run tauri:dev'
+    aliases: [tauri:dev]
+
+  # ============================================
+  # Building
+  # ============================================
+
+  build:
+    desc: Build frontend for production
+    cmds:
+      - '{{.BUN}} run build'
+
+  build:tauri:
+    desc: Build desktop application
+    cmds:
+      - '{{.BUN}} run tauri:build'
+    aliases: [tauri:build]
+
+  # ============================================
+  # Testing
+  # ============================================
+
+  test:
+    desc: Run tests in watch mode
+    cmds:
+      - '{{.BUN}} run test'
+
+  test:run:
+    desc: Run all tests once
+    cmds:
+      - '{{.BUN}} run test --run'
+
+  test:ui:
+    desc: Run tests with UI
+    cmds:
+      - '{{.BUN}} run test:ui'
+
+  typecheck:
+    desc: Run TypeScript type checking
+    cmds:
+      - '{{.BUN}} run typecheck'
+
+  # ============================================
+  # Code Quality
+  # ============================================
+
+  check:
+    desc: Run all checks (typecheck + tests)
+    cmds:
+      - task: typecheck
+      - task: test:run
+
+  # ============================================
+  # Rust/Tauri
+  # ============================================
+
+  rust:check:
+    desc: Check Rust code compiles
+    dir: src-tauri
+    cmds:
+      - cargo check
+
+  rust:build:
+    desc: Build Rust code (release)
+    dir: src-tauri
+    cmds:
+      - cargo build --release
+
+  rust:clean:
+    desc: Clean Rust build artifacts
+    dir: src-tauri
+    cmds:
+      - cargo clean
+
+  # ============================================
+  # Setup & Utilities
+  # ============================================
+
+  install:
+    desc: Install all dependencies
+    cmds:
+      - '{{.BUN}} install'
+
+  clean:
+    desc: Clean all build artifacts
+    cmds:
+      - rm -rf dist
+      - rm -rf src-tauri/target
+      - rm -rf node_modules/.vite
+
+  preview:
+    desc: Preview production build
+    cmds:
+      - '{{.BUN}} run preview'
+
+  # ============================================
+  # Git Shortcuts
+  # ============================================
+
+  status:
+    desc: Show git status
+    cmds:
+      - git status
+
+  diff:
+    desc: Show git diff
+    cmds:
+      - git diff
+
+  log:
+    desc: Show recent commits
+    cmds:
+      - git log --oneline -10

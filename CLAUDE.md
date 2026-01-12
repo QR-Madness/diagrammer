@@ -9,13 +9,14 @@ A high-performance diagramming and whiteboard application built with TypeScript,
 ## Technology Stack
 
 - **Runtime**: Bun (fast JavaScript runtime and package manager)
-- **Language**: TypeScript (strict mode)
+- **Desktop Runtime**: Tauri (Rust backend for native desktop features)
+- **Language**: TypeScript (strict mode), Rust (Tauri backend)
 - **UI Framework**: React 18+ (for UI chrome only, not canvas rendering)
 - **State Management**: Zustand with Immer middleware
 - **Rendering**: Canvas 2D API (no abstraction libraries)
 - **Rich Text Editor**: Tiptap (ProseMirror wrapper)
 - **Spatial Indexing**: RBush (R-tree implementation)
-- **Build Tool**: Vite
+- **Build Tool**: Vite (frontend), Cargo (Rust backend)
 - **Testing**: Vitest + Playwright for e2e
 
 ## Development Commands
@@ -26,7 +27,7 @@ A high-performance diagramming and whiteboard application built with TypeScript,
 # Install dependencies
 bun install
 
-# Development server
+# Development server (web only)
 bun run dev
 
 # Type checking
@@ -44,9 +45,26 @@ bun run test src/engine/Camera.test.ts
 # Run tests with UI
 bun run test:ui
 
-# Build for production
+# Build for production (web)
 bun run build
+
+# Tauri desktop development (requires Rust toolchain)
+bun run tauri:dev
+
+# Build desktop application
+bun run tauri:build
 ```
+
+### Tauri Development Requirements
+
+For desktop development, you need:
+- Rust toolchain (rustc, cargo) - install via [rustup](https://rustup.rs/)
+- Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
+
+The Tauri backend is in `src-tauri/` and provides:
+- Native file system access for Team Documents
+- WebSocket server for Protected Local collaboration mode (planned)
+- JWT authentication for team features (planned)
 
 ## Architecture Layers
 
@@ -62,6 +80,8 @@ Engine Core (Camera, Renderer, InputHandler, ToolManager, SpatialIndex, ShapeReg
 Store Layer (DocumentStore, SessionStore, HistoryStore, PageStore, PersistenceStore, + feature stores)
     ↓
 Storage Layer (localStorage for state, IndexedDB for blobs)
+    ↓
+Tauri Backend (src-tauri/ - native file system, WebSocket server, authentication)
 ```
 
 ### Store Separation
