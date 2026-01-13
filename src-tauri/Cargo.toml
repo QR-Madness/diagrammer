@@ -13,7 +13,7 @@ name = "diagrammer_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.5.3" }
+tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
 # Core
@@ -22,7 +22,7 @@ serde_json = "1.0"
 log = "0.4"
 
 # Tauri
-tauri = { version = "2.9.5" }
+tauri = { version = "2.9.5", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
@@ -30,9 +30,10 @@ tauri-plugin-dialog = "2"
 # Async runtime (for WebSocket server in Protected Local mode)
 tokio = { version = "1", features = ["full"] }
 
-# Future: WebSocket server dependencies (uncomment when implementing Phase 14.0)
-# axum = { version = "0.7", features = ["ws"] }
-# tower-http = { version = "0.5", features = ["cors"] }
+# WebSocket server for Protected Local mode
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["cors"] }
+futures-util = "0.3"
 
 # Future: JWT authentication (uncomment when implementing Phase 14.1)
 # jsonwebtoken = "9"

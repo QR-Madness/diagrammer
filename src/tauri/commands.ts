@@ -8,6 +8,20 @@
 import { invoke } from '@tauri-apps/api/core';
 
 /**
+ * Server status information from the Tauri backend
+ */
+export interface ServerStatus {
+  /** Whether the server is currently running */
+  running: boolean;
+  /** Port the server is listening on (0 if not running) */
+  port: number;
+  /** Number of connected clients */
+  connected_clients: number;
+  /** WebSocket address (empty if not running) */
+  address: string;
+}
+
+/**
  * Check if running in Tauri environment
  */
 export function isTauri(): boolean {
@@ -59,4 +73,15 @@ export async function startServer(port: number): Promise<string> {
 export async function stopServer(): Promise<void> {
   if (!isTauri()) return;
   return invoke<void>('stop_server');
+}
+
+/**
+ * Get the current server status
+ * @returns Server status information
+ */
+export async function getServerStatus(): Promise<ServerStatus> {
+  if (!isTauri()) {
+    return { running: false, port: 0, connected_clients: 0, address: '' };
+  }
+  return invoke<ServerStatus>('get_server_status');
 }
