@@ -19,3 +19,5 @@ export {
   initializeCRDTFromState,
 } from './collaborationStore';
 export type { CollaborationConfig, RemoteUser } from './collaborationStore';
+
+export { useCollaborationSync, isRemoteSyncInProgress } from './useCollaborationSync';
