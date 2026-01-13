@@ -9,11 +9,13 @@ import { SplitPane } from './SplitPane';
 import { DocumentEditorPanel } from './DocumentEditorPanel';
 import { UnifiedToolbar } from './UnifiedToolbar';
 import { StatusBar } from './StatusBar';
+import { PresenceIndicators } from './PresenceIndicators';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
 import { useDocumentStore } from '../store/documentStore';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useCollaborationSync } from '../collaboration';
 
 function App() {
   const initializeDefault = usePageStore((state) => state.initializeDefault);
@@ -30,6 +32,9 @@ function App() {
 
   // Auto-save hook
   useAutoSave();
+
+  // Collaboration sync hook - enables bidirectional CRDT sync
+  useCollaborationSync();
 
   // Open settings callback
   const handleOpenSettings = useCallback(() => {
@@ -106,6 +111,11 @@ function App() {
           />
         </main>
         <StatusBar />
+
+        {/* Presence indicators for collaboration */}
+        <div className="app-presence">
+          <PresenceIndicators size="small" />
+        </div>
 
         {/* Settings Modal (includes Documents, Storage, etc.) */}
         <SettingsModal

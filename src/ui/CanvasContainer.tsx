@@ -5,6 +5,7 @@ import { TextEditor } from './TextEditor';
 import { ContextMenu } from './ContextMenu';
 import { ExportDialog } from './ExportDialog';
 import { SaveToLibraryDialog } from './SaveToLibraryDialog';
+import { CollaborativeCursors } from './CollaborativeCursors';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -293,6 +294,8 @@ export function CanvasContainer({
           }}
         />
       )}
+      {/* Collaborative cursors overlay */}
+      <CollaborativeCursors />
       <TextEditor camera={camera} />
       {contextMenu && (
         <ContextMenu

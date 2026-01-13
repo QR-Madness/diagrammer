@@ -11,7 +11,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTeamStore } from '../../store/teamStore';
 import { useUserStore } from '../../store/userStore';
+import { useCollaborationStore } from '../../collaboration';
 import { isTauri, getServerStatus, ServerStatus } from '../../tauri/commands';
+import { usePersistenceStore } from '../../store/persistenceStore';
 import './CollaborationSettings.css';
 
 export function CollaborationSettings() {
@@ -24,6 +26,15 @@ export function CollaborationSettings() {
   const goOffline = useTeamStore((state) => state.goOffline);
 
   const currentUser = useUserStore((state) => state.currentUser);
+
+  // Collaboration store
+  const startSession = useCollaborationStore((state) => state.startSession);
+  const stopSession = useCollaborationStore((state) => state.stopSession);
+  const collabStatus = useCollaborationStore((state) => state.connectionStatus);
+  const isCollabActive = useCollaborationStore((state) => state.isActive);
+
+  // Get current document ID
+  const currentDocumentId = usePersistenceStore((state) => state.currentDocumentId);
 
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [isStarting, setIsStarting] = useState(false);
@@ -67,23 +78,41 @@ export function CollaborationSettings() {
     try {
       setHostPort(port);
       await startHosting(port);
+
+      // Start collaboration session after server is up
+      const docId = currentDocumentId || 'default';
+      const user = currentUser || { id: 'host', displayName: 'Host', role: 'admin' as const };
+
+      startSession({
+        serverUrl: `ws://localhost:${port}`,
+        documentId: docId,
+        user: {
+          id: user.id,
+          name: user.displayName,
+          color: '#4a90d9',
+        },
+      });
     } finally {
       setIsStarting(false);
     }
-  }, [portInput, setHostPort, startHosting]);
+  }, [portInput, setHostPort, startHosting, currentDocumentId, currentUser, startSession]);
 
   const handleStopServer = useCallback(async () => {
     setIsStopping(true);
     try {
+      // Stop collaboration session first
+      stopSession();
       await stopHosting();
     } finally {
       setIsStopping(false);
     }
-  }, [stopHosting]);
+  }, [stopHosting, stopSession]);
 
   const handleGoOffline = useCallback(async () => {
+    // Stop collaboration session
+    stopSession();
     await goOffline();
-  }, [goOffline]);
+  }, [goOffline, stopSession]);
 
   const handlePortChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPortInput(e.target.value);
@@ -212,6 +241,28 @@ export function CollaborationSettings() {
               <span className="status-label">Clients</span>
               <span className="status-value">
                 {serverStatus.connected_clients}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collaboration Sync Status */}
+      {isCollabActive && (
+        <div className="settings-group">
+          <h4 className="settings-group-title">Sync Status</h4>
+          <div className="status-grid">
+            <div className="status-item">
+              <span className="status-label">Sync</span>
+              <span className={`status-value ${collabStatus === 'connected' ? 'running' : 'stopped'}`}>
+                {collabStatus === 'connected' ? '● Connected' :
+                 collabStatus === 'connecting' ? '○ Connecting...' : '○ Disconnected'}
+              </span>
+            </div>
+            <div className="status-item">
+              <span className="status-label">Document</span>
+              <span className="status-value">
+                {currentDocumentId || 'default'}
               </span>
             </div>
           </div>
