@@ -23,9 +23,13 @@ export interface ServerStatus {
 
 /**
  * Check if running in Tauri environment
+ * Tauri v2 uses __TAURI_INTERNALS__ instead of __TAURI__
  */
 export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window;
+  return (
+    typeof window !== 'undefined' &&
+    ('__TAURI_INTERNALS__' in window || '__TAURI__' in window)
+  );
 }
 
 /**

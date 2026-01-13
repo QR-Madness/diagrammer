@@ -14,6 +14,7 @@ use server::{ServerStatus, WebSocketServer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Manager;
 use tokio::sync::RwLock;
 
 /// Application state for managing server mode and other runtime config
@@ -282,6 +283,22 @@ pub fn run() {
 
             // Log startup
             log::info!("Diagrammer v{} starting...", env!("CARGO_PKG_VERSION"));
+
+            // Set window icon (for development mode - bundle icons handle production)
+            if let Some(window) = app.get_webview_window("main") {
+                // Load icon from embedded PNG bytes
+                let icon_bytes = include_bytes!("../icons/icon.png");
+                match tauri::image::Image::from_bytes(icon_bytes) {
+                    Ok(icon) => {
+                        if let Err(e) = window.set_icon(icon) {
+                            log::warn!("Failed to set window icon: {}", e);
+                        } else {
+                            log::info!("Window icon set successfully");
+                        }
+                    }
+                    Err(e) => log::warn!("Failed to load icon: {}", e),
+                }
+            }
 
             Ok(())
         })
