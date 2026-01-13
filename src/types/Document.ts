@@ -48,6 +48,16 @@ export interface DiagramDocument {
   richTextContent?: RichTextContent;
   /** Blob IDs referenced by this document (for garbage collection) */
   blobReferences?: string[];
+
+  // Team document fields (Phase 14.1)
+  /** Whether this is a team document (stored on host, synced via CRDT) */
+  isTeamDocument?: boolean;
+  /** User ID who currently has the document locked for editing */
+  lockedBy?: string;
+  /** Display name of user who locked the document */
+  lockedByName?: string;
+  /** Timestamp when document was locked */
+  lockedAt?: number;
 }
 
 /**
@@ -65,6 +75,14 @@ export interface DocumentMetadata {
   modifiedAt: number;
   /** Timestamp when document was created */
   createdAt: number;
+
+  // Team document fields (Phase 14.1)
+  /** Whether this is a team document */
+  isTeamDocument?: boolean;
+  /** User ID who currently has the document locked */
+  lockedBy?: string;
+  /** Display name of user who locked it */
+  lockedByName?: string;
 }
 
 /**
@@ -131,11 +149,24 @@ export function createDocument(name: string, docId: string, pageId: string): Dia
  * Extract metadata from a full document.
  */
 export function getDocumentMetadata(doc: DiagramDocument): DocumentMetadata {
-  return {
+  const metadata: DocumentMetadata = {
     id: doc.id,
     name: doc.name,
     pageCount: doc.pageOrder.length,
     modifiedAt: doc.modifiedAt,
     createdAt: doc.createdAt,
   };
+
+  // Only include team document fields if they are defined
+  if (doc.isTeamDocument !== undefined) {
+    metadata.isTeamDocument = doc.isTeamDocument;
+  }
+  if (doc.lockedBy !== undefined) {
+    metadata.lockedBy = doc.lockedBy;
+  }
+  if (doc.lockedByName !== undefined) {
+    metadata.lockedByName = doc.lockedByName;
+  }
+
+  return metadata;
 }
