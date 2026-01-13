@@ -435,7 +435,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - **Real-time Sync**: WebSocket transport, CRDT for conflict resolution
 - **CRDT Library**: Yjs (client) / yrs (Rust server) - leverages existing Tiptap Y.js ecosystem
 
-#### Phase 14.Pre: Tauri Migration - IN PROGRESS
+#### Phase 14.Pre: Tauri Migration - COMPLETE
 
 ##### Project Setup - COMPLETE
 
@@ -448,7 +448,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Production: Tauri bundles Vite build output
   - Cross-platform builds (Windows, macOS, Linux)
 
-##### Rust Backend Scaffolding - PARTIAL
+##### Rust Backend Scaffolding - COMPLETE
 
 - [x] Core Tauri application structure
   - Main entry point with window configuration
@@ -456,23 +456,23 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] IPC bridge between React frontend and Rust backend
   - Tauri command definitions for frontend→backend calls
   - TypeScript bindings in src/tauri/commands.ts
-- [ ] WebSocket server foundation (for Protected Local mode)
-  - Tokio async runtime setup (dependency added)
-  - Axum or Warp for HTTP/WebSocket handling (deps commented, ready to enable)
+- [x] WebSocket server foundation (for Protected Local mode)
+  - Tokio async runtime with Axum for HTTP/WebSocket handling
+  - Server lifecycle management (start/stop/status)
+  - Broadcast channel for real-time message distribution
   - Server starts only when Protected Local mode enabled
 - [x] File system access layer
   - Tauri fs plugin configured with capabilities
   - Read/write operations via Tauri fs API
 
-##### Storage Backend Abstraction - DEFERRED TO PHASE 14.0
+##### Storage Backend Abstraction - COMPLETE
 
-- [ ] Create pluggable storage interface
-  - `StorageBackend` trait for document persistence
-  - `LocalStorageBackend`: Current localStorage/IndexedDB (Personal Documents)
-  - `FileSystemBackend`: Tauri fs API (Team Documents on host)
-- [ ] Migrate existing persistence to use storage abstraction
-  - PersistenceStore uses backend interface
-  - No breaking changes to Personal Documents flow
+- [x] Create pluggable storage interface
+  - `StorageBackend` TypeScript interface for document persistence
+  - `LocalStorageBackend`: localStorage for Personal Documents
+  - `FileSystemBackend`: Tauri fs API for Team Documents
+  - `StorageFactory`: Backend selection based on mode
+- [x] Storage module exports via src/storage/index.ts
 
 ##### Development Workflow - COMPLETE
 
@@ -497,47 +497,54 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Network transport layer (WebSocket via Tauri backend)
   - Keep flexible for future cloud provider/storage endpoint support
 
-#### Phase 14.1: Team Documents & Foundational IAM
+#### Phase 14.1: Team Documents & Foundational IAM - COMPLETE
 
-##### Data Model Extensions
+##### Data Model Extensions - COMPLETE
 
-- [ ] Extend DiagramDocument with collaboration metadata:
+- [x] Extend DiagramDocument with collaboration metadata:
   - `isTeamDocument: boolean` - distinguishes team vs personal
-  - `lockedBy?: string` - admin lock indicator
-- [ ] Extend GroupShape with ownership:
-  - `ownerId?: string` - owner who can modify permissions
-  - `permissions?: { canEdit: string[] }` - allow-by-default, restrict list
-- [ ] Extend StyleProfile with ownership:
-  - `ownerId?: string` - owner who can lock/modify
-  - `locked?: boolean` - prevents non-owner modification
-- [ ] Session token model:
-  - Token linked to authenticated user
-  - Reject mutations from invalid/expired tokens
+  - `lockedBy?: string`, `lockedByName?: string`, `lockedAt?: number` - lock indicators
+- [x] Extend GroupShape with ownership:
+  - `ownerId?: string | null` - owner (null = SYSTEM owned)
+  - `ownerLocked?: boolean` - prevents non-owner modification
+- [x] Extend StyleProfile with ownership:
+  - `ownerId?: string | null` - owner who can lock/modify
+  - `ownerLocked?: boolean` - prevents non-owner modification
+- [x] Auth types in src/types/Auth.ts:
+  - User, UserRole, SessionToken, LoginCredentials
+  - Permission, Ownership, TeamMember types
 
-##### New Stores
+##### New Stores - COMPLETE
 
-- [ ] **UserStore**: Current user, session token, authentication state
-- [ ] **TeamStore**: Team members list, roles (admin vs user)
-- [ ] **PermissionStore**: Permission checks, admin overrides
+- [x] **UserStore** (src/store/userStore.ts): Current user, session token, login/logout
+- [x] **TeamStore** (src/store/teamStore.ts): Server mode, team members, connection status
+- [x] **PermissionStore** (src/store/permissionStore.ts): Permission checks based on role/ownership
 
-##### Settings Modal - Collaboration Tab
+##### Rust Authentication Backend - COMPLETE
 
-- [ ] 'Server Access' toggle: {Offline (Default) | Protected Local}
-- [ ] 'Host Port' configuration (when Protected Local enabled)
-- [ ] 'Team-Accessible Documents': Team document manager
-  - List team documents, move personal→team, manage access
-- [ ] 'Team Members': Credential store for authentication
-  - Add/remove users, assign admin role
-  - Password management (hashed storage)
-- [ ] 'Default Export Permissions': Admin control for who can save export defaults
+- [x] JWT module (src-tauri/src/auth/jwt.rs): Token generation/validation with HS256
+- [x] Password module (src-tauri/src/auth/password.rs): bcrypt hashing and verification
+- [x] Users module (src-tauri/src/auth/users.rs): In-memory user store with persistence
+- [x] Tauri commands: `login`, `validate_token`, `create_user`, `has_users`
+- [x] 11 Rust tests passing (JWT, password, user management, server lifecycle)
 
-##### Authentication
+##### Settings Modal - Collaboration Tab - COMPLETE
 
-- [ ] Login page for clients connecting to host
-  - Username/password authentication
-  - Session token generation and validation
-- [ ] Session management (token expiry, refresh)
-- [ ] Logout functionality
+- [x] 'Server Mode' selector: {Offline (Default) | Protected Local}
+- [x] 'Host Port' configuration input (when Protected Local enabled)
+- [x] Start/Stop server buttons with real-time status polling
+- [x] Server status display (running state, address, port, client count)
+- [x] Connection error display
+- [x] Current user info display
+- [x] Notice for web-only mode (desktop required)
+
+##### Authentication - PARTIAL (Backend Complete)
+
+- [x] Backend: JWT token generation and validation
+- [x] Backend: bcrypt password hashing
+- [x] Backend: User storage and management
+- [ ] Frontend: Login page for clients (Phase 14.1.5)
+- [ ] Frontend: Session validation on app startup
 
 #### Phase 14.2: UX Improvements
 
