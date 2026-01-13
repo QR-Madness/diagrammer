@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import './App.css';
+import { AuthGuard } from './AuthGuard';
 import { CanvasContainer } from './CanvasContainer';
 import { PropertyPanel } from './PropertyPanel';
 import { LayerPanel } from './LayerPanel';
@@ -80,37 +81,39 @@ function App() {
   }, [initializeDefault]);
 
   return (
-    <div className="app">
-      <UnifiedToolbar
-        onOpenSettings={handleOpenSettings}
-        onRebuildConnectors={handleRebuildConnectors}
-      />
-      <main className="app-main">
-        <SplitPane
-          leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
-          rightPanel={
-            <>
-              <CanvasContainer
-                className="canvas-area"
-                showGrid={true}
-                showFps={true}
-              />
-              <PropertyPanel />
-              <LayerPanel />
-            </>
-          }
-          collapsed={isEditorCollapsed}
-          onCollapseChange={handleCollapseChange}
+    <AuthGuard>
+      <div className="app">
+        <UnifiedToolbar
+          onOpenSettings={handleOpenSettings}
+          onRebuildConnectors={handleRebuildConnectors}
         />
-      </main>
-      <StatusBar />
+        <main className="app-main">
+          <SplitPane
+            leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
+            rightPanel={
+              <>
+                <CanvasContainer
+                  className="canvas-area"
+                  showGrid={true}
+                  showFps={true}
+                />
+                <PropertyPanel />
+                <LayerPanel />
+              </>
+            }
+            collapsed={isEditorCollapsed}
+            onCollapseChange={handleCollapseChange}
+          />
+        </main>
+        <StatusBar />
 
-      {/* Settings Modal (includes Documents, Storage, etc.) */}
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={handleCloseSettings}
-      />
-    </div>
+        {/* Settings Modal (includes Documents, Storage, etc.) */}
+        <SettingsModal
+          isOpen={isSettingsOpen}
+          onClose={handleCloseSettings}
+        />
+      </div>
+    </AuthGuard>
   );
 }
 
