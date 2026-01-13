@@ -1,0 +1,224 @@
+/**
+ * Collaboration Settings styles
+ */
+
+.collaboration-settings {
+  padding: 0;
+}
+
+/* Notice banner for web-only mode */
+.settings-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.settings-notice code {
+  background: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.notice-icon {
+  flex-shrink: 0;
+}
+
+/* Server mode selector */
+.server-mode-selector {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.mode-button {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-button:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-primary);
+}
+
+.mode-button.active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+}
+
+.mode-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mode-icon {
+  font-size: 24px;
+}
+
+.mode-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.mode-description {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+/* Status grid */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+}
+
+.status-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+  font-family: monospace;
+}
+
+.status-value.running {
+  color: var(--color-success, #48bb78);
+}
+
+.status-value.stopped {
+  color: var(--color-text-secondary);
+}
+
+/* Error display */
+.settings-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--color-error-bg, rgba(229, 62, 62, 0.1));
+  border: 1px solid var(--color-error, #e53e3e);
+  border-radius: 6px;
+  color: var(--color-error, #e53e3e);
+  font-size: 13px;
+}
+
+.error-icon {
+  flex-shrink: 0;
+}
+
+/* User info */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.user-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-role {
+  padding: 2px 8px;
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+  border-radius: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Settings input (number) */
+.settings-input {
+  width: 120px;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-text);
+  font-size: 14px;
+  font-family: monospace;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.settings-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Settings buttons */
+.settings-button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 12px;
+}
+
+.settings-button.primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.settings-button.primary:hover:not(:disabled) {
+  background: var(--color-primary-dark, #3182ce);
+}
+
+.settings-button.danger {
+  background: var(--color-error, #e53e3e);
+  color: white;
+}
+
+.settings-button.danger:hover:not(:disabled) {
+  background: var(--color-error-dark, #c53030);
+}
+
+.settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
