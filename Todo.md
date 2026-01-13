@@ -484,18 +484,23 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Rust toolchain requirements documented in CLAUDE.md
   - Taskfile.yml added for task automation
 
-#### Phase 14.0: Collaboration Infrastructure
+#### Phase 14.0: Collaboration Infrastructure - COMPLETE
 
-- [ ] CRDT integration for real-time collaboration on Team Documents
-  - Host storage as single source of truth for persistence
-  - Conflict resolution via CRDT protocol
-  - Offline queue for changes when disconnected (sync on reconnect)
-  - Integrate y-prosemirror for rich text document collaboration
-  - Y.Map binding for DocumentStore shapes
-- [ ] Presence indicators (who's viewing which page)
-- [ ] Collaborative cursors (show other users' cursor positions)
-- [ ] Network transport layer (WebSocket via Tauri backend)
-  - Keep flexible for future cloud provider/storage endpoint support
+- [x] CRDT integration for real-time collaboration on Team Documents
+  - YjsDocument wrapper for Y.Map-based shape sync
+  - SyncProvider for WebSocket transport with auto-reconnect
+  - collaborationStore for managing sync state and sessions
+  - useCollaborationSync hook for bidirectional sync with documentStore
+  - Conflict resolution via Yjs CRDT protocol
+- [x] Presence indicators (who's viewing which page)
+  - PresenceIndicators component showing active collaborators
+  - User avatars with color coding and initials
+- [x] Collaborative cursors (show other users' cursor positions)
+  - CollaborativeCursors overlay component
+  - Real-time cursor rendering with user labels
+- [x] Network transport layer (WebSocket via Tauri backend)
+  - Yjs sync protocol implementation
+  - Awareness protocol for presence
 
 #### Phase 14.1: Team Documents & Foundational IAM - COMPLETE
 
@@ -538,13 +543,16 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] Current user info display
 - [x] Notice for web-only mode (desktop required)
 
-##### Authentication - PARTIAL (Backend Complete)
+##### Authentication - COMPLETE
 
 - [x] Backend: JWT token generation and validation
 - [x] Backend: bcrypt password hashing
 - [x] Backend: User storage and management
-- [ ] Frontend: Login page for clients (Phase 14.1.5)
-- [ ] Frontend: Session validation on app startup
+- [x] Frontend: Login page for clients (Phase 14.1.5)
+  - LoginPage component with login form
+  - First-time setup mode for admin creation
+  - AuthGuard wrapper for route protection
+- [x] Frontend: Session validation on app startup
 
 #### Phase 14.2: UX Improvements
 
