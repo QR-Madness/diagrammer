@@ -146,8 +146,8 @@ export const useTeamStore = create<TeamState & TeamActions>()(
       },
 
       connectToHost: async (address: string) => {
-        // TODO: Implement WebSocket client connection in Phase 14.0
-        // For now, just update the state to indicate client mode
+        // Update state to indicate client mode
+        // Actual WebSocket connection is handled by collaborationStore.startSession()
         set({
           serverMode: 'client',
           hostAddress: address,
@@ -155,7 +155,6 @@ export const useTeamStore = create<TeamState & TeamActions>()(
             mode: 'client',
             connected: false, // Will be true once WebSocket connects
             hostAddress: address,
-            error: 'WebSocket client not yet implemented',
           },
         });
       },

@@ -254,8 +254,8 @@ export function TeamMembersManager() {
     setEditRoleModal(member);
   };
 
-  // Don't show for non-admins
-  if (!isAdmin) {
+  // Don't show for non-admins (but hosts always have access even without being logged in)
+  if (!isAdmin && !isHosting) {
     return null;
   }
 

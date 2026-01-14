@@ -8,8 +8,9 @@
  * - Import/Export JSON
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { usePersistenceStore } from '../../store/persistenceStore';
+import { useTeamStore } from '../../store/teamStore';
 import { PDFExportDialog } from '../PDFExportDialog';
 import './DocumentsSettings.css';
 
@@ -25,15 +26,39 @@ export function DocumentsSettings() {
   const exportJSON = usePersistenceStore((state) => state.exportJSON);
   const importJSON = usePersistenceStore((state) => state.importJSON);
 
+  const serverMode = useTeamStore((state) => state.serverMode);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [pdfExportOpen, setPdfExportOpen] = useState(false);
+  const [filterMode, setFilterMode] = useState<'all' | 'team' | 'personal'>('all');
 
-  const documentList = Object.entries(documents).sort((a, b) => {
+  const isInTeamMode = serverMode !== 'offline';
+
+  const documentList = useMemo(() => {
+    let docs = Object.entries(documents);
+
+    // Apply filter
+    if (filterMode === 'team') {
+      docs = docs.filter(([, doc]) => doc.isTeamDocument);
+    } else if (filterMode === 'personal') {
+      docs = docs.filter(([, doc]) => !doc.isTeamDocument);
+    }
+
     // Sort by last modified, newest first
-    return (b[1].modifiedAt || 0) - (a[1].modifiedAt || 0);
-  });
+    return docs.sort((a, b) => (b[1].modifiedAt || 0) - (a[1].modifiedAt || 0));
+  }, [documents, filterMode]);
+
+  // Count documents by type
+  const teamDocCount = useMemo(
+    () => Object.values(documents).filter((d) => d.isTeamDocument).length,
+    [documents]
+  );
+  const personalDocCount = useMemo(
+    () => Object.values(documents).filter((d) => !d.isTeamDocument).length,
+    [documents]
+  );
 
   const handleNewDocument = useCallback(() => {
     newDocument();
@@ -152,10 +177,43 @@ export function DocumentsSettings() {
 
       {/* Document List */}
       <div className="settings-group">
-        <h4 className="settings-group-title">Saved Documents ({documentList.length})</h4>
+        <div className="documents-header">
+          <h4 className="settings-group-title">Saved Documents ({documentList.length})</h4>
+          {isInTeamMode && (
+            <div className="documents-filter">
+              <button
+                className={`documents-filter-btn ${filterMode === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterMode('all')}
+                title="Show all documents"
+              >
+                All
+              </button>
+              <button
+                className={`documents-filter-btn ${filterMode === 'team' ? 'active' : ''}`}
+                onClick={() => setFilterMode('team')}
+                title={`Show team documents (${teamDocCount})`}
+              >
+                Team ({teamDocCount})
+              </button>
+              <button
+                className={`documents-filter-btn ${filterMode === 'personal' ? 'active' : ''}`}
+                onClick={() => setFilterMode('personal')}
+                title={`Show personal documents (${personalDocCount})`}
+              >
+                Personal ({personalDocCount})
+              </button>
+            </div>
+          )}
+        </div>
         <div className="documents-list">
           {documentList.length === 0 ? (
-            <div className="documents-empty">No saved documents yet</div>
+            <div className="documents-empty">
+              {filterMode === 'all'
+                ? 'No saved documents yet'
+                : filterMode === 'team'
+                  ? 'No team documents'
+                  : 'No personal documents'}
+            </div>
           ) : (
             documentList.map(([docId, doc]) => {
               const isActive = docId === currentDocumentId;
@@ -188,7 +246,14 @@ export function DocumentsSettings() {
                       />
                     ) : (
                       <>
-                        <span className="documents-item-name">{doc.name}</span>
+                        <div className="documents-item-name-row">
+                          <span className="documents-item-name">{doc.name}</span>
+                          {doc.isTeamDocument && (
+                            <span className="documents-item-team-badge" title="Team document">
+                              T
+                            </span>
+                          )}
+                        </div>
                         <span className="documents-item-date">
                           {formatDate(doc.modifiedAt)}
                         </span>

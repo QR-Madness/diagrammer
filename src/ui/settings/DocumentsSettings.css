@@ -46,6 +46,50 @@
   font-size: 14px;
 }
 
+/* Documents header with filter */
+.documents-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.documents-header .settings-group-title {
+  margin-bottom: 0;
+}
+
+.documents-filter {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary, #f1f5f9);
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.documents-filter-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.documents-filter-btn:hover {
+  color: var(--text-primary, #1e293b);
+}
+
+.documents-filter-btn.active {
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #1e293b);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
 /* Documents list */
 .documents-list {
   display: flex;
@@ -95,6 +139,12 @@
   min-width: 0;
 }
 
+.documents-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .documents-item-name {
   font-size: 13px;
   font-weight: 500;
@@ -102,6 +152,17 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.documents-item-team-badge {
+  padding: 2px 5px;
+  font-size: 9px;
+  font-weight: 700;
+  color: white;
+  background: var(--accent-color, #3b82f6);
+  border-radius: 3px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
 }
 
 .documents-item-date {
@@ -226,4 +287,21 @@
 
 :root[data-theme='dark'] .documents-empty {
   color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .documents-filter {
+  background: var(--bg-secondary, #1e293b);
+}
+
+:root[data-theme='dark'] .documents-filter-btn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+:root[data-theme='dark'] .documents-filter-btn:hover {
+  color: var(--text-primary, #f1f5f9);
+}
+
+:root[data-theme='dark'] .documents-filter-btn.active {
+  background: var(--bg-tertiary, #334155);
+  color: var(--text-primary, #f1f5f9);
 }

@@ -8,7 +8,8 @@
  * - Filter/search documents
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useUserStore } from '../../store/userStore';
 import { useTeamStore } from '../../store/teamStore';
@@ -54,28 +55,54 @@ function DocumentActions({
   onDelete,
 }: DocumentActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
 
   const canModify = isOwner || isAdmin;
   const canShare = isOwner || isAdmin;
   const canDelete = isOwner || isAdmin;
 
-  return (
-    <div className="doc-actions">
-      <button
-        className="doc-actions-button"
-        onClick={() => setIsOpen(!isOpen)}
-        title="Actions"
-      >
-        ...
-      </button>
+  // Calculate menu position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      // Position below the button, aligned to the right
+      setMenuPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
 
-      {isOpen && (
+  // Close menu on scroll or resize
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('scroll', handleClose, true);
+    window.addEventListener('resize', handleClose);
+
+    return () => {
+      window.removeEventListener('scroll', handleClose, true);
+      window.removeEventListener('resize', handleClose);
+    };
+  }, [isOpen]);
+
+  const menuContent = isOpen
+    ? createPortal(
         <>
           <div
             className="doc-actions-backdrop"
             onClick={() => setIsOpen(false)}
           />
-          <div className="doc-actions-menu">
+          <div
+            className="doc-actions-menu doc-actions-menu-portal"
+            style={{
+              position: 'fixed',
+              top: menuPosition.top,
+              right: menuPosition.right,
+            }}
+          >
             {canModify && (
               <button
                 className="doc-action-item"
@@ -121,8 +148,25 @@ function DocumentActions({
               </button>
             )}
           </div>
-        </>
-      )}
+        </>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div className="doc-actions">
+      <button
+        ref={buttonRef}
+        className="doc-actions-button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        title="Actions"
+      >
+        ...
+      </button>
+      {menuContent}
     </div>
   );
 }

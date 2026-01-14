@@ -185,20 +185,22 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 100;
+  z-index: 10000;
 }
 
 .doc-actions-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
   min-width: 150px;
   background: var(--color-bg, white);
   border: 1px solid var(--color-border, #ddd);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 101;
+  z-index: 10001;
   overflow: hidden;
+}
+
+/* Portal-based menu uses fixed positioning from inline styles */
+.doc-actions-menu-portal {
+  /* Position is set via inline styles */
 }
 
 .doc-action-item {

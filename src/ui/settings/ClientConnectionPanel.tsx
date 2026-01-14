@@ -150,7 +150,7 @@ export function ClientConnectionPanel() {
     if (!address || validationError) return;
 
     const portNum = parseInt(port, 10) || 9876;
-    const serverUrl = `ws://${address}:${portNum}`;
+    const serverUrl = `ws://${address}:${portNum}/ws`;
 
     setIsConnecting(true);
     try {

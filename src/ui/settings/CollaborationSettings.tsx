@@ -140,7 +140,7 @@ export function CollaborationSettings() {
       const user = currentUser || { id: 'host', displayName: 'Host', role: 'admin' as const };
 
       startSession({
-        serverUrl: `ws://localhost:${port}`,
+        serverUrl: `ws://localhost:${port}/ws`,
         documentId: docId,
         user: {
           id: user.id,
