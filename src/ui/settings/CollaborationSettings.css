@@ -45,12 +45,13 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 16px;
+  padding: 12px 8px;
   background: var(--color-bg-secondary);
   border: 2px solid var(--color-border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
+  min-width: 0; /* Allow shrinking */
 }
 
 .mode-button:hover:not(:disabled) {
@@ -221,4 +222,105 @@
 .settings-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Network mode selector */
+.network-mode-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.network-mode-button {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.network-mode-button:hover:not(:disabled) {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-primary);
+}
+
+.network-mode-button.active {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.network-mode-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Server addresses list */
+.server-addresses {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.addresses-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: 8px;
+}
+
+.addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.address-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+}
+
+.address-code {
+  flex: 1;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--color-primary);
+  word-break: break-all;
+}
+
+.copy-button {
+  padding: 4px 10px;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.copy-button:hover {
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Dark mode adjustments */
+:root[data-theme="dark"] .address-code {
+  color: var(--color-primary-light, #63b3ed);
+}
+
+:root[data-theme="dark"] .network-mode-button.active {
+  color: var(--color-primary-light, #63b3ed);
 }

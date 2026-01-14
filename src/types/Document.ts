@@ -58,6 +58,30 @@ export interface DiagramDocument {
   lockedByName?: string;
   /** Timestamp when document was locked */
   lockedAt?: number;
+  /** User ID who owns this document */
+  ownerId?: string;
+  /** Display name of the owner */
+  ownerName?: string;
+  /** Users with shared access to this document */
+  sharedWith?: DocumentShare[];
+  /** User ID who last modified this document */
+  lastModifiedBy?: string;
+  /** Display name of user who last modified */
+  lastModifiedByName?: string;
+}
+
+/**
+ * Document share entry for tracking who has access.
+ */
+export interface DocumentShare {
+  /** User ID */
+  userId: string;
+  /** User display name */
+  userName: string;
+  /** Permission level */
+  permission: 'view' | 'edit';
+  /** When the share was created */
+  sharedAt: number;
 }
 
 /**
@@ -83,6 +107,16 @@ export interface DocumentMetadata {
   lockedBy?: string;
   /** Display name of user who locked it */
   lockedByName?: string;
+  /** User ID who owns this document */
+  ownerId?: string;
+  /** Display name of the owner */
+  ownerName?: string;
+  /** Users with shared access */
+  sharedWith?: DocumentShare[];
+  /** User ID who last modified */
+  lastModifiedBy?: string;
+  /** Display name of who last modified */
+  lastModifiedByName?: string;
 }
 
 /**
@@ -166,6 +200,21 @@ export function getDocumentMetadata(doc: DiagramDocument): DocumentMetadata {
   }
   if (doc.lockedByName !== undefined) {
     metadata.lockedByName = doc.lockedByName;
+  }
+  if (doc.ownerId !== undefined) {
+    metadata.ownerId = doc.ownerId;
+  }
+  if (doc.ownerName !== undefined) {
+    metadata.ownerName = doc.ownerName;
+  }
+  if (doc.sharedWith !== undefined) {
+    metadata.sharedWith = doc.sharedWith;
+  }
+  if (doc.lastModifiedBy !== undefined) {
+    metadata.lastModifiedBy = doc.lastModifiedBy;
+  }
+  if (doc.lastModifiedByName !== undefined) {
+    metadata.lastModifiedByName = doc.lastModifiedByName;
   }
 
   return metadata;

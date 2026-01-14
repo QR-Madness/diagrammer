@@ -10,7 +10,7 @@ use auth::{
     create_token, hash_password, verify_password, LoginResponse, SessionToken, TokenConfig, User,
     UserInfo, UserRole, UserStore,
 };
-use server::{ServerStatus, WebSocketServer};
+use server::{get_local_ips, ServerConfig, ServerStatus, WebSocketServer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -63,7 +63,33 @@ fn get_app_version() -> &'static str {
 #[tauri::command]
 async fn get_server_status(state: tauri::State<'_, AppState>) -> Result<ServerStatus, String> {
     let server = state.server.read().await;
-    Ok(server.status())
+    Ok(server.status().await)
+}
+
+/// Get the current server configuration
+#[tauri::command]
+async fn get_server_config(state: tauri::State<'_, AppState>) -> Result<ServerConfig, String> {
+    let server = state.server.read().await;
+    Ok(server.get_config().await)
+}
+
+/// Update server configuration (only when server is not running)
+#[tauri::command]
+async fn set_server_config(
+    state: tauri::State<'_, AppState>,
+    config: ServerConfig,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    server.set_config(config).await
+}
+
+/// Get available LAN IP addresses for client connections
+#[tauri::command]
+fn get_lan_addresses() -> Vec<String> {
+    get_local_ips()
+        .iter()
+        .map(|ip| ip.to_string())
+        .collect()
 }
 
 /// Start the WebSocket server for Protected Local mode
@@ -307,6 +333,9 @@ pub fn run() {
             set_server_mode,
             get_app_version,
             get_server_status,
+            get_server_config,
+            set_server_config,
+            get_lan_addresses,
             start_server,
             stop_server,
             // Authentication

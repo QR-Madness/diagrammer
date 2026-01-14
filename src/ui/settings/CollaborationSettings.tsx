@@ -2,9 +2,9 @@
  * Collaboration Settings component for the Settings modal.
  *
  * Contains:
- * - Server mode toggle (Offline / Protected Local)
- * - Host port configuration
- * - Server status indicator
+ * - Server mode toggle (Offline / Host / Client)
+ * - Host port configuration and server status
+ * - Client connection panel for joining remote servers
  * - Connection status
  */
 
@@ -12,8 +12,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useTeamStore } from '../../store/teamStore';
 import { useUserStore } from '../../store/userStore';
 import { useCollaborationStore } from '../../collaboration';
-import { isTauri, getServerStatus, ServerStatus } from '../../tauri/commands';
+import {
+  isTauri,
+  getServerStatus,
+  getServerConfig,
+  setServerConfig,
+  ServerStatus,
+  ServerConfig,
+  NetworkMode,
+} from '../../tauri/commands';
 import { usePersistenceStore } from '../../store/persistenceStore';
+import { ClientConnectionPanel } from './ClientConnectionPanel';
+import { TeamDocumentsManager } from './TeamDocumentsManager';
+import { TeamMembersManager } from './TeamMembersManager';
 import './CollaborationSettings.css';
 
 export function CollaborationSettings() {
@@ -40,11 +51,23 @@ export function CollaborationSettings() {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [portInput, setPortInput] = useState(hostPort.toString());
+  const [networkMode, setNetworkMode] = useState<NetworkMode>('lan');
+  const [maxConnections, setMaxConnections] = useState(10);
   const [isTauriEnv, setIsTauriEnv] = useState(false);
 
-  // Check if running in Tauri
+  // Check if running in Tauri and load config
   useEffect(() => {
-    setIsTauriEnv(isTauri());
+    const tauriEnv = isTauri();
+    setIsTauriEnv(tauriEnv);
+
+    if (tauriEnv) {
+      // Load server config
+      getServerConfig().then((config) => {
+        setNetworkMode(config.network_mode);
+        setMaxConnections(config.max_connections);
+        setPortInput(config.port.toString());
+      });
+    }
   }, []);
 
   // Poll server status when hosting
@@ -68,6 +91,35 @@ export function CollaborationSettings() {
     return () => clearInterval(interval);
   }, [isTauriEnv, serverMode]);
 
+  // Save server config (when not running)
+  const handleSaveConfig = useCallback(async (newConfig: Partial<ServerConfig>) => {
+    if (!isTauriEnv) return;
+
+    const updatedConfig: ServerConfig = {
+      network_mode: newConfig.network_mode ?? networkMode,
+      max_connections: newConfig.max_connections ?? maxConnections,
+      port: newConfig.port ?? (parseInt(portInput, 10) || 9876),
+    };
+
+    try {
+      await setServerConfig(updatedConfig);
+    } catch (error) {
+      console.error('Failed to save server config:', error);
+    }
+  }, [isTauriEnv, networkMode, maxConnections, portInput]);
+
+  // Handle network mode change
+  const handleNetworkModeChange = useCallback(async (mode: NetworkMode) => {
+    setNetworkMode(mode);
+    await handleSaveConfig({ network_mode: mode });
+  }, [handleSaveConfig]);
+
+  // Handle max connections change
+  const handleMaxConnectionsChange = useCallback(async (value: number) => {
+    setMaxConnections(value);
+    await handleSaveConfig({ max_connections: value });
+  }, [handleSaveConfig]);
+
   const handleStartServer = useCallback(async () => {
     const port = parseInt(portInput, 10);
     if (isNaN(port) || port < 1 || port > 65535) {
@@ -76,10 +128,14 @@ export function CollaborationSettings() {
 
     setIsStarting(true);
     try {
+      // Save config before starting
+      await handleSaveConfig({ port });
+
       setHostPort(port);
       await startHosting(port);
 
       // Start collaboration session after server is up
+      // Use localhost for the host itself (always works)
       const docId = currentDocumentId || 'default';
       const user = currentUser || { id: 'host', displayName: 'Host', role: 'admin' as const };
 
@@ -95,7 +151,7 @@ export function CollaborationSettings() {
     } finally {
       setIsStarting(false);
     }
-  }, [portInput, setHostPort, startHosting, currentDocumentId, currentUser, startSession]);
+  }, [portInput, setHostPort, startHosting, currentDocumentId, currentUser, startSession, handleSaveConfig]);
 
   const handleStopServer = useCallback(async () => {
     setIsStopping(true);
@@ -143,7 +199,7 @@ export function CollaborationSettings() {
           <button
             className={`mode-button ${serverMode === 'offline' ? 'active' : ''}`}
             onClick={handleGoOffline}
-            disabled={!isTauriEnv || serverMode === 'offline'}
+            disabled={serverMode === 'offline'}
           >
             <span className="mode-icon">🔒</span>
             <span className="mode-label">Offline</span>
@@ -153,22 +209,72 @@ export function CollaborationSettings() {
           <button
             className={`mode-button ${serverMode === 'host' ? 'active' : ''}`}
             onClick={isServerRunning ? handleStopServer : handleStartServer}
-            disabled={!isTauriEnv || isStarting || isStopping}
+            disabled={!isTauriEnv || isStarting || isStopping || serverMode === 'client'}
           >
             <span className="mode-icon">🌐</span>
             <span className="mode-label">
-              {isServerRunning ? 'Hosting' : 'Protected Local'}
+              {isServerRunning ? 'Hosting' : 'Host'}
             </span>
             <span className="mode-description">
-              {isServerRunning ? 'Click to stop server' : 'Host for team collaboration'}
+              {isServerRunning ? 'Server running' : 'Host for team'}
+            </span>
+          </button>
+
+          <button
+            className={`mode-button ${serverMode === 'client' ? 'active' : ''}`}
+            onClick={() => {/* Mode is set by ClientConnectionPanel */}}
+            disabled={serverMode === 'host' && isServerRunning}
+          >
+            <span className="mode-icon">🔗</span>
+            <span className="mode-label">
+              {serverMode === 'client' && isCollabActive ? 'Connected' : 'Join'}
+            </span>
+            <span className="mode-description">
+              {serverMode === 'client' ? 'Connected to server' : 'Join a host'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* Host Configuration */}
+      {/* Client Connection Panel - shown when in client mode or wanting to join */}
+      {(serverMode === 'client' || serverMode === 'offline') && !isServerRunning && (
+        <div className="settings-group">
+          <ClientConnectionPanel />
+        </div>
+      )}
+
+      {/* Host Configuration - shown when in host mode or offline */}
+      {serverMode !== 'client' && (
       <div className="settings-group">
         <h4 className="settings-group-title">Host Configuration</h4>
+
+        {/* Network Mode */}
+        <div className="settings-row">
+          <label className="settings-label">Network Access</label>
+          <div className="network-mode-selector">
+            <button
+              className={`network-mode-button ${networkMode === 'localhost' ? 'active' : ''}`}
+              onClick={() => handleNetworkModeChange('localhost')}
+              disabled={!isTauriEnv || isServerRunning}
+              title="Only accept connections from this machine"
+            >
+              Localhost Only
+            </button>
+            <button
+              className={`network-mode-button ${networkMode === 'lan' ? 'active' : ''}`}
+              onClick={() => handleNetworkModeChange('lan')}
+              disabled={!isTauriEnv || isServerRunning}
+              title="Accept connections from your local network"
+            >
+              LAN Access
+            </button>
+          </div>
+          <span className="settings-hint">
+            {networkMode === 'lan'
+              ? 'Other devices on your network can connect'
+              : 'Only this machine can connect'}
+          </span>
+        </div>
 
         <div className="settings-row">
           <label className="settings-label" htmlFor="host-port">
@@ -186,6 +292,25 @@ export function CollaborationSettings() {
           />
           <span className="settings-hint">
             Port for WebSocket server (default: 9876)
+          </span>
+        </div>
+
+        <div className="settings-row">
+          <label className="settings-label" htmlFor="max-connections">
+            Max Connections
+          </label>
+          <input
+            id="max-connections"
+            type="number"
+            className="settings-input"
+            value={maxConnections}
+            onChange={(e) => handleMaxConnectionsChange(parseInt(e.target.value, 10) || 10)}
+            min={1}
+            max={50}
+            disabled={!isTauriEnv || isServerRunning}
+          />
+          <span className="settings-hint">
+            Maximum simultaneous client connections (1-50)
           </span>
         </div>
 
@@ -209,6 +334,7 @@ export function CollaborationSettings() {
           </button>
         )}
       </div>
+      )}
 
       {/* Server Status */}
       {serverStatus && (
@@ -224,9 +350,9 @@ export function CollaborationSettings() {
             </div>
 
             <div className="status-item">
-              <span className="status-label">Address</span>
+              <span className="status-label">Mode</span>
               <span className="status-value">
-                {serverStatus.address || '-'}
+                {serverStatus.network_mode === 'lan' ? 'LAN Access' : 'Localhost Only'}
               </span>
             </div>
 
@@ -240,10 +366,34 @@ export function CollaborationSettings() {
             <div className="status-item">
               <span className="status-label">Clients</span>
               <span className="status-value">
-                {serverStatus.connected_clients}
+                {serverStatus.connected_clients} / {serverStatus.max_connections || '∞'}
               </span>
             </div>
           </div>
+
+          {/* Connection Addresses */}
+          {serverStatus.running && serverStatus.addresses.length > 0 && (
+            <div className="server-addresses">
+              <span className="addresses-label">Connection Addresses:</span>
+              <div className="addresses-list">
+                {serverStatus.addresses.map((addr, index) => (
+                  <div key={index} className="address-item">
+                    <code className="address-code">{addr}</code>
+                    <button
+                      className="copy-button"
+                      onClick={() => navigator.clipboard.writeText(addr)}
+                      title="Copy to clipboard"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <span className="settings-hint">
+                Share one of these addresses with clients to connect
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -278,6 +428,16 @@ export function CollaborationSettings() {
           </div>
         </div>
       )}
+
+      {/* Team Documents Manager */}
+      <div className="settings-group">
+        <TeamDocumentsManager />
+      </div>
+
+      {/* Team Members Manager (Admin only) */}
+      <div className="settings-group">
+        <TeamMembersManager />
+      </div>
 
       {/* Current User */}
       {currentUser && (

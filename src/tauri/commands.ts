@@ -8,6 +8,23 @@
 import { invoke } from '@tauri-apps/api/core';
 
 /**
+ * Network access mode for the server
+ */
+export type NetworkMode = 'localhost' | 'lan';
+
+/**
+ * Server configuration
+ */
+export interface ServerConfig {
+  /** Network access mode */
+  network_mode: NetworkMode;
+  /** Maximum connections allowed (0 = unlimited) */
+  max_connections: number;
+  /** Port to listen on */
+  port: number;
+}
+
+/**
  * Server status information from the Tauri backend
  */
 export interface ServerStatus {
@@ -17,8 +34,14 @@ export interface ServerStatus {
   port: number;
   /** Number of connected clients */
   connected_clients: number;
-  /** WebSocket address (empty if not running) */
+  /** Primary WebSocket address (empty if not running) */
   address: string;
+  /** All available addresses to connect to */
+  addresses: string[];
+  /** Current network mode */
+  network_mode: NetworkMode;
+  /** Maximum allowed connections (0 = unlimited) */
+  max_connections: number;
 }
 
 /**
@@ -85,7 +108,52 @@ export async function stopServer(): Promise<void> {
  */
 export async function getServerStatus(): Promise<ServerStatus> {
   if (!isTauri()) {
-    return { running: false, port: 0, connected_clients: 0, address: '' };
+    return {
+      running: false,
+      port: 0,
+      connected_clients: 0,
+      address: '',
+      addresses: [],
+      network_mode: 'lan',
+      max_connections: 10,
+    };
   }
   return invoke<ServerStatus>('get_server_status');
+}
+
+/**
+ * Get the current server configuration
+ * @returns Server configuration
+ */
+export async function getServerConfig(): Promise<ServerConfig> {
+  if (!isTauri()) {
+    return {
+      network_mode: 'lan',
+      max_connections: 10,
+      port: 9876,
+    };
+  }
+  return invoke<ServerConfig>('get_server_config');
+}
+
+/**
+ * Update server configuration (only when server is not running)
+ * @param config - New server configuration
+ */
+export async function setServerConfig(config: ServerConfig): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('Server configuration only available in desktop app');
+  }
+  return invoke<void>('set_server_config', { config });
+}
+
+/**
+ * Get available LAN IP addresses for client connections
+ * @returns Array of IP address strings
+ */
+export async function getLanAddresses(): Promise<string[]> {
+  if (!isTauri()) {
+    return [];
+  }
+  return invoke<string[]>('get_lan_addresses');
 }
