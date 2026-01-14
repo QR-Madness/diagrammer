@@ -5,7 +5,7 @@
 version: '3'
 
 vars:
-  BUN: '{{.HOME}}/.bun/bin/bun'
+  BUN: '~/.bun/bin/bun'
 
 tasks:
   # ============================================
@@ -44,13 +44,16 @@ tasks:
 
   test:
     desc: Run tests in watch mode
+    deps:
+      - test:run
     cmds:
-      - '{{.BUN}} run test'
+      - echo "All tests pass!"
 
   test:run:
     desc: Run all tests once
     cmds:
       - '{{.BUN}} run test --run'
+      - task: test:rust
 
   test:ui:
     desc: Run tests with UI
@@ -61,6 +64,12 @@ tasks:
     desc: Run TypeScript type checking
     cmds:
       - '{{.BUN}} run typecheck'
+  
+  test:rust:
+    desc: Run Rust tests
+    dir: src-tauri
+    cmds:
+      - cargo test
 
   # ============================================
   # Code Quality

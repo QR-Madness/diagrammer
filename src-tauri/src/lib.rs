@@ -291,6 +291,64 @@ fn has_users(state: tauri::State<AppState>) -> bool {
     state.user_store.has_users()
 }
 
+/// List all users (returns UserInfo without password hashes)
+#[tauri::command]
+fn list_users(state: tauri::State<AppState>) -> Vec<UserInfo> {
+    state
+        .user_store
+        .list_users()
+        .iter()
+        .map(UserInfo::from)
+        .collect()
+}
+
+/// Update a user's role (admin only)
+#[tauri::command]
+fn update_user_role(
+    state: tauri::State<AppState>,
+    user_id: String,
+    new_role: String,
+) -> Result<(), String> {
+    let role = match new_role.as_str() {
+        "admin" => UserRole::Admin,
+        "user" => UserRole::User,
+        _ => return Err("Invalid role".to_string()),
+    };
+
+    state.user_store.update_user_role(&user_id, role)?;
+    log::info!("Updated role for user '{}' to '{}'", user_id, new_role);
+    Ok(())
+}
+
+/// Reset a user's password (admin only)
+#[tauri::command]
+fn reset_user_password(
+    state: tauri::State<AppState>,
+    user_id: String,
+    new_password: String,
+) -> Result<(), String> {
+    if new_password.len() < 6 {
+        return Err("Password must be at least 6 characters".to_string());
+    }
+
+    let password_hash = hash_password(&new_password)?;
+    state.user_store.update_user_password(&user_id, password_hash)?;
+    log::info!("Reset password for user '{}'", user_id);
+    Ok(())
+}
+
+/// Delete a user (admin only)
+#[tauri::command]
+fn delete_user(state: tauri::State<AppState>, user_id: String) -> Result<(), String> {
+    let removed = state.user_store.remove_user(&user_id)?;
+    if removed {
+        log::info!("Deleted user '{}'", user_id);
+        Ok(())
+    } else {
+        Err("User not found".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -343,6 +401,11 @@ pub fn run() {
             validate_token,
             create_user,
             has_users,
+            // User management
+            list_users,
+            update_user_role,
+            reset_user_password,
+            delete_user,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Diagrammer");

@@ -137,6 +137,34 @@ impl UserStore {
         Ok(removed)
     }
 
+    /// Update a user's role
+    pub fn update_user_role(&self, id: &str, new_role: UserRole) -> Result<(), String> {
+        let mut users = self.users.write().map_err(|e| e.to_string())?;
+
+        if let Some(user) = users.get_mut(id) {
+            user.role = new_role;
+            drop(users);
+            self.persist()?;
+            Ok(())
+        } else {
+            Err("User not found".to_string())
+        }
+    }
+
+    /// Update a user's password hash
+    pub fn update_user_password(&self, id: &str, new_password_hash: String) -> Result<(), String> {
+        let mut users = self.users.write().map_err(|e| e.to_string())?;
+
+        if let Some(user) = users.get_mut(id) {
+            user.password_hash = new_password_hash;
+            drop(users);
+            self.persist()?;
+            Ok(())
+        } else {
+            Err("User not found".to_string())
+        }
+    }
+
     /// Get all users (without password hashes)
     pub fn list_users(&self) -> Vec<User> {
         self.users

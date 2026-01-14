@@ -562,6 +562,9 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle); also add a toggle for this in settings
 - [ ] Context menu for style profiles clips overflows outside of window viewport
 - [ ] Add border radius for group-labels
+- [ ] Select dropdown is pure white and gray (tested in dark mode)
+- [ ] Checkboxes have weird pallettes; especially in dark mode
+- [ ] Team document settings menu for individual documents overflows underneath the edge of the modal rendering it out-of-view
 
 ##### Phase 14.2.2: UX Improvements - Chunk 2
 

@@ -60,56 +60,80 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   }, []);
 
   const handleLogin = useCallback(
-    async (e: FormEvent) => {
+    async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       clearError();
 
-      if (!username.trim() || !password) {
+      // Read values directly from form to handle browser autofill
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const formUsername = (formData.get('username') as string || '').trim();
+      const formPassword = formData.get('password') as string || '';
+
+      if (!formUsername || !formPassword) {
         return;
       }
 
-      const response = await login({ username: username.trim(), password });
+      // Update state to reflect form values (for consistency)
+      setUsername(formUsername);
+      setPassword(formPassword);
+
+      const response = await login({ username: formUsername, password: formPassword });
 
       if (response.success) {
         onLoginSuccess?.();
       }
     },
-    [username, password, login, clearError, onLoginSuccess]
+    [login, clearError, onLoginSuccess]
   );
 
   const handleSetup = useCallback(
-    async (e: FormEvent) => {
+    async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setSetupError(null);
 
-      if (!username.trim() || !displayName.trim() || !password) {
+      // Read values directly from form to handle browser autofill
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+      const formDisplayName = (formData.get('displayName') as string || '').trim();
+      const formUsername = (formData.get('setupUsername') as string || '').trim();
+      const formPassword = formData.get('setupPassword') as string || '';
+      const formConfirmPassword = formData.get('confirmPassword') as string || '';
+
+      if (!formUsername || !formDisplayName || !formPassword) {
         setSetupError('All fields are required');
         return;
       }
 
-      if (password !== confirmPassword) {
+      if (formPassword !== formConfirmPassword) {
         setSetupError('Passwords do not match');
         return;
       }
 
-      if (password.length < 6) {
+      if (formPassword.length < 6) {
         setSetupError('Password must be at least 6 characters');
         return;
       }
+
+      // Update state to reflect form values
+      setDisplayName(formDisplayName);
+      setUsername(formUsername);
+      setPassword(formPassword);
+      setConfirmPassword(formConfirmPassword);
 
       setIsCreatingUser(true);
 
       try {
         const { invoke } = await import('@tauri-apps/api/core');
         await invoke('create_user', {
-          username: username.trim(),
-          password,
-          displayName: displayName.trim(),
+          username: formUsername,
+          password: formPassword,
+          displayName: formDisplayName,
           role: 'admin',
         });
 
         // Now login with the created user
-        const response = await login({ username: username.trim(), password });
+        const response = await login({ username: formUsername, password: formPassword });
 
         if (response.success) {
           onLoginSuccess?.();
@@ -123,7 +147,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
         setIsCreatingUser(false);
       }
     },
-    [username, displayName, password, confirmPassword, login, onLoginSuccess]
+    [login, onLoginSuccess]
   );
 
   // Loading state while checking for users
@@ -177,6 +201,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <label htmlFor="displayName">Display Name</label>
               <input
                 id="displayName"
+                name="displayName"
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
@@ -187,9 +212,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="username">Username</label>
+              <label htmlFor="setupUsername">Username</label>
               <input
-                id="username"
+                id="setupUsername"
+                name="setupUsername"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -200,9 +226,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="setupPassword">Password</label>
               <input
-                id="password"
+                id="setupPassword"
+                name="setupPassword"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -216,6 +243,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               <label htmlFor="confirmPassword">Confirm Password</label>
               <input
                 id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -265,9 +293,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
         <form className="login-form" onSubmit={handleLogin}>
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="loginUsername">Username</label>
             <input
-              id="username"
+              id="loginUsername"
+              name="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -279,9 +308,10 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="loginPassword">Password</label>
             <input
-              id="password"
+              id="loginPassword"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

@@ -46,6 +46,7 @@ See `CLAUDE.md` for Claude Code guidance.
 
 ## Tech Stack
 
+- **Desktop Application Packaging**: Tauri + bundled Vite
 - **Runtime**: Bun (fast JavaScript runtime)
 - **Language**: TypeScript (strict mode)
 - **UI Framework**: React 18

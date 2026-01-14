@@ -17,6 +17,18 @@ import { isTauri } from '../../tauri/commands';
 import './TeamMembersManager.css';
 
 /**
+ * User info returned from backend (without password hash)
+ */
+interface UserInfo {
+  id: string;
+  display_name: string;
+  username: string;
+  role: 'admin' | 'user';
+  created_at: number;
+  last_login_at?: number;
+}
+
+/**
  * Format a timestamp as a relative time string.
  */
 function formatRelativeTime(timestamp: number | undefined): string {
@@ -58,11 +70,12 @@ function OnlineIndicator({ online }: { online: boolean }) {
 
 export function TeamMembersManager() {
   const currentUser = useUserStore((state) => state.currentUser);
-  const members = useTeamStore((state) => state.members);
+  const onlineMembers = useTeamStore((state) => state.members);
   const serverMode = useTeamStore((state) => state.serverMode);
 
   const [isTauriEnv, setIsTauriEnv] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState<UserInfo[]>([]);
 
   // Modal states
   const [addUserModal, setAddUserModal] = useState(false);
@@ -79,10 +92,28 @@ export function TeamMembersManager() {
   const [resetPassword, setResetPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Check if running in Tauri
-  useEffect(() => {
-    setIsTauriEnv(isTauri());
+  // Load users from backend
+  const loadUsers = useCallback(async () => {
+    if (!isTauri()) return;
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const users = await invoke<UserInfo[]>('list_users');
+      setRegisteredUsers(users);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
   }, []);
+
+  // Check if running in Tauri and load users
+  useEffect(() => {
+    const tauriEnv = isTauri();
+    setIsTauriEnv(tauriEnv);
+
+    if (tauriEnv) {
+      loadUsers();
+    }
+  }, [loadUsers]);
 
   const isAdmin = currentUser?.role === 'admin';
   const isHosting = serverMode === 'host';
@@ -119,17 +150,17 @@ export function TeamMembersManager() {
         role: newRole,
       });
 
-      // Success - close modal and reset form
+      // Success - close modal, reset form, and refresh list
       setAddUserModal(false);
       resetAddUserForm();
-      // TODO: Refresh members list
+      await loadUsers();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to create user';
       setFormError(errorMsg);
     } finally {
       setIsLoading(false);
     }
-  }, [newUsername, newDisplayName, newPassword, newRole, isTauriEnv]);
+  }, [newUsername, newDisplayName, newPassword, newRole, isTauriEnv, loadUsers]);
 
   const handleChangeRole = useCallback(async () => {
     if (!editRoleModal) return;
@@ -149,16 +180,16 @@ export function TeamMembersManager() {
         newRole: selectedRole,
       });
 
-      // Success - close modal
+      // Success - close modal and refresh list
       setEditRoleModal(null);
-      // TODO: Refresh members list
+      await loadUsers();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to update role';
       setFormError(errorMsg);
     } finally {
       setIsLoading(false);
     }
-  }, [editRoleModal, selectedRole, isTauriEnv]);
+  }, [editRoleModal, selectedRole, isTauriEnv, loadUsers]);
 
   const handleResetPassword = useCallback(async () => {
     if (!resetPasswordModal || !resetPassword.trim()) return;
@@ -181,7 +212,6 @@ export function TeamMembersManager() {
       // Success - close modal
       setResetPasswordModal(null);
       setResetPassword('');
-      // TODO: Show success message
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to reset password';
       setFormError(errorMsg);
@@ -207,16 +237,16 @@ export function TeamMembersManager() {
         userId: deleteUserModal.user.id,
       });
 
-      // Success - close modal
+      // Success - close modal and refresh list
       setDeleteUserModal(null);
-      // TODO: Refresh members list
+      await loadUsers();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to delete user';
       setFormError(errorMsg);
     } finally {
       setIsLoading(false);
     }
-  }, [deleteUserModal, isTauriEnv]);
+  }, [deleteUserModal, isTauriEnv, loadUsers]);
 
   const openEditRoleModal = (member: TeamMember) => {
     setSelectedRole(member.user.role);
@@ -259,28 +289,46 @@ export function TeamMembersManager() {
 
       {/* Members list */}
       <div className="team-members-list">
-        {members.length === 0 ? (
+        {registeredUsers.length === 0 ? (
           <div className="team-members-empty">
             No team members yet. Add a user to get started.
           </div>
         ) : (
-          members.map((member) => {
-            const isSelf = member.user.id === currentUser?.id;
+          registeredUsers.map((userInfo) => {
+            const isSelf = userInfo.id === currentUser?.id;
+            // Check if user is online by looking in onlineMembers
+            const onlineMember = onlineMembers.find(m => m.user.id === userInfo.id);
+            const isOnline = onlineMember?.online ?? false;
+            const lastSeenAt = onlineMember?.lastSeenAt ?? userInfo.last_login_at;
+
+            // Convert UserInfo to TeamMember format for modals
+            const member: TeamMember = {
+              user: {
+                id: userInfo.id,
+                displayName: userInfo.display_name,
+                username: userInfo.username,
+                role: userInfo.role,
+                createdAt: userInfo.created_at,
+                ...(userInfo.last_login_at !== undefined && { lastLoginAt: userInfo.last_login_at }),
+              },
+              online: isOnline,
+              ...(lastSeenAt !== undefined && { lastSeenAt }),
+            };
 
             return (
-              <div key={member.user.id} className="team-member-item">
+              <div key={userInfo.id} className="team-member-item">
                 <div className="member-info">
                   <div className="member-name-row">
-                    <OnlineIndicator online={member.online} />
-                    <span className="member-name">{member.user.displayName}</span>
-                    <RoleBadge role={member.user.role} />
+                    <OnlineIndicator online={isOnline} />
+                    <span className="member-name">{userInfo.display_name}</span>
+                    <RoleBadge role={userInfo.role} />
                     {isSelf && <span className="member-you">(You)</span>}
                   </div>
                   <div className="member-meta">
-                    <span className="member-username">@{member.user.username}</span>
+                    <span className="member-username">@{userInfo.username}</span>
                     <span className="member-separator">-</span>
                     <span className="member-last-seen">
-                      Last active: {formatRelativeTime(member.lastSeenAt)}
+                      Last active: {formatRelativeTime(lastSeenAt)}
                     </span>
                   </div>
                 </div>
