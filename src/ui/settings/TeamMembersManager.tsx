@@ -115,7 +115,6 @@ export function TeamMembersManager() {
     }
   }, [loadUsers]);
 
-  const isAdmin = currentUser?.role === 'admin';
   const isHosting = serverMode === 'host';
 
   // Reset form when modals close

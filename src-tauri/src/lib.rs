@@ -382,16 +382,34 @@ pub fn run() {
 
             log::info!("User store path: {}", users_path_str);
 
-            // Initialize UserStore with persistence and manage AppState
+            // Initialize UserStore with persistence
             let user_store = Arc::new(UserStore::with_persistence(users_path_str));
             let has_existing_users = user_store.has_users();
             log::info!("Existing users found: {}", has_existing_users);
 
+            // Initialize WebSocket server with app data directory
+            let server = WebSocketServer::new();
+            let token_config = TokenConfig::default();
+
+            // Use tokio runtime to set async properties
+            let app_data_dir_clone = app_data_dir.clone();
+            let jwt_secret = token_config.secret.clone();
+            let user_store_clone = user_store.clone();
+            let token_config_clone = token_config.clone();
+            tauri::async_runtime::block_on(async {
+                server.set_app_data_dir(app_data_dir_clone).await;
+                server.set_jwt_secret(jwt_secret).await;
+                server.set_user_store(user_store_clone).await;
+                server.set_token_config(token_config_clone).await;
+            });
+
+            log::info!("WebSocket server initialized with document store and user store");
+
             app.manage(AppState {
                 server_mode: AtomicBool::new(false),
-                server: Arc::new(RwLock::new(WebSocketServer::new())),
+                server: Arc::new(RwLock::new(server)),
                 user_store,
-                token_config: TokenConfig::default(),
+                token_config,
             });
 
             // Set window icon (for development mode - bundle icons handle production)

@@ -601,10 +601,10 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 - [ ] Tiptap Tables
 - [ ] LaTeX Equation Support
-- [ ] Interactive Tasks Lists
 - [ ] Image resizing handles
 - [ ] Deeper headings (preferred up to 7 levels)
 - [ ] Additional tweaks at your discretion
+- [ ] OPTIONAL: Interactive Tasks Lists
 
 ### Phase 14.9: AI Insights Improvements Checklist
 

@@ -17,6 +17,7 @@ import {
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
 import { useUserStore } from './userStore';
+import { useTeamDocumentStore } from './teamDocumentStore';
 import { blobStorage } from '../storage/BlobStorage';
 
 /**
@@ -571,7 +572,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }
         doc.modifiedAt = Date.now();
 
-        // Save back to storage
+        // Save back to localStorage
         saveDocumentToStorage(doc);
 
         // Update metadata index
@@ -582,6 +583,14 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
             [docId]: metadata,
           },
         }));
+
+        // If connected to host, also save to host
+        const teamStore = useTeamDocumentStore.getState();
+        if (teamStore.authenticated) {
+          teamStore.saveToHost(doc).catch((error) => {
+            console.error('Failed to save team document to host:', error);
+          });
+        }
 
         return true;
       },
@@ -601,6 +610,14 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           return false;
         }
 
+        // If connected to host, delete from host first
+        const teamStore = useTeamDocumentStore.getState();
+        if (teamStore.authenticated && teamStore.isTeamDocument(docId)) {
+          teamStore.deleteFromHost(docId).catch((error) => {
+            console.error('Failed to delete team document from host:', error);
+          });
+        }
+
         // Clear team-specific fields
         doc.isTeamDocument = false;
         delete doc.ownerId;
@@ -613,7 +630,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         delete doc.lastModifiedByName;
         doc.modifiedAt = Date.now();
 
-        // Save back to storage
+        // Save back to localStorage
         saveDocumentToStorage(doc);
 
         // Update metadata index

@@ -51,6 +51,9 @@ default = []
 # Enable when Protected Local mode is implemented
 # protected-local = ["axum", "tower-http", "jsonwebtoken", "bcrypt", "yrs"]
 
+[dev-dependencies]
+tempfile = "3"
+
 [profile.release]
 lto = true
 opt-level = "s"

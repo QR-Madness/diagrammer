@@ -16,18 +16,25 @@
 import { create } from 'zustand';
 import { YjsDocument } from './YjsDocument';
 import { SyncProvider, ConnectionStatus, AwarenessUserState, SyncProviderOptions } from './SyncProvider';
+import { DocumentSyncProvider } from './DocumentSyncProvider';
+import { useTeamDocumentStore } from '../store/teamDocumentStore';
 import type { Shape } from '../shapes/Shape';
 
 /**
  * Collaboration session configuration
  */
 export interface CollaborationConfig {
-  /** WebSocket URL (e.g., ws://localhost:9876) */
+  /** WebSocket URL (e.g., ws://localhost:9876/ws) */
   serverUrl: string;
   /** Document ID to collaborate on */
   documentId: string;
-  /** Authentication token (JWT) */
+  /** Authentication token (JWT) - use this OR credentials */
   token?: string;
+  /** Host login credentials - alternative to token for client login */
+  credentials?: {
+    username: string;
+    password: string;
+  };
   /** Local user info */
   user: {
     id: string;
@@ -101,6 +108,8 @@ interface CollaborationActions {
   getYjsDocument: () => YjsDocument | null;
   /** Get the SyncProvider instance */
   getSyncProvider: () => SyncProvider | null;
+  /** Get the DocumentSyncProvider instance */
+  getDocSyncProvider: () => DocumentSyncProvider | null;
 }
 
 /**
@@ -108,6 +117,7 @@ interface CollaborationActions {
  */
 let yjsDoc: YjsDocument | null = null;
 let syncProvider: SyncProvider | null = null;
+let docSyncProvider: DocumentSyncProvider | null = null;
 
 /**
  * Collaboration store for managing real-time sync.
@@ -151,7 +161,7 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         providerOptions.token = config.token;
       }
 
-      // Create sync provider
+      // Create sync provider for CRDT sync
       syncProvider = new SyncProvider(yjsDoc.getDoc(), providerOptions);
 
       // Set up awareness change handler
@@ -166,8 +176,62 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         color: config.user.color,
       });
 
-      // Connect
+      // Create document sync provider for team document operations
+      // Use same URL as SyncProvider - config.serverUrl already includes /ws path
+      const docSyncOptions: import('./DocumentSyncProvider').DocumentSyncProviderOptions = {
+        url: config.serverUrl,
+        onStatusChange: async (status, error) => {
+          console.log('[DocumentSyncProvider] Status:', status, error ? `Error: ${error}` : '');
+
+          // If we just connected and have credentials (not token), login now
+          if (status === 'connected' && config.credentials && !config.token && docSyncProvider) {
+            console.log('[DocumentSyncProvider] Logging in with credentials...');
+            const result = await docSyncProvider.loginWithCredentials(
+              config.credentials.username,
+              config.credentials.password
+            );
+            if (!result.success) {
+              useTeamDocumentStore.getState().setError(`Login failed: ${result.error ?? 'Unknown error'}`);
+              get()._setError(`Login failed: ${result.error ?? 'Unknown error'}`);
+            }
+            // onAuthenticated callback will be called by loginWithCredentials
+            return;
+          }
+
+          const isConnected = status === 'connected' || status === 'authenticated';
+          useTeamDocumentStore.getState().setHostConnected(isConnected);
+          if (error) {
+            useTeamDocumentStore.getState().setError(`Document sync: ${error}`);
+          } else if (isConnected) {
+            useTeamDocumentStore.getState().setError(null);
+          }
+        },
+        onAuthenticated: (success, userId, username) => {
+          useTeamDocumentStore.getState().setAuthenticated(success);
+          console.log('[DocumentSyncProvider] Authenticated:', success, userId ? `(${username})` : '');
+
+          // Update user info from authentication response if we logged in with credentials
+          if (success && userId && config.credentials) {
+            // Update the config user info with server-provided values
+            config.user.id = userId;
+            if (username) {
+              config.user.name = username;
+            }
+          }
+        },
+      };
+      // Only set token if provided (not using credentials)
+      if (config.token && !config.credentials) {
+        docSyncOptions.token = config.token;
+      }
+      docSyncProvider = new DocumentSyncProvider(docSyncOptions);
+
+      // Register with team document store
+      useTeamDocumentStore.getState().setProvider(docSyncProvider);
+
+      // Connect both providers
       syncProvider.connect();
+      docSyncProvider.connect();
 
       set({
         isActive: true,
@@ -182,10 +246,19 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         syncProvider = null;
       }
 
+      if (docSyncProvider) {
+        docSyncProvider.destroy();
+        docSyncProvider = null;
+      }
+
       if (yjsDoc) {
         yjsDoc.destroy();
         yjsDoc = null;
       }
+
+      // Clear team document store
+      useTeamDocumentStore.getState().setProvider(null);
+      useTeamDocumentStore.getState().clearTeamDocuments();
 
       set({
         isActive: false,
@@ -255,6 +328,7 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
 
     getYjsDocument: () => yjsDoc,
     getSyncProvider: () => syncProvider,
+    getDocSyncProvider: () => docSyncProvider,
   })
 );
 

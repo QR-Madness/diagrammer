@@ -8,9 +8,10 @@
  * - Import/Export JSON
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useTeamStore } from '../../store/teamStore';
+import { useTeamDocumentStore } from '../../store/teamDocumentStore';
 import { PDFExportDialog } from '../PDFExportDialog';
 import { DocumentMetadata } from '../../types/Document';
 import './DocumentsSettings.css';
@@ -31,6 +32,15 @@ export function DocumentsSettings() {
 
   const serverMode = useTeamStore((state) => state.serverMode);
 
+  // Team document store state
+  const remoteTeamDocs = useTeamDocumentStore((state) => state.teamDocuments);
+  const hostConnected = useTeamDocumentStore((state) => state.hostConnected);
+  const authenticated = useTeamDocumentStore((state) => state.authenticated);
+  const isLoadingList = useTeamDocumentStore((state) => state.isLoadingList);
+  const teamStoreError = useTeamDocumentStore((state) => state.error);
+  const fetchDocumentList = useTeamDocumentStore((state) => state.fetchDocumentList);
+  const loadTeamDocument = useTeamDocumentStore((state) => state.loadTeamDocument);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -40,26 +50,53 @@ export function DocumentsSettings() {
   const [transferDirection, setTransferDirection] = useState<'toTeam' | 'toPersonal'>('toTeam');
 
   const isInTeamMode = serverMode !== 'offline';
+  const isConnectedToHost = serverMode === 'client' && authenticated;
 
+  // Refresh team documents when connected
+  useEffect(() => {
+    if (isConnectedToHost) {
+      fetchDocumentList().catch(console.error);
+    }
+  }, [isConnectedToHost, fetchDocumentList]);
+
+  // Merge local and remote documents
   const documentList = useMemo(() => {
-    let docs = Object.entries(documents);
+    // Start with local documents
+    const localDocs = Object.entries(documents);
+
+    // If connected to host as client, merge with remote team documents
+    // and filter out local team documents (they should come from the host)
+    let allDocs: [string, DocumentMetadata][];
+
+    if (isConnectedToHost) {
+      // Personal docs from local storage + team docs from remote
+      const personalDocs = localDocs.filter(([, doc]) => !doc.isTeamDocument);
+      const remoteDocs = Object.entries(remoteTeamDocs);
+      allDocs = [...personalDocs, ...remoteDocs];
+    } else {
+      // Not connected as client - use local documents
+      allDocs = localDocs;
+    }
 
     // Apply filter
     if (filterMode === 'team') {
-      docs = docs.filter(([, doc]) => doc.isTeamDocument);
+      allDocs = allDocs.filter(([, doc]) => doc.isTeamDocument);
     } else if (filterMode === 'personal') {
-      docs = docs.filter(([, doc]) => !doc.isTeamDocument);
+      allDocs = allDocs.filter(([, doc]) => !doc.isTeamDocument);
     }
 
     // Sort by last modified, newest first
-    return docs.sort((a, b) => (b[1].modifiedAt || 0) - (a[1].modifiedAt || 0));
-  }, [documents, filterMode]);
+    return allDocs.sort((a, b) => (b[1].modifiedAt || 0) - (a[1].modifiedAt || 0));
+  }, [documents, remoteTeamDocs, isConnectedToHost, filterMode]);
 
   // Count documents by type
-  const teamDocCount = useMemo(
-    () => Object.values(documents).filter((d) => d.isTeamDocument).length,
-    [documents]
-  );
+  const teamDocCount = useMemo(() => {
+    if (isConnectedToHost) {
+      return Object.keys(remoteTeamDocs).length;
+    }
+    return Object.values(documents).filter((d) => d.isTeamDocument).length;
+  }, [documents, remoteTeamDocs, isConnectedToHost]);
+
   const personalDocCount = useMemo(
     () => Object.values(documents).filter((d) => !d.isTeamDocument).length,
     [documents]
@@ -74,12 +111,43 @@ export function DocumentsSettings() {
   }, [saveDocument]);
 
   const handleLoad = useCallback(
-    (docId: string) => {
-      if (docId !== currentDocumentId) {
+    async (docId: string) => {
+      if (docId === currentDocumentId) return;
+
+      // Check if this is a remote team document
+      if (isConnectedToHost && remoteTeamDocs[docId]) {
+        try {
+          const doc = await loadTeamDocument(docId);
+          // Load into page store (this function is from persistenceStore)
+          // For now, we can use importJSON with the loaded document
+          // TODO: Add a proper loadFromRemote action to persistenceStore
+          const { usePageStore } = await import('../../store/pageStore');
+          const { useRichTextStore } = await import('../../store/richTextStore');
+
+          const snapshot = {
+            pages: doc.pages,
+            pageOrder: doc.pageOrder,
+            activePageId: doc.activePageId,
+          };
+          usePageStore.getState().loadSnapshot(snapshot);
+          useRichTextStore.getState().loadContent(doc.richTextContent);
+
+          // Update persistence store state
+          usePersistenceStore.setState({
+            currentDocumentId: doc.id,
+            currentDocumentName: doc.name,
+            isDirty: false,
+            lastSavedAt: doc.modifiedAt,
+          });
+        } catch (error) {
+          console.error('Failed to load team document:', error);
+        }
+      } else {
+        // Load from local storage
         loadDocument(docId);
       }
     },
-    [currentDocumentId, loadDocument]
+    [currentDocumentId, loadDocument, isConnectedToHost, remoteTeamDocs, loadTeamDocument]
   );
 
   const handleExport = useCallback(() => {
@@ -201,6 +269,35 @@ export function DocumentsSettings() {
           </button>
         </div>
       </div>
+
+      {/* Team Connection Status */}
+      {serverMode === 'client' && (
+        <div className="settings-group">
+          <div className={`documents-sync-status ${authenticated ? 'connected' : 'disconnected'}`}>
+            <span className="documents-sync-indicator"></span>
+            <span className="documents-sync-text">
+              {!hostConnected
+                ? 'Not connected to host'
+                : !authenticated
+                  ? 'Connecting...'
+                  : `Connected to host (${teamDocCount} team docs)`}
+            </span>
+            {authenticated && (
+              <button
+                className="documents-refresh-btn"
+                onClick={() => fetchDocumentList()}
+                disabled={isLoadingList}
+                title="Refresh team documents"
+              >
+                {isLoadingList ? '...' : '↻'}
+              </button>
+            )}
+          </div>
+          {teamStoreError && (
+            <div className="documents-error">{teamStoreError}</div>
+          )}
+        </div>
+      )}
 
       {/* Document List */}
       <div className="settings-group">

@@ -26,6 +26,7 @@ pub struct Claims {
 }
 
 /// Token configuration
+#[derive(Clone)]
 pub struct TokenConfig {
     /// Secret key for signing (should be randomly generated on first run)
     pub secret: String,
