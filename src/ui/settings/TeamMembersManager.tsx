@@ -254,21 +254,10 @@ export function TeamMembersManager() {
     setEditRoleModal(member);
   };
 
-  // Don't show for non-admins (but hosts always have access even without being logged in)
-  if (!isAdmin && !isHosting) {
-    return null;
-  }
-
-  // Don't show if not hosting
+  // User management is only available on the host machine
+  // Clients (even admin clients) cannot manage users - they must connect to the host
   if (!isHosting) {
-    return (
-      <div className="team-members-manager">
-        <h4 className="settings-group-title">Team Members</h4>
-        <p className="team-members-notice">
-          User management is available when hosting a server.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   return (

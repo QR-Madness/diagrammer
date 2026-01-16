@@ -12,6 +12,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useTeamStore } from '../../store/teamStore';
 import { PDFExportDialog } from '../PDFExportDialog';
+import { DocumentMetadata } from '../../types/Document';
 import './DocumentsSettings.css';
 
 export function DocumentsSettings() {
@@ -25,6 +26,8 @@ export function DocumentsSettings() {
   const renameDocument = usePersistenceStore((state) => state.renameDocument);
   const exportJSON = usePersistenceStore((state) => state.exportJSON);
   const importJSON = usePersistenceStore((state) => state.importJSON);
+  const transferToTeam = usePersistenceStore((state) => state.transferToTeam);
+  const transferToPersonal = usePersistenceStore((state) => state.transferToPersonal);
 
   const serverMode = useTeamStore((state) => state.serverMode);
 
@@ -33,6 +36,8 @@ export function DocumentsSettings() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [pdfExportOpen, setPdfExportOpen] = useState(false);
   const [filterMode, setFilterMode] = useState<'all' | 'team' | 'personal'>('all');
+  const [transferDocId, setTransferDocId] = useState<string | null>(null);
+  const [transferDirection, setTransferDirection] = useState<'toTeam' | 'toPersonal'>('toTeam');
 
   const isInTeamMode = serverMode !== 'offline';
 
@@ -131,6 +136,28 @@ export function DocumentsSettings() {
     },
     [deleteDocument]
   );
+
+  const handleStartTransfer = useCallback(
+    (docId: string, doc: DocumentMetadata) => {
+      setTransferDocId(docId);
+      setTransferDirection(doc.isTeamDocument ? 'toPersonal' : 'toTeam');
+    },
+    []
+  );
+
+  const handleConfirmTransfer = useCallback(() => {
+    if (!transferDocId) return;
+    if (transferDirection === 'toTeam') {
+      transferToTeam(transferDocId);
+    } else {
+      transferToPersonal(transferDocId);
+    }
+    setTransferDocId(null);
+  }, [transferDocId, transferDirection, transferToTeam, transferToPersonal]);
+
+  const handleCancelTransfer = useCallback(() => {
+    setTransferDocId(null);
+  }, []);
 
   const formatDate = (timestamp: number | undefined) => {
     if (!timestamp) return 'Never';
@@ -290,6 +317,15 @@ export function DocumentsSettings() {
                         >
                           ✏️
                         </button>
+                        {isInTeamMode && (
+                          <button
+                            className={`documents-item-btn documents-item-btn-transfer ${doc.isTeamDocument ? 'to-personal' : 'to-team'}`}
+                            onClick={() => handleStartTransfer(docId, doc)}
+                            title={doc.isTeamDocument ? 'Transfer to Personal' : 'Transfer to Team'}
+                          >
+                            {doc.isTeamDocument ? '👤' : '👥'}
+                          </button>
+                        )}
                         <button
                           className="documents-item-btn"
                           onClick={() => setConfirmDeleteId(docId)}
@@ -315,6 +351,39 @@ export function DocumentsSettings() {
           <strong>Keyboard Shortcuts:</strong> Ctrl+N (New), Ctrl+O (Open), Ctrl+S (Save)
         </div>
       </div>
+
+      {/* Transfer Confirmation Modal */}
+      {transferDocId && (
+        <div className="documents-transfer-modal-overlay" onClick={handleCancelTransfer}>
+          <div className="documents-transfer-modal" onClick={(e) => e.stopPropagation()}>
+            <h4 className="documents-transfer-modal-title">
+              {transferDirection === 'toTeam' ? 'Transfer to Team' : 'Transfer to Personal'}
+            </h4>
+            <p className="documents-transfer-modal-text">
+              {transferDirection === 'toTeam'
+                ? 'This document will become a team document and can be shared with team members.'
+                : 'This document will become a personal document and will no longer be shared with the team.'}
+            </p>
+            <p className="documents-transfer-modal-doc">
+              "{documents[transferDocId]?.name}"
+            </p>
+            <div className="documents-transfer-modal-actions">
+              <button
+                className="documents-transfer-modal-btn documents-transfer-modal-btn-cancel"
+                onClick={handleCancelTransfer}
+              >
+                Cancel
+              </button>
+              <button
+                className={`documents-transfer-modal-btn documents-transfer-modal-btn-confirm ${transferDirection}`}
+                onClick={handleConfirmTransfer}
+              >
+                {transferDirection === 'toTeam' ? 'Transfer to Team' : 'Transfer to Personal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PDF Export Dialog */}
       <PDFExportDialog isOpen={pdfExportOpen} onClose={() => setPdfExportOpen(false)} />

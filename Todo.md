@@ -554,6 +554,20 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - AuthGuard wrapper for route protection
 - [x] Frontend: Session validation on app startup
 
+#### Phase 14.1 Known Bugs
+
+- [X] A host cannot manage users, yet a logged-in admin can. Ensure hosts have access to any settings admins do, especially regarding user management.
+- [X] After connection to a host, the client displays messages about a websocket error (no logged errors in any application outputs) and another saying the client is not implemented yet. It should already be implemented.
+- [X] The team document settings menu for individual documents overflows underneath content making it impossible to use it.
+- [X] Host client count doesn't register a new client (stays at zero even though an admin user logged in).
+- [X] Team documents cannot be separated from personal documents via UI; ensure the document storage area clearly shows which are shared, and which are personal.
+- [X] First-time setup authentication page is always displayed despite either completing it, or creating a user on the host.
+  - Fixed: UserStore now initialized with persistence path in Tauri setup() hook
+- [X] There is no actual way to create a 'Team Document', implement transferral of personal documents to team documents.
+  - Added transferToTeam/transferToPersonal actions to persistenceStore
+  - Added transfer UI with confirmation modal in DocumentsSettings
+  - Added transfer modal in TeamDocumentsManager
+
 #### Phase 14.2: UX Improvements
 
 ##### Phase 14.2.1: UX Improvements - Chunk 1
@@ -564,7 +578,6 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Add border radius for group-labels
 - [ ] Select dropdown is pure white and gray (tested in dark mode)
 - [ ] Checkboxes have weird pallettes; especially in dark mode
-- [ ] Team document settings menu for individual documents overflows underneath the edge of the modal rendering it out-of-view
 
 ##### Phase 14.2.2: UX Improvements - Chunk 2
 
@@ -575,13 +588,14 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 ##### Phase 14.2.3: UX Improvements - Chunk 3
 
 - [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
-- [ ] Cool saving/saved icon+animation
+- [ ] Cool Saving/Saved icon & animation
 - [ ] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
 
 ##### Phase 14.2.4: UX Improvements - Chunk 4
 
 - [ ] Translate selected items using arrow keys
-- [ ] Add a test regex button to layer view creator to check results
+- [ ] Add a test regex button to layer view creator to get a results-preview
+- [ ] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
 
 #### Phase 14.3: Rich Document Editor Upgrades
 
@@ -603,6 +617,8 @@ Replace this list with your own checklists of areas needed for improvement befor
 #### Phase 15.1: Local Help System with GitHub Docs Capability
 
 - [ ] Implement a local help system (consider a markdown server of some sort)
+- [ ] Migrate Completed Todo.md tasks into Roadmap.md, leave future phases for the architect to author.
+- [ ] Transform Readme.md into a professional GitHub repo homepage with build status, link to the roadmap
 
 #### Phase 15.2: Release Build
 

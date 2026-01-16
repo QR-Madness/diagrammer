@@ -107,6 +107,8 @@ export interface DocumentMetadata {
   lockedBy?: string;
   /** Display name of user who locked it */
   lockedByName?: string;
+  /** Timestamp when document was locked */
+  lockedAt?: number;
   /** User ID who owns this document */
   ownerId?: string;
   /** Display name of the owner */
@@ -200,6 +202,9 @@ export function getDocumentMetadata(doc: DiagramDocument): DocumentMetadata {
   }
   if (doc.lockedByName !== undefined) {
     metadata.lockedByName = doc.lockedByName;
+  }
+  if (doc.lockedAt !== undefined) {
+    metadata.lockedAt = doc.lockedAt;
   }
   if (doc.ownerId !== undefined) {
     metadata.ownerId = doc.ownerId;

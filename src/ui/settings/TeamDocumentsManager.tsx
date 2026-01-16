@@ -193,6 +193,8 @@ export function TeamDocumentsManager() {
   const deleteDocument = usePersistenceStore((state) => state.deleteDocument);
   const renameDocument = usePersistenceStore((state) => state.renameDocument);
   const saveDocumentAs = usePersistenceStore((state) => state.saveDocumentAs);
+  const transferToTeam = usePersistenceStore((state) => state.transferToTeam);
+  const transferToPersonal = usePersistenceStore((state) => state.transferToPersonal);
 
   const currentUser = useUserStore((state) => state.currentUser);
   const serverMode = useTeamStore((state) => state.serverMode);
@@ -204,6 +206,7 @@ export function TeamDocumentsManager() {
   const [renameModal, setRenameModal] = useState<{ doc: DocumentMetadata; name: string } | null>(null);
   const [shareModal, setShareModal] = useState<DocumentMetadata | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DocumentMetadata | null>(null);
+  const [transferModal, setTransferModal] = useState<DocumentMetadata | null>(null);
   const [createModal, setCreateModal] = useState(false);
   const [newDocName, setNewDocName] = useState('');
 
@@ -287,9 +290,20 @@ export function TeamDocumentsManager() {
   }, [deleteConfirm, deleteDocument]);
 
   const handleTransfer = useCallback((doc: DocumentMetadata) => {
-    // TODO: Implement transfer ownership modal
-    console.log('Transfer ownership for:', doc.id);
+    setTransferModal(doc);
   }, []);
+
+  const handleTransferConfirm = useCallback(() => {
+    if (!transferModal) return;
+
+    if (transferModal.isTeamDocument) {
+      transferToPersonal(transferModal.id);
+    } else {
+      transferToTeam(transferModal.id);
+    }
+
+    setTransferModal(null);
+  }, [transferModal, transferToTeam, transferToPersonal]);
 
   const isInTeamMode = serverMode === 'host' || serverMode === 'client';
 
@@ -488,6 +502,36 @@ export function TeamDocumentsManager() {
                 onClick={() => setShareModal(null)}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {transferModal && (
+        <div className="modal-overlay" onClick={() => setTransferModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">
+              {transferModal.isTeamDocument ? 'Transfer to Personal' : 'Transfer to Team'}
+            </h3>
+            <p className="modal-message">
+              {transferModal.isTeamDocument
+                ? `This will convert "${transferModal.name}" to a personal document. It will no longer be shared with the team.`
+                : `This will convert "${transferModal.name}" to a team document. It can then be shared with team members.`}
+            </p>
+            <div className="modal-actions">
+              <button
+                className="modal-button secondary"
+                onClick={() => setTransferModal(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`modal-button ${transferModal.isTeamDocument ? 'secondary' : 'primary'}`}
+                onClick={handleTransferConfirm}
+              >
+                {transferModal.isTeamDocument ? 'Make Personal' : 'Make Team Document'}
               </button>
             </div>
           </div>

@@ -16,6 +16,7 @@ import {
 } from '../types/Document';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
+import { useUserStore } from './userStore';
 import { blobStorage } from '../storage/BlobStorage';
 
 /**
@@ -69,6 +70,10 @@ export interface PersistenceActions {
   getDocumentList: () => DocumentMetadata[];
   /** Check if a document exists */
   documentExists: (id: string) => boolean;
+  /** Transfer a personal document to team documents */
+  transferToTeam: (docId: string) => boolean;
+  /** Transfer a team document to personal documents */
+  transferToPersonal: (docId: string) => boolean;
   /** Reset to initial state */
   reset: () => void;
 }
@@ -174,7 +179,7 @@ function createDocumentFromPageStore(
   const pageSnapshot = usePageStore.getState().getSnapshot();
   const richTextContent = useRichTextStore.getState().getContent();
 
-  return {
+  const doc: DiagramDocument = {
     id,
     name,
     pages: pageSnapshot.pages,
@@ -185,6 +190,39 @@ function createDocumentFromPageStore(
     version: 1,
     richTextContent,
   };
+
+  // Preserve team-related fields from existing document
+  if (existingDoc) {
+    if (existingDoc.isTeamDocument !== undefined) {
+      doc.isTeamDocument = existingDoc.isTeamDocument;
+    }
+    if (existingDoc.ownerId !== undefined) {
+      doc.ownerId = existingDoc.ownerId;
+    }
+    if (existingDoc.ownerName !== undefined) {
+      doc.ownerName = existingDoc.ownerName;
+    }
+    if (existingDoc.lockedBy !== undefined) {
+      doc.lockedBy = existingDoc.lockedBy;
+    }
+    if (existingDoc.lockedByName !== undefined) {
+      doc.lockedByName = existingDoc.lockedByName;
+    }
+    if (existingDoc.lockedAt !== undefined) {
+      doc.lockedAt = existingDoc.lockedAt;
+    }
+    if (existingDoc.sharedWith !== undefined) {
+      doc.sharedWith = existingDoc.sharedWith;
+    }
+    if (existingDoc.lastModifiedBy !== undefined) {
+      doc.lastModifiedBy = existingDoc.lastModifiedBy;
+    }
+    if (existingDoc.lastModifiedByName !== undefined) {
+      doc.lastModifiedByName = existingDoc.lastModifiedByName;
+    }
+  }
+
+  return doc;
 }
 
 /**
@@ -501,6 +539,93 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
       // Check if document exists
       documentExists: (id: string): boolean => {
         return !!get().documents[id];
+      },
+
+      // Transfer a personal document to team documents
+      transferToTeam: (docId: string): boolean => {
+        // Load the document
+        const doc = loadDocumentFromStorage(docId);
+        if (!doc) {
+          console.warn(`Document ${docId} not found for transfer`);
+          return false;
+        }
+
+        // Already a team document
+        if (doc.isTeamDocument) {
+          console.warn(`Document ${docId} is already a team document`);
+          return false;
+        }
+
+        // Get current user for ownership
+        const currentUser = useUserStore.getState().currentUser;
+
+        // Update team fields
+        doc.isTeamDocument = true;
+        if (currentUser?.id) {
+          doc.ownerId = currentUser.id;
+          doc.lastModifiedBy = currentUser.id;
+        }
+        if (currentUser?.displayName) {
+          doc.ownerName = currentUser.displayName;
+          doc.lastModifiedByName = currentUser.displayName;
+        }
+        doc.modifiedAt = Date.now();
+
+        // Save back to storage
+        saveDocumentToStorage(doc);
+
+        // Update metadata index
+        const metadata = getDocumentMetadata(doc);
+        set((state) => ({
+          documents: {
+            ...state.documents,
+            [docId]: metadata,
+          },
+        }));
+
+        return true;
+      },
+
+      // Transfer a team document to personal documents
+      transferToPersonal: (docId: string): boolean => {
+        // Load the document
+        const doc = loadDocumentFromStorage(docId);
+        if (!doc) {
+          console.warn(`Document ${docId} not found for transfer`);
+          return false;
+        }
+
+        // Not a team document
+        if (!doc.isTeamDocument) {
+          console.warn(`Document ${docId} is already a personal document`);
+          return false;
+        }
+
+        // Clear team-specific fields
+        doc.isTeamDocument = false;
+        delete doc.ownerId;
+        delete doc.ownerName;
+        delete doc.lockedBy;
+        delete doc.lockedByName;
+        delete doc.lockedAt;
+        delete doc.sharedWith;
+        delete doc.lastModifiedBy;
+        delete doc.lastModifiedByName;
+        doc.modifiedAt = Date.now();
+
+        // Save back to storage
+        saveDocumentToStorage(doc);
+
+        // Update metadata index
+        const metadata = getDocumentMetadata(doc);
+        set((state) => ({
+          documents: {
+            ...state.documents,
+            [docId]: metadata,
+          },
+        }));
+
+        return true;
       },
 
       // Reset to initial state

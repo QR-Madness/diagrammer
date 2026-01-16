@@ -352,7 +352,6 @@ fn delete_user(state: tauri::State<AppState>, user_id: String) -> Result<(), Str
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .manage(AppState::default())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
@@ -367,6 +366,33 @@ pub fn run() {
 
             // Log startup
             log::info!("Diagrammer v{} starting...", env!("CARGO_PKG_VERSION"));
+
+            // Initialize UserStore with persistence
+            // Get app data directory for user persistence
+            let app_data_dir = app.path().app_data_dir()
+                .map_err(|e| format!("Failed to get app data directory: {}", e))?;
+
+            // Ensure directory exists
+            std::fs::create_dir_all(&app_data_dir)
+                .map_err(|e| format!("Failed to create app data directory: {}", e))?;
+
+            // Create users.json path
+            let users_path = app_data_dir.join("users.json");
+            let users_path_str = users_path.to_string_lossy().to_string();
+
+            log::info!("User store path: {}", users_path_str);
+
+            // Initialize UserStore with persistence and manage AppState
+            let user_store = Arc::new(UserStore::with_persistence(users_path_str));
+            let has_existing_users = user_store.has_users();
+            log::info!("Existing users found: {}", has_existing_users);
+
+            app.manage(AppState {
+                server_mode: AtomicBool::new(false),
+                server: Arc::new(RwLock::new(WebSocketServer::new())),
+                user_store,
+                token_config: TokenConfig::default(),
+            });
 
             // Set window icon (for development mode - bundle icons handle production)
             if let Some(window) = app.get_webview_window("main") {
