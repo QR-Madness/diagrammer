@@ -12,7 +12,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTeamStore } from '../../store/teamStore';
-import { useUserStore } from '../../store/userStore';
 import { useCollaborationStore } from '../../collaboration';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import './ClientConnectionPanel.css';
@@ -111,8 +110,6 @@ export function ClientConnectionPanel() {
   const connectToHost = useTeamStore((state) => state.connectToHost);
   const disconnect = useTeamStore((state) => state.disconnect);
 
-  const currentUser = useUserStore((state) => state.currentUser);
-
   const startSession = useCollaborationStore((state) => state.startSession);
   const stopSession = useCollaborationStore((state) => state.stopSession);
   const collabStatus = useCollaborationStore((state) => state.connectionStatus);
@@ -123,6 +120,8 @@ export function ClientConnectionPanel() {
 
   const [address, setAddress] = useState('');
   const [port, setPort] = useState('9876');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [recentConnections, setRecentConnections] = useState<RecentConnection[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -146,8 +145,11 @@ export function ClientConnectionPanel() {
     }
   }, [address, port]);
 
+  // Check if we have required credentials
+  const hasCredentials = username.trim().length > 0 && password.length > 0;
+
   const handleConnect = useCallback(async () => {
-    if (!address || validationError) return;
+    if (!address || validationError || !hasCredentials) return;
 
     const portNum = parseInt(port, 10) || 9876;
     const serverUrl = `ws://${address}:${portNum}/ws`;
@@ -157,16 +159,20 @@ export function ClientConnectionPanel() {
       // Update team store
       await connectToHost(`${address}:${portNum}`);
 
-      // Start collaboration session
+      // Start collaboration session with credentials for host authentication
       const docId = currentDocumentId || 'default';
-      const user = currentUser || { id: 'client', displayName: 'Client', role: 'editor' as const };
 
+      // Use a temporary user object - actual user info will come from host after auth
       startSession({
         serverUrl,
         documentId: docId,
+        credentials: {
+          username: username.trim(),
+          password,
+        },
         user: {
-          id: user.id,
-          name: user.displayName,
+          id: 'pending', // Will be updated after authentication
+          name: username.trim(),
           color: '#e67e22', // Orange for clients
         },
       });
@@ -177,7 +183,7 @@ export function ClientConnectionPanel() {
     } finally {
       setIsConnecting(false);
     }
-  }, [address, port, validationError, connectToHost, currentDocumentId, currentUser, startSession]);
+  }, [address, port, username, password, validationError, hasCredentials, connectToHost, currentDocumentId, startSession]);
 
   const handleDisconnect = useCallback(async () => {
     stopSession();
@@ -252,6 +258,40 @@ export function ClientConnectionPanel() {
             />
           </div>
 
+          <div className="form-divider" />
+
+          <div className="form-row">
+            <label className="form-label" htmlFor="host-username">
+              Username
+            </label>
+            <input
+              id="host-username"
+              type="text"
+              className="form-input"
+              placeholder="Your username on host"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isConnecting}
+              autoComplete="username"
+            />
+          </div>
+
+          <div className="form-row">
+            <label className="form-label" htmlFor="host-password">
+              Password
+            </label>
+            <input
+              id="host-password"
+              type="password"
+              className="form-input"
+              placeholder="Your password on host"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isConnecting}
+              autoComplete="current-password"
+            />
+          </div>
+
           {validationError && (
             <div className="validation-error">{validationError}</div>
           )}
@@ -259,7 +299,7 @@ export function ClientConnectionPanel() {
           <button
             className="connect-button"
             onClick={handleConnect}
-            disabled={!address || !!validationError || isConnecting}
+            disabled={!address || !hasCredentials || !!validationError || isConnecting}
           >
             {isConnecting ? 'Connecting...' : 'Connect'}
           </button>

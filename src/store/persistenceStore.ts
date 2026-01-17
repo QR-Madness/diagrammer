@@ -17,8 +17,10 @@ import {
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
 import { useUserStore } from './userStore';
+import { useTeamStore } from './teamStore';
 import { useTeamDocumentStore } from './teamDocumentStore';
 import { blobStorage } from '../storage/BlobStorage';
+import { isTauri } from '../tauri/commands';
 
 /**
  * Auto-save debounce time in milliseconds.
@@ -584,12 +586,28 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           },
         }));
 
-        // If connected to host, also save to host
-        const teamStore = useTeamDocumentStore.getState();
-        if (teamStore.authenticated) {
-          teamStore.saveToHost(doc).catch((error) => {
-            console.error('Failed to save team document to host:', error);
+        // Save to host/server
+        const serverMode = useTeamStore.getState().serverMode;
+
+        if (serverMode === 'host' && isTauri()) {
+          // Host mode: save directly to Rust DocumentStore via Tauri command
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('save_team_document', { document: doc })
+              .then(() => {
+                console.log('[persistenceStore] Saved team document to host:', doc.id);
+              })
+              .catch((error) => {
+                console.error('[persistenceStore] Failed to save team document to host:', error);
+              });
           });
+        } else if (serverMode === 'client') {
+          // Client mode: save via WebSocket to host
+          const teamDocStore = useTeamDocumentStore.getState();
+          if (teamDocStore.authenticated) {
+            teamDocStore.saveToHost(doc).catch((error) => {
+              console.error('[persistenceStore] Failed to save team document to host:', error);
+            });
+          }
         }
 
         return true;

@@ -406,10 +406,12 @@ implementation phase as defined in Specification.Readme.md.
 #### Architecture Overview
 
 The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
+
 - **Offline (Default)**: Personal documents stored locally, no network features
 - **Protected Local**: Host exposes Team Documents storage; clients connect over network (LAN, VPN, or tunneled via Cloudflare/similar)
 
 **Host-Client Model:**
+
 - Host runs Diagrammer in Protected Local mode, acts as single source of truth for Team Documents
 - Clients authenticate via host's login page and receive **JWT session tokens**
 - CRDT (Yjs/yrs recommended due to existing Tiptap integration) negotiates real-time changes
@@ -417,6 +419,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - Future: targeted plugins may only work on Team Documents or Personal Documents
 
 **Ownership & Permissions Model:**
+
 - **Roles**: Admin and User (future: extensible role system as permission interfaces)
 - **Documents**: Owned by SYSTEM, controlled by ADMINS
   - Admins can restrict: document creation, modifications, deletions
@@ -429,6 +432,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - **Session Validation**: JWT tokens validated server-side; reject mutations from invalid/expired tokens
 
 **Technical Decisions:**
+
 - **Desktop Runtime**: Tauri (Rust backend, React frontend)
 - **Auth Tokens**: JWT (HS256 initially, extensible to RS256/OAuth later)
 - **Credential Storage**: bcrypt-hashed passwords (decoupled for future identity provider integration)
@@ -556,17 +560,20 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 #### Phase 14.1 Known Bugs
 
-- [X] A host cannot manage users, yet a logged-in admin can. Ensure hosts have access to any settings admins do, especially regarding user management.
-- [X] After connection to a host, the client displays messages about a websocket error (no logged errors in any application outputs) and another saying the client is not implemented yet. It should already be implemented.
-- [X] The team document settings menu for individual documents overflows underneath content making it impossible to use it.
-- [X] Host client count doesn't register a new client (stays at zero even though an admin user logged in).
-- [X] Team documents cannot be separated from personal documents via UI; ensure the document storage area clearly shows which are shared, and which are personal.
-- [X] First-time setup authentication page is always displayed despite either completing it, or creating a user on the host.
+- [x] A host cannot manage users, yet a logged-in admin can. Ensure hosts have access to any settings admins do, especially regarding user management.
+- [x] After connection to a host, the client displays messages about a websocket error (no logged errors in any application outputs) and another saying the client is not implemented yet. It should already be implemented.
+- [x] The team document settings menu for individual documents overflows underneath content making it impossible to use it.
+- [x] Host client count doesn't register a new client (stays at zero even though an admin user logged in).
+- [x] Team documents cannot be separated from personal documents via UI; ensure the document storage area clearly shows which are shared, and which are personal.
+- [x] First-time setup authentication page is always displayed despite either completing it, or creating a user on the host.
   - Fixed: UserStore now initialized with persistence path in Tauri setup() hook
-- [X] There is no actual way to create a 'Team Document', implement transferral of personal documents to team documents.
+- [x] There is no actual way to create a 'Team Document', implement transferral of personal documents to team documents.
   - Added transferToTeam/transferToPersonal actions to persistenceStore
   - Added transfer UI with confirmation modal in DocumentsSettings
   - Added transfer modal in TeamDocumentsManager
+- [ ] Creating a new document will copy the current's entire content; ideally a new document will be empty
+- [ ] Changing a document's name on a host does not register with clients despite reconnection and host restart
+- [ ] Remote documents cannot be opened 
 
 #### Phase 14.2: UX Improvements
 
@@ -578,6 +585,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Add border radius for group-labels
 - [ ] Select dropdown is pure white and gray (tested in dark mode)
 - [ ] Checkboxes have weird pallettes; especially in dark mode
+- [ ] Move all document lists to the document settings area: showing an area for remote documents, and an area for local documents
 
 ##### Phase 14.2.2: UX Improvements - Chunk 2
 

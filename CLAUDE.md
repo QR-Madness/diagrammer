@@ -61,10 +61,19 @@ For desktop development, you need:
 - Rust toolchain (rustc, cargo) - install via [rustup](https://rustup.rs/)
 - Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
 
+```bash
+# Check Rust backend compiles
+cargo check --manifest-path src-tauri/Cargo.toml
+
+# Run Rust tests
+cargo test --manifest-path src-tauri/Cargo.toml
+```
+
 The Tauri backend is in `src-tauri/` and provides:
 - Native file system access for Team Documents
-- WebSocket server for Protected Local collaboration mode (planned)
-- JWT authentication for team features (planned)
+- WebSocket server for Protected Local collaboration mode (Axum + Tokio)
+- JWT authentication and bcrypt password hashing
+- User management with persistent JSON storage (`users.json`)
 
 ## Architecture Layers
 
@@ -105,6 +114,12 @@ Core Zustand stores with distinct responsibilities:
 12. **CustomShapeLibraryStore**: User-created shape libraries with IndexedDB storage.
 13. **UIPreferencesStore**: Collapsible section states and UI preferences.
 
+**Collaboration Stores**
+14. **collaborationStore** (`/collaboration/collaborationStore.ts`): Session management, connection status, remote users.
+15. **teamStore** (`/store/teamStore.ts`): Server mode (offline/host/client), host address, connection status.
+16. **teamDocumentStore** (`/store/teamDocumentStore.ts`): Team document list, loading states, host connection.
+17. **userStore** (`/store/userStore.ts`): Current user, authentication state, login/logout.
+
 ### Storage Layer
 
 The project uses a hybrid storage architecture:
@@ -117,6 +132,57 @@ Key storage components in `/src/storage/`:
 - **BlobTypes** (`BlobTypes.ts`): Type definitions for blob metadata and storage interfaces.
 - **builtinIcons** (`builtinIcons.ts`): 30+ built-in SVG icons organized by category (arrows, shapes, symbols, tech, general).
 - **IconTypes** / **ShapeLibraryTypes**: Type definitions for icon and shape library storage.
+
+### Collaboration Architecture
+
+The collaboration system enables real-time multi-user editing via "Protected Local" mode:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Host (Tauri Desktop App)                                    │
+├─────────────────────────────────────────────────────────────┤
+│  WebSocket Server (src-tauri/src/server/)                   │
+│  ├─ Axum + Tokio async runtime                              │
+│  ├─ Per-client state (auth, current document)               │
+│  ├─ Message routing by type                                 │
+│  └─ Document-scoped CRDT broadcast                          │
+│                                                             │
+│  DocumentStore (server/documents.rs)                        │
+│  ├─ File-based persistence (~/.local/share/diagrammer/)     │
+│  └─ Team document CRUD operations                           │
+│                                                             │
+│  UserStore (auth/users.rs)                                  │
+│  ├─ bcrypt password hashing                                 │
+│  └─ JWT token generation/validation                         │
+└─────────────────────────────────────────────────────────────┘
+                           ↕ WebSocket
+┌─────────────────────────────────────────────────────────────┐
+│ Client (Browser or Tauri)                                   │
+├─────────────────────────────────────────────────────────────┤
+│  SyncProvider          → Yjs CRDT shape sync                │
+│  DocumentSyncProvider  → Document list/content operations   │
+│                                                             │
+│  collaborationStore    → Session management                 │
+│  teamDocumentStore     → Team document state                │
+│  userStore             → Authentication state               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key components in `/src/collaboration/`:**
+- **YjsDocument**: Wraps Y.Doc for shape and order sync via Y.Map/Y.Array
+- **SyncProvider**: WebSocket transport for Yjs sync protocol + awareness
+- **DocumentSyncProvider**: Request/response protocol for document operations
+- **protocol.ts**: Message type constants and encoding/decoding (must match Rust `server/protocol.rs`)
+- **useCollaborationSync**: Hook for bidirectional sync between CRDT and documentStore
+
+**WebSocket Protocol Messages:**
+- `MESSAGE_SYNC (0)`: Yjs CRDT sync
+- `MESSAGE_AWARENESS (1)`: Presence (cursors, selections)
+- `MESSAGE_AUTH (2)`: JWT token authentication
+- `MESSAGE_AUTH_LOGIN (11)`: Username/password login (returns JWT)
+- `MESSAGE_DOC_LIST/GET/SAVE/DELETE (3-6)`: Document operations
+- `MESSAGE_DOC_EVENT (7)`: Document change broadcasts
+- `MESSAGE_JOIN_DOC (10)`: Join document for CRDT routing
 
 ### Coordinate System Flow
 
@@ -203,8 +269,11 @@ Completed phases:
 - **Phase 10.5-10.7**: Shape libraries (flowcharts, UML use-case, user-expandable libraries, settings modal)
 - **Phase 11.1-11.2**: Property panel overhaul, label customization, context menu upgrades with submenus
 - **Phase 11.3**: Layer panel upgrades (group colors with inheritance, layer views with regex/manual filtering, shape label preview)
+- **Phase 14.Pre**: Tauri migration (desktop app packaging, native file system)
+- **Phase 14.0**: Collaboration infrastructure (CRDT sync, presence indicators, collaborative cursors)
+- **Phase 14.1**: Team documents & foundational IAM (user auth, JWT, WebSocket server, login UI)
 
-Current: Phase 11.5 (Common Settings) and beyond.
+Current: Phase 14.2 (Team document sync, UX improvements).
 
 See Todo.md for detailed task tracking.
 

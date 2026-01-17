@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useUserStore } from '../../store/userStore';
 import { useTeamStore } from '../../store/teamStore';
+import { useTeamDocumentStore } from '../../store/teamDocumentStore';
 import { DocumentMetadata, DocumentShare } from '../../types/Document';
 import './TeamDocumentsManager.css';
 
@@ -199,8 +200,24 @@ export function TeamDocumentsManager() {
   const currentUser = useUserStore((state) => state.currentUser);
   const serverMode = useTeamStore((state) => state.serverMode);
 
+  // Team documents from host (for clients)
+  const teamDocuments = useTeamDocumentStore((state) => state.teamDocuments);
+  const isAuthenticated = useTeamDocumentStore((state) => state.authenticated);
+  const fetchDocumentList = useTeamDocumentStore((state) => state.fetchDocumentList);
+  const loadTeamDocument = useTeamDocumentStore((state) => state.loadTeamDocument);
+  const isLoadingList = useTeamDocumentStore((state) => state.isLoadingList);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyTeam, setShowOnlyTeam] = useState(false);
+
+  // Fetch team documents when authenticated as client
+  useEffect(() => {
+    if (serverMode === 'client' && isAuthenticated) {
+      fetchDocumentList().catch(console.error);
+    }
+  }, [serverMode, isAuthenticated, fetchDocumentList]);
+
+  const isClient = serverMode === 'client';
 
   // Modal states
   const [renameModal, setRenameModal] = useState<{ doc: DocumentMetadata; name: string } | null>(null);
@@ -210,9 +227,23 @@ export function TeamDocumentsManager() {
   const [createModal, setCreateModal] = useState(false);
   const [newDocName, setNewDocName] = useState('');
 
-  // Filter and sort documents
+  // Filter and sort documents - merge local and team documents for clients
   const filteredDocuments = useMemo(() => {
+    // Start with local documents
     let docs = Object.values(documents);
+
+    // For clients, merge team documents from host (avoiding duplicates by ID)
+    if (isClient && isAuthenticated) {
+      const localIds = new Set(docs.map((d) => d.id));
+      const hostDocs = Object.values(teamDocuments).filter(
+        (d) => !localIds.has(d.id)
+      );
+      // Mark host documents as team documents and add source marker
+      docs = [
+        ...docs,
+        ...hostDocs.map((d) => ({ ...d, isTeamDocument: true, _fromHost: true as const })),
+      ];
+    }
 
     // Filter by team documents only if toggle is on
     if (showOnlyTeam) {
@@ -231,16 +262,29 @@ export function TeamDocumentsManager() {
 
     // Sort by modified date (newest first)
     return docs.sort((a, b) => b.modifiedAt - a.modifiedAt);
-  }, [documents, searchQuery, showOnlyTeam]);
+  }, [documents, teamDocuments, searchQuery, showOnlyTeam, isClient, isAuthenticated]);
 
   const isAdmin = currentUser?.role === 'admin';
   const userId = currentUser?.id;
 
   const handleOpenDocument = useCallback(
-    (docId: string) => {
-      loadDocument(docId);
+    async (docId: string, fromHost?: boolean) => {
+      if (fromHost && isClient) {
+        // Load document from host first, then open it
+        try {
+          const doc = await loadTeamDocument(docId);
+          // The document is now in cache - we could integrate with persistenceStore here
+          // For now, just log that we loaded it
+          console.log('[TeamDocumentsManager] Loaded team document from host:', doc.name);
+          // TODO: Integrate loaded document into local document store for editing
+        } catch (error) {
+          console.error('[TeamDocumentsManager] Failed to load team document:', error);
+        }
+      } else {
+        loadDocument(docId);
+      }
     },
-    [loadDocument]
+    [loadDocument, loadTeamDocument, isClient]
   );
 
   const handleCreateDocument = useCallback(() => {
@@ -342,7 +386,10 @@ export function TeamDocumentsManager() {
 
       {/* Document list */}
       <div className="team-docs-list">
-        {filteredDocuments.length === 0 ? (
+        {isLoadingList && (
+          <div className="team-docs-loading">Loading documents from host...</div>
+        )}
+        {!isLoadingList && filteredDocuments.length === 0 ? (
           <div className="team-docs-empty">
             {searchQuery ? 'No documents match your search' : 'No documents yet'}
           </div>
@@ -350,17 +397,23 @@ export function TeamDocumentsManager() {
           filteredDocuments.map((doc) => {
             const isOwner = doc.ownerId === userId || !doc.ownerId;
             const isCurrent = doc.id === currentDocumentId;
+            const fromHost = '_fromHost' in doc && doc._fromHost === true;
 
             return (
               <div
                 key={doc.id}
-                className={`team-doc-item ${isCurrent ? 'current' : ''}`}
-                onClick={() => handleOpenDocument(doc.id)}
+                className={`team-doc-item ${isCurrent ? 'current' : ''} ${fromHost ? 'from-host' : ''}`}
+                onClick={() => handleOpenDocument(doc.id, fromHost)}
               >
                 <div className="team-doc-info">
                   <div className="team-doc-name">
                     {doc.name}
-                    {doc.isTeamDocument && (
+                    {fromHost && (
+                      <span className="host-badge" title="Document from host server">
+                        Host
+                      </span>
+                    )}
+                    {doc.isTeamDocument && !fromHost && (
                       <span className="team-badge" title="Team document">
                         T
                       </span>

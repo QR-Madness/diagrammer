@@ -51,6 +51,12 @@
   width: 120px;
 }
 
+.form-divider {
+  height: 1px;
+  background: var(--border-color, #ddd);
+  margin: 4px 0;
+}
+
 .validation-error {
   font-size: 12px;
   color: var(--error-color, #dc3545);

@@ -82,6 +82,7 @@ export function TeamMembersManager() {
   const [editRoleModal, setEditRoleModal] = useState<TeamMember | null>(null);
   const [resetPasswordModal, setResetPasswordModal] = useState<TeamMember | null>(null);
   const [deleteUserModal, setDeleteUserModal] = useState<TeamMember | null>(null);
+  const [changeOwnPasswordModal, setChangeOwnPasswordModal] = useState(false);
 
   // Form states
   const [newUsername, setNewUsername] = useState('');
@@ -90,6 +91,8 @@ export function TeamMembersManager() {
   const [newRole, setNewRole] = useState<UserRole>('user');
   const [selectedRole, setSelectedRole] = useState<UserRole>('user');
   const [resetPassword, setResetPassword] = useState('');
+  const [ownNewPassword, setOwnNewPassword] = useState('');
+  const [ownConfirmPassword, setOwnConfirmPassword] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   // Load users from backend
@@ -247,6 +250,46 @@ export function TeamMembersManager() {
     }
   }, [deleteUserModal, isTauriEnv, loadUsers]);
 
+  const handleChangeOwnPassword = useCallback(async () => {
+    if (!ownNewPassword.trim() || !currentUser) return;
+
+    if (ownNewPassword !== ownConfirmPassword) {
+      setFormError('Passwords do not match');
+      return;
+    }
+
+    if (ownNewPassword.length < 6) {
+      setFormError('Password must be at least 6 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    setFormError(null);
+
+    try {
+      if (!isTauriEnv) {
+        setFormError('Password change only available in desktop app');
+        return;
+      }
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('reset_user_password', {
+        userId: currentUser.id,
+        newPassword: ownNewPassword,
+      });
+
+      // Success - close modal
+      setChangeOwnPasswordModal(false);
+      setOwnNewPassword('');
+      setOwnConfirmPassword('');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to change password';
+      setFormError(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ownNewPassword, ownConfirmPassword, currentUser, isTauriEnv]);
+
   const openEditRoleModal = (member: TeamMember) => {
     setSelectedRole(member.user.role);
     setFormError(null);
@@ -321,7 +364,22 @@ export function TeamMembersManager() {
                   </div>
                 </div>
 
-                {!isSelf && (
+                {isSelf ? (
+                  <div className="member-actions">
+                    <button
+                      className="member-action-button"
+                      onClick={() => {
+                        setFormError(null);
+                        setOwnNewPassword('');
+                        setOwnConfirmPassword('');
+                        setChangeOwnPasswordModal(true);
+                      }}
+                      title="Change Password"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                ) : (
                   <div className="member-actions">
                     <button
                       className="member-action-button"
@@ -555,6 +613,63 @@ export function TeamMembersManager() {
                 disabled={isLoading}
               >
                 {isLoading ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Own Password Modal */}
+      {changeOwnPasswordModal && (
+        <div className="modal-overlay" onClick={() => setChangeOwnPasswordModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">Change Your Password</h3>
+            <p className="modal-message">
+              Enter a new password for your account.
+            </p>
+
+            <div className="modal-form">
+              <div className="form-group">
+                <label className="form-label">New Password</label>
+                <input
+                  type="password"
+                  className="modal-input"
+                  placeholder="New password (min 6 characters)"
+                  value={ownNewPassword}
+                  onChange={(e) => setOwnNewPassword(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
+                <input
+                  type="password"
+                  className="modal-input"
+                  placeholder="Confirm new password"
+                  value={ownConfirmPassword}
+                  onChange={(e) => setOwnConfirmPassword(e.target.value)}
+                />
+              </div>
+
+              {formError && (
+                <div className="modal-error">{formError}</div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="modal-button secondary"
+                onClick={() => setChangeOwnPasswordModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-button primary"
+                onClick={handleChangeOwnPassword}
+                disabled={isLoading || !ownNewPassword.trim() || !ownConfirmPassword.trim()}
+              >
+                {isLoading ? 'Changing...' : 'Change Password'}
               </button>
             </div>
           </div>

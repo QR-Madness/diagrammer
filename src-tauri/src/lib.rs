@@ -349,6 +349,67 @@ fn delete_user(state: tauri::State<AppState>, user_id: String) -> Result<(), Str
     }
 }
 
+// ============ Team Document Commands (Direct Access for Host) ============
+
+/// List all team documents (host only - direct access)
+#[tauri::command]
+async fn list_team_documents(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<server::documents::DocumentMetadata>, String> {
+    let server = state.server.read().await;
+    let doc_store = server
+        .get_doc_store()
+        .await
+        .ok_or("Server not running")?;
+
+    Ok(doc_store.list_documents())
+}
+
+/// Save a team document (host only - direct access)
+#[tauri::command]
+async fn save_team_document(
+    state: tauri::State<'_, AppState>,
+    document: serde_json::Value,
+) -> Result<(), String> {
+    let server = state.server.read().await;
+    let doc_store = server
+        .get_doc_store()
+        .await
+        .ok_or("Server not running")?;
+
+    doc_store.save_document(document)
+}
+
+/// Get a team document by ID (host only - direct access)
+#[tauri::command]
+async fn get_team_document(
+    state: tauri::State<'_, AppState>,
+    doc_id: String,
+) -> Result<serde_json::Value, String> {
+    let server = state.server.read().await;
+    let doc_store = server
+        .get_doc_store()
+        .await
+        .ok_or("Server not running")?;
+
+    doc_store.get_document(&doc_id)
+}
+
+/// Delete a team document (host only - direct access)
+#[tauri::command]
+async fn delete_team_document(
+    state: tauri::State<'_, AppState>,
+    doc_id: String,
+) -> Result<bool, String> {
+    let server = state.server.read().await;
+    let doc_store = server
+        .get_doc_store()
+        .await
+        .ok_or("Server not running")?;
+
+    doc_store.delete_document(&doc_id)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -450,6 +511,11 @@ pub fn run() {
             update_user_role,
             reset_user_password,
             delete_user,
+            // Team documents (direct host access)
+            list_team_documents,
+            save_team_document,
+            get_team_document,
+            delete_team_document,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Diagrammer");
