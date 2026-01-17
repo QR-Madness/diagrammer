@@ -483,6 +483,26 @@ impl WebSocketServer {
     pub async fn get_doc_store(&self) -> Option<Arc<DocumentStore>> {
         self.state.read().await.as_ref().map(|s| s.doc_store.clone())
     }
+
+    /// Broadcast a document event to all connected clients
+    /// Used when documents are saved via Tauri commands (not WebSocket)
+    pub async fn broadcast_doc_event(&self, doc_id: &str, event_type: DocEventType, user_id: Option<String>) {
+        let state_guard = self.state.read().await;
+        if let Some(state) = state_guard.as_ref() {
+            let metadata = state.doc_store.get_metadata(doc_id);
+            let event = DocEvent {
+                event_type,
+                doc_id: doc_id.to_string(),
+                metadata,
+                user_id: user_id.unwrap_or_else(|| "system".to_string()),
+            };
+
+            if let Ok(event_data) = encode_message(MESSAGE_DOC_EVENT, &event) {
+                state.broadcast_to_all(event_data, None);
+                log::info!("Broadcast doc event: {:?} for doc {}", event_type, doc_id);
+            }
+        }
+    }
 }
 
 /// Health check endpoint

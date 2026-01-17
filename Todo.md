@@ -571,9 +571,12 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Added transferToTeam/transferToPersonal actions to persistenceStore
   - Added transfer UI with confirmation modal in DocumentsSettings
   - Added transfer modal in TeamDocumentsManager
-- [ ] Creating a new document will copy the current's entire content; ideally a new document will be empty
-- [ ] Changing a document's name on a host does not register with clients despite reconnection and host restart
-- [ ] Remote documents cannot be opened 
+- [x] Creating a new document will copy the current's entire content; ideally a new document will be empty
+  - Fixed: Added syncDocumentToCurrentPage() after reset to clear old shapes
+- [x] Changing a document's name on a host does not register with clients despite reconnection and host restart
+  - Fixed: Team documents now sync to host on save, server broadcasts DOC_EVENT to clients
+- [x] Remote documents cannot be opened
+  - Fixed: Added loadRemoteDocument() to persistenceStore for loading host documents 
 
 #### Phase 14.2: UX Improvements
 

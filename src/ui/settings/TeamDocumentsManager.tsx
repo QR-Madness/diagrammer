@@ -267,16 +267,17 @@ export function TeamDocumentsManager() {
   const isAdmin = currentUser?.role === 'admin';
   const userId = currentUser?.id;
 
+  const loadRemoteDocument = usePersistenceStore((state) => state.loadRemoteDocument);
+
   const handleOpenDocument = useCallback(
     async (docId: string, fromHost?: boolean) => {
       if (fromHost && isClient) {
         // Load document from host first, then open it
         try {
           const doc = await loadTeamDocument(docId);
-          // The document is now in cache - we could integrate with persistenceStore here
-          // For now, just log that we loaded it
-          console.log('[TeamDocumentsManager] Loaded team document from host:', doc.name);
-          // TODO: Integrate loaded document into local document store for editing
+          // Load the document into the editor
+          loadRemoteDocument(doc);
+          console.log('[TeamDocumentsManager] Opened remote document:', doc.name);
         } catch (error) {
           console.error('[TeamDocumentsManager] Failed to load team document:', error);
         }
@@ -284,7 +285,7 @@ export function TeamDocumentsManager() {
         loadDocument(docId);
       }
     },
-    [loadDocument, loadTeamDocument, isClient]
+    [loadDocument, loadTeamDocument, loadRemoteDocument, isClient]
   );
 
   const handleCreateDocument = useCallback(() => {

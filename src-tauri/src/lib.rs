@@ -371,13 +371,43 @@ async fn save_team_document(
     state: tauri::State<'_, AppState>,
     document: serde_json::Value,
 ) -> Result<(), String> {
+    let doc_id = document
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or("Document missing 'id' field")?
+        .to_string();
+
+    let doc_name = document
+        .get("name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("(unnamed)")
+        .to_string();
+
+    log::debug!("Saving team document '{}' ({})", doc_name, doc_id);
+
     let server = state.server.read().await;
     let doc_store = server
         .get_doc_store()
         .await
         .ok_or("Server not running")?;
 
-    doc_store.save_document(document)
+    // Check if document exists (for event type)
+    let is_new = doc_store.get_metadata(&doc_id).is_none();
+
+    // Save the document
+    doc_store.save_document(document)?;
+
+    log::info!("Saved team document '{}' ({})", doc_name, doc_id);
+
+    // Broadcast event to connected clients
+    let event_type = if is_new {
+        server::protocol::DocEventType::Created
+    } else {
+        server::protocol::DocEventType::Updated
+    };
+    server.broadcast_doc_event(&doc_id, event_type, None).await;
+
+    Ok(())
 }
 
 /// Get a team document by ID (host only - direct access)
@@ -401,13 +431,26 @@ async fn delete_team_document(
     state: tauri::State<'_, AppState>,
     doc_id: String,
 ) -> Result<bool, String> {
+    log::debug!("Deleting team document: {}", doc_id);
+
     let server = state.server.read().await;
     let doc_store = server
         .get_doc_store()
         .await
         .ok_or("Server not running")?;
 
-    doc_store.delete_document(&doc_id)
+    let deleted = doc_store.delete_document(&doc_id)?;
+
+    if deleted {
+        log::info!("Deleted team document: {}", doc_id);
+
+        // Broadcast delete event to connected clients
+        server
+            .broadcast_doc_event(&doc_id, server::protocol::DocEventType::Deleted, None)
+            .await;
+    }
+
+    Ok(deleted)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

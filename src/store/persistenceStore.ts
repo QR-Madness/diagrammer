@@ -19,6 +19,8 @@ import { useRichTextStore } from './richTextStore';
 import { useUserStore } from './userStore';
 import { useTeamStore } from './teamStore';
 import { useTeamDocumentStore } from './teamDocumentStore';
+import { useSessionStore } from './sessionStore';
+import { useHistoryStore } from './historyStore';
 import { blobStorage } from '../storage/BlobStorage';
 import { isTauri } from '../tauri/commands';
 
@@ -77,6 +79,8 @@ export interface PersistenceActions {
   transferToTeam: (docId: string) => boolean;
   /** Transfer a team document to personal documents */
   transferToPersonal: (docId: string) => boolean;
+  /** Load a remote document (from host) directly into the editor */
+  loadRemoteDocument: (doc: DiagramDocument) => void;
   /** Reset to initial state */
   reset: () => void;
 }
@@ -274,8 +278,15 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         usePageStore.getState().reset();
         usePageStore.getState().initializeDefault();
 
+        // Sync the new empty page to documentStore (clears old shapes)
+        usePageStore.getState().syncDocumentToCurrentPage();
+
         // Reset rich text store to empty
         useRichTextStore.getState().reset();
+
+        // Clear selection and history
+        useSessionStore.getState().clearSelection();
+        useHistoryStore.getState().clear();
 
         set({
           currentDocumentId: null,
@@ -340,6 +351,32 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, docId);
+
+        // If team document, also save to host
+        if (doc.isTeamDocument) {
+          const serverMode = useTeamStore.getState().serverMode;
+
+          if (serverMode === 'host' && isTauri()) {
+            // Host mode: save directly to Rust DocumentStore
+            import('@tauri-apps/api/core').then(({ invoke }) => {
+              invoke('save_team_document', { document: doc })
+                .then(() => {
+                  console.log('[persistenceStore] Synced team document to host:', doc.id);
+                })
+                .catch((error) => {
+                  console.error('[persistenceStore] Failed to sync team document to host:', error);
+                });
+            });
+          } else if (serverMode === 'client') {
+            // Client mode: save via WebSocket
+            const teamDocStore = useTeamDocumentStore.getState();
+            if (teamDocStore.authenticated) {
+              teamDocStore.saveToHost(doc).catch((error) => {
+                console.error('[persistenceStore] Failed to sync team document to host:', error);
+              });
+            }
+          }
+        }
       },
 
       // Save with a new name
@@ -661,6 +698,34 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }));
 
         return true;
+      },
+
+      // Load a remote document (from host) directly into the editor
+      loadRemoteDocument: (doc: DiagramDocument) => {
+        // Load into page store
+        loadDocumentToPageStore(doc);
+
+        // Also save to localStorage so it's cached locally
+        saveDocumentToStorage(doc);
+
+        // Update metadata index
+        const metadata = getDocumentMetadata(doc);
+
+        set((state) => ({
+          currentDocumentId: doc.id,
+          currentDocumentName: doc.name,
+          documents: {
+            ...state.documents,
+            [doc.id]: metadata,
+          },
+          isDirty: false,
+          lastSavedAt: doc.modifiedAt,
+        }));
+
+        // Save current document ID
+        localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, doc.id);
+
+        console.log('[persistenceStore] Loaded remote document:', doc.name);
       },
 
       // Reset to initial state
