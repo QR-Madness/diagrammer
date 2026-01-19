@@ -8,7 +8,7 @@
  * - Import/Export JSON
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useTeamStore } from '../../store/teamStore';
 import { useTeamDocumentStore } from '../../store/teamDocumentStore';
@@ -52,27 +52,37 @@ export function DocumentsSettings() {
   const isInTeamMode = serverMode !== 'offline';
   const isConnectedToHost = serverMode === 'client' && authenticated;
 
-  // Refresh team documents when connected
-  useEffect(() => {
-    if (isConnectedToHost) {
-      fetchDocumentList().catch(console.error);
-    }
-  }, [isConnectedToHost, fetchDocumentList]);
+  // Note: Document list is automatically fetched by teamDocumentStore.setAuthenticated
+  // No need to fetch here - it causes double fetches and flickering
 
-  // Merge local and remote documents
+  // Merge local and remote documents, ensuring no duplicates
   const documentList = useMemo(() => {
     // Start with local documents
     const localDocs = Object.entries(documents);
 
     // If connected to host as client, merge with remote team documents
-    // and filter out local team documents (they should come from the host)
+    // Avoid duplicates by tracking seen IDs
     let allDocs: [string, DocumentMetadata][];
 
     if (isConnectedToHost) {
-      // Personal docs from local storage + team docs from remote
+      // Personal docs from local storage (non-team docs only)
       const personalDocs = localDocs.filter(([, doc]) => !doc.isTeamDocument);
-      const remoteDocs = Object.entries(remoteTeamDocs);
+
+      // Remote team docs, excluding any that exist in local docs (deduplication)
+      const localIds = new Set(localDocs.map(([id]) => id));
+      const remoteDocs = Object.entries(remoteTeamDocs).filter(
+        ([id]) => !localIds.has(id)
+      );
+
+      // Combine: personal (local) + team (remote, deduplicated)
       allDocs = [...personalDocs, ...remoteDocs];
+
+      // Also include local team docs that aren't in remote (edge case during sync)
+      const remoteIds = new Set(Object.keys(remoteTeamDocs));
+      const localTeamDocs = localDocs.filter(
+        ([id, doc]) => doc.isTeamDocument && !remoteIds.has(id)
+      );
+      allDocs = [...allDocs, ...localTeamDocs];
     } else {
       // Not connected as client - use local documents
       allDocs = localDocs;

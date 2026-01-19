@@ -71,6 +71,11 @@ tasks:
     cmds:
       - cargo test
 
+  run:linux:appimage:
+    desc: Run the latest built AppImage (Linux-only)
+    cmds:
+      - $(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -n1)
+
   # ============================================
   # Code Quality
   # ============================================

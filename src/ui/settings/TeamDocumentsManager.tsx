@@ -229,20 +229,32 @@ export function TeamDocumentsManager() {
 
   // Filter and sort documents - merge local and team documents for clients
   const filteredDocuments = useMemo(() => {
-    // Start with local documents
-    let docs = Object.values(documents);
+    let docs: (DocumentMetadata & { _fromHost?: true })[] = [];
 
-    // For clients, merge team documents from host (avoiding duplicates by ID)
     if (isClient && isAuthenticated) {
-      const localIds = new Set(docs.map((d) => d.id));
-      const hostDocs = Object.values(teamDocuments).filter(
-        (d) => !localIds.has(d.id)
+      // For clients: personal docs (local) + team docs (from host, source of truth)
+      const localDocs = Object.values(documents);
+
+      // Personal docs from local storage only
+      const personalDocs = localDocs.filter((d) => !d.isTeamDocument);
+
+      // Team docs from host (source of truth for team documents)
+      const hostDocs = Object.values(teamDocuments).map((d) => ({
+        ...d,
+        isTeamDocument: true as const,
+        _fromHost: true as const,
+      }));
+
+      // Local team docs not yet on host (edge case during transfer/sync)
+      const hostIds = new Set(Object.keys(teamDocuments));
+      const localTeamDocs = localDocs.filter(
+        (d) => d.isTeamDocument && !hostIds.has(d.id)
       );
-      // Mark host documents as team documents and add source marker
-      docs = [
-        ...docs,
-        ...hostDocs.map((d) => ({ ...d, isTeamDocument: true, _fromHost: true as const })),
-      ];
+
+      docs = [...personalDocs, ...hostDocs, ...localTeamDocs];
+    } else {
+      // Not connected as client - use local documents
+      docs = Object.values(documents);
     }
 
     // Filter by team documents only if toggle is on
