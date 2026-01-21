@@ -6,6 +6,7 @@ import { ContextMenu } from './ContextMenu';
 import { ExportDialog } from './ExportDialog';
 import { SaveToLibraryDialog } from './SaveToLibraryDialog';
 import { CollaborativeCursors } from './CollaborativeCursors';
+import { SelectionHighlight } from './SelectionHighlight';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -52,6 +53,9 @@ export function CanvasContainer({
   // State for camera reference (for TextEditor positioning)
   const [camera, setCamera] = useState<Camera | null>(null);
 
+  // Container dimensions for presence overlays
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+
   // Track canvas focus state for visual indicator
   const [isFocused, setIsFocused] = useState(false);
 
@@ -81,6 +85,7 @@ export function CanvasContainer({
 
     if (width > 0 && height > 0) {
       engine.resize(width, height);
+      setDimensions({ width, height });
     }
   }, []);
 
@@ -294,8 +299,9 @@ export function CanvasContainer({
           }}
         />
       )}
-      {/* Collaborative cursors overlay */}
-      <CollaborativeCursors />
+      {/* Collaborative presence overlays */}
+      <SelectionHighlight width={dimensions.width} height={dimensions.height} />
+      <CollaborativeCursors width={dimensions.width} height={dimensions.height} />
       <TextEditor camera={camera} />
       {contextMenu && (
         <ContextMenu

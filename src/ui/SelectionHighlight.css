@@ -1,0 +1,66 @@
+/**
+ * Selection Highlight styles
+ *
+ * Phase 14.1.4 Collaboration Overhaul
+ */
+
+.collab-selection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 999; /* Below cursors (1000) */
+}
+
+.collab-selection-box {
+  position: absolute;
+  border: 2px dashed var(--selection-color, #4a90d9);
+  border-radius: 3px;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: left 0.1s ease-out, top 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out;
+}
+
+.collab-selection-label {
+  position: absolute;
+  top: -18px;
+  left: -2px;
+  padding: 1px 5px;
+  border-radius: 3px 3px 0 0;
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fade in animation */
+.collab-selection-box {
+  animation: selection-appear 0.15s ease-out;
+}
+
+@keyframes selection-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+/* Pulse animation for active selections */
+.collab-selection-box.active {
+  animation: selection-pulse 2s ease-in-out infinite;
+}
+
+@keyframes selection-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}

@@ -581,12 +581,25 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Handles disconnection (converts remote docs to cached)
   - Persists queue changes automatically
 
-##### Phase 14.1.4: Presence System Overhaul - PENDING
+##### Phase 14.1.4: Presence System Overhaul - COMPLETE
 
-- [ ] Create presenceStore (`src/store/presenceStore.ts`)
-- [ ] Create CollaborativeCursor component
-- [ ] Create SelectionHighlight component
-- [ ] Update Renderer for presence overlays
+- [x] Create presenceStore (`src/store/presenceStore.ts`)
+  - Dedicated store for real-time presence management
+  - Stores remote users with cursor/selection state
+  - Stale cursor detection and cleanup
+  - Optimized selectors for rendering
+- [x] Create CollaborativeCursor component
+  - Updated existing component to use presenceStore
+  - Improved stale cursor filtering
+  - Better bounds checking for off-screen cursors
+- [x] Create SelectionHighlight component (`src/ui/SelectionHighlight.tsx`)
+  - Renders colored borders around shapes selected by other users
+  - Shows user name labels on selections
+  - Uses shapeRegistry for accurate bounds calculation
+- [x] Update Renderer for presence overlays
+  - Added SelectionHighlight to CanvasContainer
+  - Pass container dimensions to presence components
+  - Integrated presenceStore with collaborationStore
 
 ##### Phase 14.1.5: Access Control Implementation - PENDING
 

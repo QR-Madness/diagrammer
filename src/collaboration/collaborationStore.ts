@@ -20,6 +20,7 @@ import { YjsDocument } from './YjsDocument';
 import { UnifiedSyncProvider, AwarenessUserState } from './UnifiedSyncProvider';
 import { useTeamDocumentStore } from '../store/teamDocumentStore';
 import { useConnectionStore, type ConnectionStatus } from '../store/connectionStore';
+import { usePresenceStore } from '../store/presenceStore';
 import type { Shape } from '../shapes/Shape';
 import type { DocEvent } from './protocol';
 
@@ -206,6 +207,13 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         color: config.user.color,
       });
 
+      // Set local user in presence store
+      usePresenceStore.getState().setLocalUser({
+        userId: config.user.id,
+        name: config.user.name,
+        color: config.user.color,
+      });
+
       // Register provider with team document store
       // Note: teamDocumentStore now works with UnifiedSyncProvider through a wrapper
       useTeamDocumentStore.getState().setProviderFromUnified(syncProvider);
@@ -242,6 +250,10 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
       // Clear team document store
       useTeamDocumentStore.getState().setProviderFromUnified(null);
       useTeamDocumentStore.getState().clearTeamDocuments();
+
+      // Clear presence store
+      usePresenceStore.getState().setLocalUser(null);
+      usePresenceStore.getState().clearRemoteUsers();
 
       // Reset connection store
       useConnectionStore.getState().reset();
@@ -310,6 +322,9 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         remoteUsers.push({ ...user, clientId });
       });
       set({ remoteUsers });
+
+      // Sync to presenceStore for optimized presence rendering
+      usePresenceStore.getState().syncRemoteUsers(users);
     },
 
     getYjsDocument: () => yjsDoc,

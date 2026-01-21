@@ -4,10 +4,13 @@
  * Renders other users' cursor positions on the canvas as colored cursors
  * with their names. This creates the real-time collaborative experience
  * where you can see what other people are looking at.
+ *
+ * Phase 14.1.4 - Updated to use presenceStore for better performance.
  */
 
 import { useMemo } from 'react';
-import { useCollaborationStore, RemoteUser } from '../collaboration';
+import { useCollaborationStore } from '../collaboration';
+import { usePresenceStore, type RemotePresence } from '../store/presenceStore';
 import { useSessionStore } from '../store/sessionStore';
 import './CollaborativeCursors.css';
 
@@ -24,16 +27,18 @@ function getUserColor(userId: string): string {
 }
 
 interface CursorProps {
-  user: RemoteUser;
+  user: RemotePresence;
   cameraX: number;
   cameraY: number;
   cameraZoom: number;
+  containerWidth: number;
+  containerHeight: number;
 }
 
-function Cursor({ user, cameraX, cameraY, cameraZoom }: CursorProps) {
+function Cursor({ user, cameraX, cameraY, cameraZoom, containerWidth, containerHeight }: CursorProps) {
   if (!user.cursor) return null;
 
-  const color = user.color || getUserColor(user.id);
+  const color = user.color || getUserColor(user.userId);
 
   // Transform world coordinates to screen coordinates
   const screenX = (user.cursor.x - cameraX) * cameraZoom;
@@ -41,6 +46,7 @@ function Cursor({ user, cameraX, cameraY, cameraZoom }: CursorProps) {
 
   // Skip if cursor is off-screen (with some margin)
   if (screenX < -50 || screenY < -50) return null;
+  if (screenX > containerWidth + 50 || screenY > containerHeight + 50) return null;
 
   return (
     <div
@@ -86,9 +92,11 @@ export interface CollaborativeCursorsProps {
   height?: number;
 }
 
-export function CollaborativeCursors({ width, height }: CollaborativeCursorsProps) {
+export function CollaborativeCursors({ width = 800, height = 600 }: CollaborativeCursorsProps) {
   const isActive = useCollaborationStore((state) => state.isActive);
-  const remoteUsers = useCollaborationStore((state) => state.remoteUsers);
+  const presenceEnabled = usePresenceStore((state) => state.enabled);
+  const remoteUsers = usePresenceStore((state) => state.remoteUsers);
+  const cursorStaleThreshold = usePresenceStore((state) => state.cursorStaleThreshold);
 
   // Get camera state for coordinate transform
   const camera = useSessionStore((state) => state.camera);
@@ -96,13 +104,22 @@ export function CollaborativeCursors({ width, height }: CollaborativeCursorsProp
   const cameraY = camera.y;
   const cameraZoom = camera.zoom;
 
-  // Filter to users with cursor positions
+  // Filter to users with non-stale cursor positions
   const usersWithCursors = useMemo(() => {
-    return remoteUsers.filter((user) => user.cursor != null);
-  }, [remoteUsers]);
+    const now = Date.now();
+    const result: RemotePresence[] = [];
 
-  // Don't render if collaboration not active or no cursors
-  if (!isActive || usersWithCursors.length === 0) {
+    remoteUsers.forEach((user) => {
+      if (user.cursor && now - user.lastUpdated < cursorStaleThreshold) {
+        result.push(user);
+      }
+    });
+
+    return result;
+  }, [remoteUsers, cursorStaleThreshold]);
+
+  // Don't render if collaboration not active or presence disabled or no cursors
+  if (!isActive || !presenceEnabled || usersWithCursors.length === 0) {
     return null;
   }
 
@@ -110,8 +127,8 @@ export function CollaborativeCursors({ width, height }: CollaborativeCursorsProp
     <div
       className="collab-cursors-overlay"
       style={{
-        width: width ?? '100%',
-        height: height ?? '100%',
+        width: width,
+        height: height,
       }}
     >
       {usersWithCursors.map((user) => (
@@ -121,6 +138,8 @@ export function CollaborativeCursors({ width, height }: CollaborativeCursorsProp
           cameraX={cameraX}
           cameraY={cameraY}
           cameraZoom={cameraZoom}
+          containerWidth={width}
+          containerHeight={height}
         />
       ))}
     </div>
