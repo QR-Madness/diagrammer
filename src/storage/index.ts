@@ -34,3 +34,10 @@ export type { StorageMode, StorageFactoryConfig } from './StorageFactory';
 // Blob storage (existing)
 export { blobStorage, BlobStorage } from './BlobStorage';
 export type { BlobMetadata } from './BlobTypes';
+
+// Sync queue storage (Phase 14.1.3)
+export {
+  SyncQueueStorage,
+  getSyncQueueStorage,
+  resetSyncQueueStorage,
+} from './SyncQueueStorage';

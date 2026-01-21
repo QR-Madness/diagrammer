@@ -14,6 +14,8 @@ import { create } from 'zustand';
 import type { DocumentMetadata, DiagramDocument } from '../types/Document';
 import type { DocEvent } from '../collaboration/protocol';
 import type { UnifiedSyncProvider } from '../collaboration/UnifiedSyncProvider';
+import { useDocumentRegistry } from './documentRegistry';
+import { useConnectionStore } from './connectionStore';
 
 // Legacy import for backwards compatibility during transition
 import { DocumentSyncProvider } from '../collaboration/DocumentSyncProvider';
@@ -163,6 +165,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           lastSyncAt: Date.now(),
           isLoadingList: false,
         });
+
+        // Register remote documents in the registry
+        const registry = useDocumentRegistry.getState();
+        const connection = useConnectionStore.getState();
+        const hostId = connection.host?.address ?? 'unknown';
+
+        // Register all remote documents (default to 'editor' permission for now)
+        registry.registerRemoteBatch(documents, hostId, 'editor');
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to fetch documents';
         set({ error, isLoadingList: false });
@@ -175,6 +185,8 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         throw new Error('Not connected to host');
       }
 
+      const registry = useDocumentRegistry.getState();
+
       // Check cache first
       const cached = get().documentCache[docId];
       if (cached) {
@@ -186,6 +198,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         loadingDocs: new Set(state.loadingDocs).add(docId),
         error: null,
       }));
+      registry.setDocumentLoading(docId, true);
 
       try {
         const doc = await docProvider.getDocument(docId);
@@ -203,6 +216,9 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           };
         });
 
+        // Also cache in registry
+        registry.setDocumentContent(docId, doc);
+
         return doc;
       } catch (e) {
         // Remove from loading
@@ -214,6 +230,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
             error: e instanceof Error ? e.message : 'Failed to load document',
           };
         });
+        registry.setDocumentLoading(docId, false, e instanceof Error ? e.message : 'Failed to load');
         throw e;
       }
     },
@@ -222,6 +239,11 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       if (!docProvider) {
         throw new Error('Not connected to host');
       }
+
+      const registry = useDocumentRegistry.getState();
+
+      // Set sync state to syncing
+      registry.setSyncState(doc.id, 'syncing');
 
       try {
         await docProvider.saveDocument(doc);
@@ -233,9 +255,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
             [doc.id]: doc,
           },
         }));
+
+        // Update registry
+        registry.setDocumentContent(doc.id, doc);
+        registry.setSyncState(doc.id, 'synced');
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to save document';
         set({ error });
+        registry.setSyncState(doc.id, 'error');
         throw e;
       }
     },
@@ -258,6 +285,9 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
           return { teamDocuments, documentCache };
         });
+
+        // Remove from registry
+        useDocumentRegistry.getState().removeDocument(docId);
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to delete document';
         set({ error });
@@ -266,6 +296,10 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     handleDocumentEvent: (event) => {
+      const registry = useDocumentRegistry.getState();
+      const connection = useConnectionStore.getState();
+      const hostId = connection.host?.address ?? 'unknown';
+
       set((state) => {
         const teamDocuments = { ...state.teamDocuments };
         const documentCache = { ...state.documentCache };
@@ -275,16 +309,21 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           case 'updated':
             if (event.metadata) {
               teamDocuments[event.docId] = event.metadata;
+              // Update registry
+              registry.registerRemote(event.metadata, hostId, 'editor', 'synced');
             }
             // Invalidate cache on update (will be refetched when needed)
             if (event.eventType === 'updated') {
               delete documentCache[event.docId];
+              registry.invalidateContent(event.docId);
             }
             break;
 
           case 'deleted':
             delete teamDocuments[event.docId];
             delete documentCache[event.docId];
+            // Remove from registry
+            registry.removeDocument(event.docId);
             break;
         }
 
@@ -314,6 +353,12 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     clearTeamDocuments: () => {
+      // Clear remote documents from registry for the current host
+      const connection = useConnectionStore.getState();
+      if (connection.host?.address) {
+        useDocumentRegistry.getState().clearRemoteDocuments(connection.host.address);
+      }
+
       set({
         teamDocuments: {},
         loadingDocs: new Set(),

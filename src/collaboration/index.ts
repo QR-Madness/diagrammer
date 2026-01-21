@@ -33,3 +33,17 @@ export { useCollaborationSync, isRemoteSyncInProgress } from './useCollaboration
 
 // Protocol types and helpers
 export * from './protocol';
+
+// Offline sync (Phase 14.1.3)
+export { OfflineQueue, getOfflineQueue, resetOfflineQueue } from './OfflineQueue';
+export type {
+  QueuedOperation,
+  QueuedSaveOperation,
+  QueuedDeleteOperation,
+  QueuedOperationType,
+  ProcessResult,
+  QueueStats,
+} from './OfflineQueue';
+
+export { SyncStateManager, getSyncStateManager, resetSyncStateManager } from './SyncStateManager';
+export type { SyncStateManagerOptions, SyncManagerState } from './SyncStateManager';

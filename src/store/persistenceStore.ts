@@ -21,6 +21,7 @@ import { useTeamStore } from './teamStore';
 import { useTeamDocumentStore } from './teamDocumentStore';
 import { useSessionStore } from './sessionStore';
 import { useHistoryStore } from './historyStore';
+import { useDocumentRegistry } from './documentRegistry';
 import { blobStorage } from '../storage/BlobStorage';
 import { isTauri } from '../tauri/commands';
 
@@ -288,6 +289,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         useSessionStore.getState().clearSelection();
         useHistoryStore.getState().clear();
 
+        // Clear active document in registry
+        useDocumentRegistry.getState().setActiveDocument(null);
+
         set({
           currentDocumentId: null,
           currentDocumentName: docName,
@@ -349,6 +353,12 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           lastSavedAt: Date.now(),
         }));
 
+        // Register in document registry (for local documents)
+        if (!doc.isTeamDocument) {
+          useDocumentRegistry.getState().registerLocal(metadata);
+          useDocumentRegistry.getState().setActiveDocument(docId);
+        }
+
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, docId);
 
@@ -408,6 +418,10 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           lastSavedAt: Date.now(),
         }));
 
+        // Register in document registry
+        useDocumentRegistry.getState().registerLocal(metadata);
+        useDocumentRegistry.getState().setActiveDocument(newId);
+
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, newId);
       },
@@ -429,6 +443,14 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           isDirty: false,
           lastSavedAt: doc.modifiedAt,
         });
+
+        // Register in document registry and set as active
+        const metadata = getDocumentMetadata(doc);
+        if (!doc.isTeamDocument) {
+          useDocumentRegistry.getState().registerLocal(metadata);
+        }
+        useDocumentRegistry.getState().setActiveDocument(id);
+        useDocumentRegistry.getState().setDocumentContent(id, doc);
 
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, id);
@@ -460,6 +482,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           delete newDocuments[id];
           return { documents: newDocuments };
         });
+
+        // Remove from document registry
+        useDocumentRegistry.getState().removeDocument(id);
 
         // If we deleted the current document, create a new one
         if (state.currentDocumentId === id) {
@@ -549,6 +574,11 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
             isDirty: false,
             lastSavedAt: Date.now(),
           }));
+
+          // Register in document registry
+          useDocumentRegistry.getState().registerLocal(metadata);
+          useDocumentRegistry.getState().setActiveDocument(newId);
+          useDocumentRegistry.getState().setDocumentContent(newId, doc);
 
           // Save current document ID
           localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, newId);
@@ -722,6 +752,17 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           lastSavedAt: doc.modifiedAt,
         }));
 
+        // Register in document registry
+        // Note: For remote documents, the registry entry should already exist
+        // from fetchDocumentList - we just set it as active and cache content
+        const registry = useDocumentRegistry.getState();
+        if (!registry.hasDocument(doc.id)) {
+          // If not registered yet, register as local (cached copy)
+          registry.registerLocal(metadata);
+        }
+        registry.setActiveDocument(doc.id);
+        registry.setDocumentContent(doc.id, doc);
+
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, doc.id);
 
@@ -748,9 +789,19 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 /**
  * Initialize persistence on app startup.
  * Loads the last opened document or creates a new one.
+ * Also migrates existing documents to the document registry.
  */
 export function initializePersistence(): void {
   const store = usePersistenceStore.getState();
+  const registry = useDocumentRegistry.getState();
+
+  // Migrate existing documents to registry (only local documents)
+  const existingDocs = store.documents;
+  for (const [id, metadata] of Object.entries(existingDocs)) {
+    if (!registry.hasDocument(id) && !metadata.isTeamDocument) {
+      registry.registerLocal(metadata);
+    }
+  }
 
   // Try to load the last opened document
   const lastDocId = localStorage.getItem(STORAGE_KEYS.CURRENT_DOCUMENT);

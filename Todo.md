@@ -539,18 +539,47 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - DocumentProvider interface for compatibility with both provider types
 - [x] Update collaboration/index.ts exports
 
-##### Phase 14.1.2: Document Registry Pattern - PENDING
+##### Phase 14.1.2: Document Registry Pattern - COMPLETE
 
-- [ ] Create documentRegistry store (`src/store/documentRegistry.ts`)
-  - Unified document state for local/remote/cached
-  - Replace teamDocumentStore with registry
-- [ ] Update persistenceStore to delegate to registry
+- [x] Create documentRegistry store (`src/store/documentRegistry.ts`)
+  - Unified document state for local/remote/cached using discriminated union types
+  - Entries indexed by ID with record metadata and optional document content
+  - Filter capabilities for document list (by type, host, search query)
+  - Sync state management for remote documents
+  - Local/Remote/Cached document type tracking
+  - Persistence with Zustand persist middleware
+- [x] Update persistenceStore to delegate to registry
+  - Registers local documents on save/load/import
+  - Sets active document and caches content
+  - Removes documents from registry on delete
+  - Migration of existing documents on initialization
+- [x] Update teamDocumentStore to integrate with registry
+  - Registers remote documents when fetched from host
+  - Updates sync state on save operations
+  - Handles document events (created/updated/deleted)
+  - Caches document content in registry
 
-##### Phase 14.1.3: Offline-First with Sync Queue - PENDING
+##### Phase 14.1.3: Offline-First with Sync Queue - COMPLETE
 
-- [ ] Create OfflineQueue (`src/collaboration/OfflineQueue.ts`)
-- [ ] Create SyncStateManager (`src/collaboration/SyncStateManager.ts`)
-- [ ] Create SyncQueueStorage (`src/storage/SyncQueueStorage.ts`)
+- [x] Create OfflineQueue (`src/collaboration/OfflineQueue.ts`)
+  - Queue save/delete operations when offline
+  - Last-write-wins deduplication per document
+  - Sorted processing by timestamp (oldest first)
+  - Retry logic with configurable max retries
+  - Change notification system for UI updates
+  - Serialization/deserialization for persistence
+- [x] Create SyncQueueStorage (`src/storage/SyncQueueStorage.ts`)
+  - IndexedDB persistence for durability across sessions
+  - Indexes for efficient queries by document/host
+  - Batch operations for performance
+  - Clear by host functionality
+- [x] Create SyncStateManager (`src/collaboration/SyncStateManager.ts`)
+  - Coordinates OfflineQueue, storage, and connection state
+  - Auto-loads persisted queue on initialization
+  - Auto-processes queue on reconnection
+  - Updates documentRegistry sync states
+  - Handles disconnection (converts remote docs to cached)
+  - Persists queue changes automatically
 
 ##### Phase 14.1.4: Presence System Overhaul - PENDING
 
@@ -575,8 +604,8 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ##### Phase 14.2.1: UX Improvements - Chunk 1
 
-- [ ] Make the canvas not-focused effect more friendly the red border is annoying; consider a light blue top-border or similar
-- [ ] Minimap for large canvases (place the toggle in the topbar next to the theme toggle); also add a toggle for this in settings
+- [ ] Make the canvas not-focused effect more friendly; the red border is annoying; consider a light blue top-border or similar
+- [ ] Minimap for large canvases; add a toggle for this in the settings
 - [ ] Context menu for style profiles clips overflows outside of window viewport
 - [ ] Add border radius for group-labels
 - [ ] Select dropdown is pure white and gray (tested in dark mode)
@@ -588,6 +617,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Smart-alignment for shape resize
 - [ ] Allow LaTeX equations for shape text by prepending `=` to the
 - [ ] Return focus to canvas when the layer panel is collapsed
+- [ ] Remove focus from the canvas when focus when working in the rich text editor
 
 ##### Phase 14.2.3: UX Improvements - Chunk 3
 
