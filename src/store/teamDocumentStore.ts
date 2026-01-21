@@ -6,11 +6,16 @@
  *
  * Team documents are stored on the host and synced to clients.
  * This store maintains the client-side view of team documents.
+ *
+ * Phase 14.1: Updated to work with UnifiedSyncProvider
  */
 
 import { create } from 'zustand';
 import type { DocumentMetadata, DiagramDocument } from '../types/Document';
 import type { DocEvent } from '../collaboration/protocol';
+import type { UnifiedSyncProvider } from '../collaboration/UnifiedSyncProvider';
+
+// Legacy import for backwards compatibility during transition
 import { DocumentSyncProvider } from '../collaboration/DocumentSyncProvider';
 
 /** Team document store state */
@@ -40,10 +45,24 @@ interface TeamDocumentState {
   isLoadingList: boolean;
 }
 
+/**
+ * Provider interface that both UnifiedSyncProvider and DocumentSyncProvider implement.
+ * This allows the store to work with either provider type.
+ */
+interface DocumentProvider {
+  listDocuments(): Promise<DocumentMetadata[]>;
+  getDocument(docId: string): Promise<DiagramDocument>;
+  saveDocument(doc: DiagramDocument): Promise<void>;
+  deleteDocument(docId: string): Promise<void>;
+}
+
 /** Team document store actions */
 interface TeamDocumentActions {
-  /** Set the document sync provider */
+  /** Set the document sync provider (legacy - uses DocumentSyncProvider) */
   setProvider: (provider: DocumentSyncProvider | null) => void;
+
+  /** Set provider from UnifiedSyncProvider (new unified architecture) */
+  setProviderFromUnified: (provider: UnifiedSyncProvider | null) => void;
 
   /** Fetch document list from host */
   fetchDocumentList: () => Promise<void>;
@@ -82,8 +101,11 @@ interface TeamDocumentActions {
   getCachedDocument: (docId: string) => DiagramDocument | undefined;
 }
 
-/** Document sync provider instance (module-level singleton) */
-let docSyncProvider: DocumentSyncProvider | null = null;
+/** Document provider instance (module-level singleton) - works with either provider type */
+let docProvider: DocumentProvider | null = null;
+
+/** Legacy provider reference for backwards compatibility */
+let legacyDocSyncProvider: DocumentSyncProvider | null = null;
 
 /** Create the team document store */
 export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActions>(
@@ -100,7 +122,8 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
     // Actions
     setProvider: (provider) => {
-      docSyncProvider = provider;
+      legacyDocSyncProvider = provider;
+      docProvider = provider;
 
       if (provider) {
         // Subscribe to document events
@@ -110,8 +133,16 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
     },
 
+    setProviderFromUnified: (provider) => {
+      docProvider = provider;
+      legacyDocSyncProvider = null;
+
+      // Note: Document events are handled by collaborationStore's onDocumentEvent callback
+      // which calls handleDocumentEvent directly, so no subscription needed here
+    },
+
     fetchDocumentList: async () => {
-      if (!docSyncProvider) {
+      if (!docProvider) {
         set({ error: 'Not connected to host' });
         return;
       }
@@ -119,7 +150,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       set({ isLoadingList: true, error: null });
 
       try {
-        const documents = await docSyncProvider.listDocuments();
+        const documents = await docProvider.listDocuments();
 
         // Convert to record
         const teamDocuments: Record<string, DocumentMetadata> = {};
@@ -140,7 +171,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     loadTeamDocument: async (docId) => {
-      if (!docSyncProvider) {
+      if (!docProvider) {
         throw new Error('Not connected to host');
       }
 
@@ -157,7 +188,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }));
 
       try {
-        const doc = await docSyncProvider.getDocument(docId);
+        const doc = await docProvider.getDocument(docId);
 
         // Cache the document
         set((state) => {
@@ -188,12 +219,12 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     saveToHost: async (doc) => {
-      if (!docSyncProvider) {
+      if (!docProvider) {
         throw new Error('Not connected to host');
       }
 
       try {
-        await docSyncProvider.saveDocument(doc);
+        await docProvider.saveDocument(doc);
 
         // Update cache
         set((state) => ({
@@ -210,12 +241,12 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     deleteFromHost: async (docId) => {
-      if (!docSyncProvider) {
+      if (!docProvider) {
         throw new Error('Not connected to host');
       }
 
       try {
-        await docSyncProvider.deleteDocument(docId);
+        await docProvider.deleteDocument(docId);
 
         // Remove from local state
         set((state) => {
@@ -277,7 +308,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       set({ authenticated });
 
       // Fetch document list when authenticated
-      if (authenticated && docSyncProvider) {
+      if (authenticated && docProvider) {
         get().fetchDocumentList().catch(console.error);
       }
     },
@@ -313,9 +344,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
   })
 );
 
-/** Get the document sync provider */
+/** Get the document sync provider (legacy - returns DocumentSyncProvider if available) */
 export function getDocSyncProvider(): DocumentSyncProvider | null {
-  return docSyncProvider;
+  return legacyDocSyncProvider;
+}
+
+/** Get the current document provider (works with either provider type) */
+export function getDocProvider(): DocumentProvider | null {
+  return docProvider;
 }
 
 export default useTeamDocumentStore;

@@ -506,77 +506,70 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Yjs sync protocol implementation
   - Awareness protocol for presence
 
-#### Phase 14.1: Team Documents & Foundational IAM - COMPLETE
+#### Phase 14.1 Collaboration Overhaul
 
-##### Data Model Extensions - COMPLETE
+**Design Decisions (User-Approved):**
+- Offline editing: Editable - queue changes locally, sync/merge when reconnected
+- Conflict resolution: Auto-merge via CRDT for shapes, last-write-wins for metadata
+- Permissions: Owner/Editor/Viewer (3-tier model)
+- Migration: Not needed (no end users, can break existing data structures)
 
-- [x] Extend DiagramDocument with collaboration metadata:
-  - `isTeamDocument: boolean` - distinguishes team vs personal
-  - `lockedBy?: string`, `lockedByName?: string`, `lockedAt?: number` - lock indicators
-- [x] Extend GroupShape with ownership:
-  - `ownerId?: string | null` - owner (null = SYSTEM owned)
-  - `ownerLocked?: boolean` - prevents non-owner modification
-- [x] Extend StyleProfile with ownership:
-  - `ownerId?: string | null` - owner who can lock/modify
-  - `ownerLocked?: boolean` - prevents non-owner modification
-- [x] Auth types in src/types/Auth.ts:
-  - User, UserRole, SessionToken, LoginCredentials
-  - Permission, Ownership, TeamMember types
+##### Phase 14.1.1: Unified Connection Layer - COMPLETE
 
-##### New Stores - COMPLETE
+- [x] Create document type definitions (`src/types/DocumentRegistry.ts`)
+  - Discriminated unions for local/remote/cached documents
+  - Permission types (owner/editor/viewer)
+  - Sync state types (synced/syncing/pending/error)
+  - Type guards and conversion helpers
+- [x] Create connectionStore (`src/store/connectionStore.ts`)
+  - Centralized WebSocket connection state
+  - Connection status, auth state, reconnection tracking
+  - Selector hooks for UI components
+- [x] Create UnifiedSyncProvider (`src/collaboration/UnifiedSyncProvider.ts`)
+  - Single WebSocket replacing separate SyncProvider + DocumentSyncProvider
+  - CRDT sync via Yjs (MESSAGE_SYNC, MESSAGE_AWARENESS)
+  - Document operations (list, get, save, delete)
+  - Authentication (token or credentials)
+  - Auto-reconnection with exponential backoff
+- [x] Add protocol message routing helpers (`src/collaboration/protocol.ts`)
+  - `getMessageChannel()`, `isCRDTMessage()`, `isAuthMessage()`
+  - `getMessageTypeName()` for debugging
+- [x] Update collaborationStore to use UnifiedSyncProvider
+- [x] Update teamDocumentStore with `setProviderFromUnified()` method
+  - DocumentProvider interface for compatibility with both provider types
+- [x] Update collaboration/index.ts exports
 
-- [x] **UserStore** (src/store/userStore.ts): Current user, session token, login/logout
-- [x] **TeamStore** (src/store/teamStore.ts): Server mode, team members, connection status
-- [x] **PermissionStore** (src/store/permissionStore.ts): Permission checks based on role/ownership
+##### Phase 14.1.2: Document Registry Pattern - PENDING
 
-##### Rust Authentication Backend - COMPLETE
+- [ ] Create documentRegistry store (`src/store/documentRegistry.ts`)
+  - Unified document state for local/remote/cached
+  - Replace teamDocumentStore with registry
+- [ ] Update persistenceStore to delegate to registry
 
-- [x] JWT module (src-tauri/src/auth/jwt.rs): Token generation/validation with HS256
-- [x] Password module (src-tauri/src/auth/password.rs): bcrypt hashing and verification
-- [x] Users module (src-tauri/src/auth/users.rs): In-memory user store with persistence
-- [x] Tauri commands: `login`, `validate_token`, `create_user`, `has_users`
-- [x] 11 Rust tests passing (JWT, password, user management, server lifecycle)
+##### Phase 14.1.3: Offline-First with Sync Queue - PENDING
 
-##### Settings Modal - Collaboration Tab - COMPLETE
+- [ ] Create OfflineQueue (`src/collaboration/OfflineQueue.ts`)
+- [ ] Create SyncStateManager (`src/collaboration/SyncStateManager.ts`)
+- [ ] Create SyncQueueStorage (`src/storage/SyncQueueStorage.ts`)
 
-- [x] 'Server Mode' selector: {Offline (Default) | Protected Local}
-- [x] 'Host Port' configuration input (when Protected Local enabled)
-- [x] Start/Stop server buttons with real-time status polling
-- [x] Server status display (running state, address, port, client count)
-- [x] Connection error display
-- [x] Current user info display
-- [x] Notice for web-only mode (desktop required)
+##### Phase 14.1.4: Presence System Overhaul - PENDING
 
-##### Authentication - COMPLETE
+- [ ] Create presenceStore (`src/store/presenceStore.ts`)
+- [ ] Create CollaborativeCursor component
+- [ ] Create SelectionHighlight component
+- [ ] Update Renderer for presence overlays
 
-- [x] Backend: JWT token generation and validation
-- [x] Backend: bcrypt password hashing
-- [x] Backend: User storage and management
-- [x] Frontend: Login page for clients (Phase 14.1.5)
-  - LoginPage component with login form
-  - First-time setup mode for admin creation
-  - AuthGuard wrapper for route protection
-- [x] Frontend: Session validation on app startup
+##### Phase 14.1.5: Access Control Implementation - PENDING
 
-#### Phase 14.1 Known Bugs
+- [ ] Create permissions.rs (`src-tauri/src/server/permissions.rs`)
+- [ ] Add permission middleware to server handlers
+- [ ] Add permission error codes to protocol
 
-- [x] A host cannot manage users, yet a logged-in admin can. Ensure hosts have access to any settings admins do, especially regarding user management.
-- [x] After connection to a host, the client displays messages about a websocket error (no logged errors in any application outputs) and another saying the client is not implemented yet. It should already be implemented.
-- [x] The team document settings menu for individual documents overflows underneath content making it impossible to use it.
-- [x] Host client count doesn't register a new client (stays at zero even though an admin user logged in).
-- [x] Team documents cannot be separated from personal documents via UI; ensure the document storage area clearly shows which are shared, and which are personal.
-- [x] First-time setup authentication page is always displayed despite either completing it, or creating a user on the host.
-  - Fixed: UserStore now initialized with persistence path in Tauri setup() hook
-- [x] There is no actual way to create a 'Team Document', implement transferral of personal documents to team documents.
-  - Added transferToTeam/transferToPersonal actions to persistenceStore
-  - Added transfer UI with confirmation modal in DocumentsSettings
-  - Added transfer modal in TeamDocumentsManager
-- [x] Creating a new document will copy the current's entire content; ideally a new document will be empty
-  - Fixed: Added syncDocumentToCurrentPage() after reset to clear old shapes
-- [x] Changing a document's name on a host does not register with clients despite reconnection and host restart
-  - Fixed: Team documents now sync to host on save, server broadcasts DOC_EVENT to clients
-- [x] Remote documents cannot be opened
-  - Fixed: Added loadRemoteDocument() to persistenceStore for loading host documents 
+##### Phase 14.1.6: UI Consolidation - PENDING
+
+- [ ] Create DocumentBrowser component (replaces DocumentsSettings + TeamDocumentsManager)
+- [ ] Create DocumentCard component
+- [ ] Create SyncStatusBadge component
 
 #### Phase 14.2: UX Improvements
 

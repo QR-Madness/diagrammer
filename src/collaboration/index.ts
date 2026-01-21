@@ -3,15 +3,24 @@
  *
  * This module provides CRDT-based collaboration using Yjs:
  * - YjsDocument: Wrapper for syncing shapes via Y.Map
- * - SyncProvider: WebSocket-based sync with presence
+ * - UnifiedSyncProvider: Single WebSocket provider for CRDT sync + document operations
  * - collaborationStore: Zustand store for managing sync state
+ *
+ * Phase 14.1 Collaboration Overhaul
  */
 
 export { YjsDocument } from './YjsDocument';
 export type { YjsDocumentMetadata, ShapeChangeCallback, OrderChangeCallback, MetadataChangeCallback } from './YjsDocument';
 
+// New unified provider (Phase 14.1)
+export { UnifiedSyncProvider } from './UnifiedSyncProvider';
+export type { UnifiedSyncProviderOptions, AwarenessUserState } from './UnifiedSyncProvider';
+
+// Legacy exports for backwards compatibility during transition
 export { SyncProvider } from './SyncProvider';
-export type { SyncProviderOptions, AwarenessUserState, ConnectionStatus } from './SyncProvider';
+export type { SyncProviderOptions, ConnectionStatus } from './SyncProvider';
+export { DocumentSyncProvider } from './DocumentSyncProvider';
+export type { DocumentSyncProviderOptions } from './DocumentSyncProvider';
 
 export {
   useCollaborationStore,
@@ -21,3 +30,6 @@ export {
 export type { CollaborationConfig, RemoteUser } from './collaborationStore';
 
 export { useCollaborationSync, isRemoteSyncInProgress } from './useCollaborationSync';
+
+// Protocol types and helpers
+export * from './protocol';

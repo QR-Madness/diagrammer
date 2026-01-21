@@ -111,6 +111,9 @@ export class DocumentSyncProvider {
   /** Current document ID for CRDT routing */
   private currentDocId: string | null = null;
 
+  /** Flag to indicate a login request is pending (prevents double onAuthenticated call) */
+  private pendingLoginRequest = false;
+
   constructor(options: DocumentSyncProviderOptions) {
     this.options = {
       token: '',
@@ -284,12 +287,18 @@ export class DocumentSyncProvider {
         return;
       }
 
+      // Set flag to prevent handleAuthResponse from also calling onAuthenticated
+      this.pendingLoginRequest = true;
+
       // Set up one-time handler for auth response
       const handleAuth = (event: MessageEvent) => {
         const data = event.data as ArrayBuffer;
         const msgType = decodeMessageType(data);
 
         if (msgType === MESSAGE_AUTH_RESPONSE) {
+          // Clear the flag so handleAuthResponse knows we've handled it
+          this.pendingLoginRequest = false;
+
           try {
             const response = decodePayload<AuthResponse>(data);
             console.log('[DocumentSyncProvider] Login response:', response.success ? 'success' : 'failed', response.error || '');
@@ -443,6 +452,12 @@ export class DocumentSyncProvider {
   }
 
   private handleAuthResponse(data: ArrayBuffer): void {
+    // If a login request is pending, let loginWithCredentials handle the response
+    // This prevents double onAuthenticated calls
+    if (this.pendingLoginRequest) {
+      return;
+    }
+
     try {
       const response = decodePayload<AuthResponse>(data);
       console.log('[DocumentSyncProvider] Auth response:', response.success ? 'success' : 'failed', response.error || '');

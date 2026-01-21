@@ -203,19 +203,14 @@ export function TeamDocumentsManager() {
   // Team documents from host (for clients)
   const teamDocuments = useTeamDocumentStore((state) => state.teamDocuments);
   const isAuthenticated = useTeamDocumentStore((state) => state.authenticated);
-  const fetchDocumentList = useTeamDocumentStore((state) => state.fetchDocumentList);
   const loadTeamDocument = useTeamDocumentStore((state) => state.loadTeamDocument);
   const isLoadingList = useTeamDocumentStore((state) => state.isLoadingList);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyTeam, setShowOnlyTeam] = useState(false);
 
-  // Fetch team documents when authenticated as client
-  useEffect(() => {
-    if (serverMode === 'client' && isAuthenticated) {
-      fetchDocumentList().catch(console.error);
-    }
-  }, [serverMode, isAuthenticated, fetchDocumentList]);
+  // Note: fetchDocumentList is called automatically by teamDocumentStore.setAuthenticated
+  // when the client authenticates. No need to trigger it here.
 
   const isClient = serverMode === 'client';
 
@@ -239,19 +234,43 @@ export function TeamDocumentsManager() {
       const personalDocs = localDocs.filter((d) => !d.isTeamDocument);
 
       // Team docs from host (source of truth for team documents)
+      // These take priority over any local cached copies
       const hostDocs = Object.values(teamDocuments).map((d) => ({
         ...d,
         isTeamDocument: true as const,
         _fromHost: true as const,
       }));
 
-      // Local team docs not yet on host (edge case during transfer/sync)
-      const hostIds = new Set(Object.keys(teamDocuments));
-      const localTeamDocs = localDocs.filter(
-        (d) => d.isTeamDocument && !hostIds.has(d.id)
-      );
+      // Use a seen set to avoid any duplicate IDs
+      const seenIds = new Set<string>();
+      const dedupedDocs: (DocumentMetadata & { _fromHost?: true })[] = [];
 
-      docs = [...personalDocs, ...hostDocs, ...localTeamDocs];
+      // Add host docs first (they are the source of truth for team docs)
+      for (const doc of hostDocs) {
+        if (!seenIds.has(doc.id)) {
+          seenIds.add(doc.id);
+          dedupedDocs.push(doc);
+        }
+      }
+
+      // Add personal docs (non-team)
+      for (const doc of personalDocs) {
+        if (!seenIds.has(doc.id)) {
+          seenIds.add(doc.id);
+          dedupedDocs.push(doc);
+        }
+      }
+
+      // Add any local team docs not yet on host (edge case during transfer)
+      const localTeamDocs = localDocs.filter((d) => d.isTeamDocument);
+      for (const doc of localTeamDocs) {
+        if (!seenIds.has(doc.id)) {
+          seenIds.add(doc.id);
+          dedupedDocs.push(doc);
+        }
+      }
+
+      docs = dedupedDocs;
     } else {
       // Not connected as client - use local documents
       docs = Object.values(documents);
@@ -411,10 +430,12 @@ export function TeamDocumentsManager() {
             const isOwner = doc.ownerId === userId || !doc.ownerId;
             const isCurrent = doc.id === currentDocumentId;
             const fromHost = '_fromHost' in doc && doc._fromHost === true;
+            // Use unique key based on source to avoid React key collisions during sync
+            const key = fromHost ? `host-${doc.id}` : `local-${doc.id}`;
 
             return (
               <div
-                key={doc.id}
+                key={key}
                 className={`team-doc-item ${isCurrent ? 'current' : ''} ${fromHost ? 'from-host' : ''}`}
                 onClick={() => handleOpenDocument(doc.id, fromHost)}
               >

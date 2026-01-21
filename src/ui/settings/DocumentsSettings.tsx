@@ -61,28 +61,38 @@ export function DocumentsSettings() {
     const localDocs = Object.entries(documents);
 
     // If connected to host as client, merge with remote team documents
-    // Avoid duplicates by tracking seen IDs
+    // Use explicit deduplication with host as source of truth for team docs
     let allDocs: [string, DocumentMetadata][];
 
     if (isConnectedToHost) {
-      // Personal docs from local storage (non-team docs only)
-      const personalDocs = localDocs.filter(([, doc]) => !doc.isTeamDocument);
+      const seenIds = new Set<string>();
+      const dedupedDocs: [string, DocumentMetadata][] = [];
 
-      // Remote team docs, excluding any that exist in local docs (deduplication)
-      const localIds = new Set(localDocs.map(([id]) => id));
-      const remoteDocs = Object.entries(remoteTeamDocs).filter(
-        ([id]) => !localIds.has(id)
-      );
+      // Add remote team docs first (source of truth for team documents)
+      for (const [id, doc] of Object.entries(remoteTeamDocs)) {
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          dedupedDocs.push([id, doc]);
+        }
+      }
 
-      // Combine: personal (local) + team (remote, deduplicated)
-      allDocs = [...personalDocs, ...remoteDocs];
+      // Add personal docs from local storage (non-team docs only)
+      for (const [id, doc] of localDocs) {
+        if (!doc.isTeamDocument && !seenIds.has(id)) {
+          seenIds.add(id);
+          dedupedDocs.push([id, doc]);
+        }
+      }
 
-      // Also include local team docs that aren't in remote (edge case during sync)
-      const remoteIds = new Set(Object.keys(remoteTeamDocs));
-      const localTeamDocs = localDocs.filter(
-        ([id, doc]) => doc.isTeamDocument && !remoteIds.has(id)
-      );
-      allDocs = [...allDocs, ...localTeamDocs];
+      // Add any local team docs not yet on host (edge case during transfer)
+      for (const [id, doc] of localDocs) {
+        if (doc.isTeamDocument && !seenIds.has(id)) {
+          seenIds.add(id);
+          dedupedDocs.push([id, doc]);
+        }
+      }
+
+      allDocs = dedupedDocs;
     } else {
       // Not connected as client - use local documents
       allDocs = localDocs;

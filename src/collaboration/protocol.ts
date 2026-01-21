@@ -182,3 +182,102 @@ export function decodePayload<T>(data: Uint8Array | ArrayBuffer): T {
 export function generateRequestId(): string {
   return `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 }
+
+// ============ Message Channel Classification ============
+
+/**
+ * Message channels for routing in UnifiedSyncProvider.
+ * Groups related message types together.
+ */
+export type MessageChannel = 'crdt' | 'document' | 'auth';
+
+/**
+ * Get the channel for a message type.
+ * Used by UnifiedSyncProvider to route messages to appropriate handlers.
+ */
+export function getMessageChannel(msgType: number): MessageChannel {
+  switch (msgType) {
+    case MESSAGE_SYNC:
+    case MESSAGE_AWARENESS:
+      return 'crdt';
+
+    case MESSAGE_AUTH:
+    case MESSAGE_AUTH_LOGIN:
+    case MESSAGE_AUTH_RESPONSE:
+      return 'auth';
+
+    case MESSAGE_DOC_LIST:
+    case MESSAGE_DOC_GET:
+    case MESSAGE_DOC_SAVE:
+    case MESSAGE_DOC_DELETE:
+    case MESSAGE_DOC_EVENT:
+    case MESSAGE_JOIN_DOC:
+    case MESSAGE_ERROR:
+      return 'document';
+
+    default:
+      // Unknown messages go to document channel by default
+      return 'document';
+  }
+}
+
+/**
+ * Check if a message type is a CRDT sync message.
+ */
+export function isCRDTMessage(msgType: number): boolean {
+  return msgType === MESSAGE_SYNC || msgType === MESSAGE_AWARENESS;
+}
+
+/**
+ * Check if a message type is an auth message.
+ */
+export function isAuthMessage(msgType: number): boolean {
+  return msgType === MESSAGE_AUTH ||
+         msgType === MESSAGE_AUTH_LOGIN ||
+         msgType === MESSAGE_AUTH_RESPONSE;
+}
+
+/**
+ * Check if a message type is a document operation message.
+ */
+export function isDocumentMessage(msgType: number): boolean {
+  return msgType === MESSAGE_DOC_LIST ||
+         msgType === MESSAGE_DOC_GET ||
+         msgType === MESSAGE_DOC_SAVE ||
+         msgType === MESSAGE_DOC_DELETE ||
+         msgType === MESSAGE_DOC_EVENT ||
+         msgType === MESSAGE_JOIN_DOC ||
+         msgType === MESSAGE_ERROR;
+}
+
+/**
+ * Check if a message type expects a response (request/response pattern).
+ */
+export function isRequestMessage(msgType: number): boolean {
+  return msgType === MESSAGE_DOC_LIST ||
+         msgType === MESSAGE_DOC_GET ||
+         msgType === MESSAGE_DOC_SAVE ||
+         msgType === MESSAGE_DOC_DELETE ||
+         msgType === MESSAGE_AUTH_LOGIN;
+}
+
+/**
+ * Get human-readable name for a message type (for debugging).
+ */
+export function getMessageTypeName(msgType: number): string {
+  switch (msgType) {
+    case MESSAGE_SYNC: return 'SYNC';
+    case MESSAGE_AWARENESS: return 'AWARENESS';
+    case MESSAGE_AUTH: return 'AUTH';
+    case MESSAGE_DOC_LIST: return 'DOC_LIST';
+    case MESSAGE_DOC_GET: return 'DOC_GET';
+    case MESSAGE_DOC_SAVE: return 'DOC_SAVE';
+    case MESSAGE_DOC_DELETE: return 'DOC_DELETE';
+    case MESSAGE_DOC_EVENT: return 'DOC_EVENT';
+    case MESSAGE_ERROR: return 'ERROR';
+    case MESSAGE_AUTH_RESPONSE: return 'AUTH_RESPONSE';
+    case MESSAGE_JOIN_DOC: return 'JOIN_DOC';
+    case MESSAGE_AUTH_LOGIN: return 'AUTH_LOGIN';
+    default: return `UNKNOWN(${msgType})`;
+  }
+}

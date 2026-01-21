@@ -116,9 +116,10 @@ Core Zustand stores with distinct responsibilities:
 
 **Collaboration Stores**
 14. **collaborationStore** (`/collaboration/collaborationStore.ts`): Session management, connection status, remote users.
-15. **teamStore** (`/store/teamStore.ts`): Server mode (offline/host/client), host address, connection status.
-16. **teamDocumentStore** (`/store/teamDocumentStore.ts`): Team document list, loading states, host connection.
-17. **userStore** (`/store/userStore.ts`): Current user, authentication state, login/logout.
+15. **connectionStore** (`/store/connectionStore.ts`): Centralized WebSocket connection state, auth status, reconnection tracking.
+16. **teamStore** (`/store/teamStore.ts`): Server mode (offline/host/client), host address, connection status.
+17. **teamDocumentStore** (`/store/teamDocumentStore.ts`): Team document list, loading states, host connection.
+18. **userStore** (`/store/userStore.ts`): Current user, authentication state, login/logout.
 
 ### Storage Layer
 
@@ -155,25 +156,31 @@ The collaboration system enables real-time multi-user editing via "Protected Loc
 │  ├─ bcrypt password hashing                                 │
 │  └─ JWT token generation/validation                         │
 └─────────────────────────────────────────────────────────────┘
-                           ↕ WebSocket
+                           ↕ WebSocket (single connection)
 ┌─────────────────────────────────────────────────────────────┐
 │ Client (Browser or Tauri)                                   │
 ├─────────────────────────────────────────────────────────────┤
-│  SyncProvider          → Yjs CRDT shape sync                │
-│  DocumentSyncProvider  → Document list/content operations   │
+│  UnifiedSyncProvider   → Single WebSocket for all operations│
+│  ├─ CRDT channel (Yjs sync + awareness)                     │
+│  ├─ Document channel (list/get/save/delete)                 │
+│  └─ Auth channel (login/logout/token refresh)               │
 │                                                             │
-│  collaborationStore    → Session management                 │
+│  connectionStore       → WebSocket state, auth, reconnection│
+│  collaborationStore    → Session management, remote users   │
 │  teamDocumentStore     → Team document state                │
-│  userStore             → Authentication state               │
+│  userStore             → Current user, authentication       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key components in `/src/collaboration/`:**
 - **YjsDocument**: Wraps Y.Doc for shape and order sync via Y.Map/Y.Array
-- **SyncProvider**: WebSocket transport for Yjs sync protocol + awareness
-- **DocumentSyncProvider**: Request/response protocol for document operations
-- **protocol.ts**: Message type constants and encoding/decoding (must match Rust `server/protocol.rs`)
+- **UnifiedSyncProvider**: Single WebSocket provider handling CRDT sync, document operations, and authentication
+- **protocol.ts**: Message type constants, encoding/decoding, and routing helpers (must match Rust `server/protocol.rs`)
 - **useCollaborationSync**: Hook for bidirectional sync between CRDT and documentStore
+
+**Legacy components (deprecated, kept for reference):**
+- **SyncProvider**: Old CRDT-only WebSocket transport (replaced by UnifiedSyncProvider)
+- **DocumentSyncProvider**: Old document operations transport (replaced by UnifiedSyncProvider)
 
 **WebSocket Protocol Messages:**
 - `MESSAGE_SYNC (0)`: Yjs CRDT sync
@@ -271,9 +278,9 @@ Completed phases:
 - **Phase 11.3**: Layer panel upgrades (group colors with inheritance, layer views with regex/manual filtering, shape label preview)
 - **Phase 14.Pre**: Tauri migration (desktop app packaging, native file system)
 - **Phase 14.0**: Collaboration infrastructure (CRDT sync, presence indicators, collaborative cursors)
-- **Phase 14.1**: Team documents & foundational IAM (user auth, JWT, WebSocket server, login UI)
+- **Phase 14.1.1**: Unified connection layer (UnifiedSyncProvider, connectionStore, document type definitions)
 
-Current: Phase 14.2 (Team document sync, UX improvements).
+Current: Phase 14.1.2-14.1.6 (Document registry, offline sync queue, presence overhaul, access control, UI consolidation).
 
 See Todo.md for detailed task tracking.
 
