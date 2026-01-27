@@ -75,6 +75,13 @@ tasks:
     desc: Run the latest built AppImage (Linux-only)
     cmds:
       - $(ls -t src-tauri/target/release/bundle/appimage/*.AppImage | head -n1)
+  
+  wipe:linux:appdata:
+    prompt: Are you sure you want to delete all application data? This action cannot be undone.
+    desc: Wipe all application data (settings, diagrams, etc.)
+    cmds:
+      - rm -rf ~/.local/share/io.diagrammer
+      - rm -rf ~/.local/share/diagrammer
 
   # ============================================
   # Code Quality
