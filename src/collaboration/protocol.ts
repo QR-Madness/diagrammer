@@ -137,6 +137,42 @@ export interface JoinDocRequest {
 export interface ErrorResponse {
   requestId?: string;
   error: string;
+  /** Error code for programmatic handling */
+  code?: string;
+}
+
+// ============ Permission Error Codes ============
+// Must match error_codes in Rust permissions.rs
+
+/** User lacks required permission for operation */
+export const ERR_ACCESS_DENIED = 'ERR_ACCESS_DENIED';
+/** Document not found */
+export const ERR_DOC_NOT_FOUND = 'ERR_DOC_NOT_FOUND';
+/** User not authenticated */
+export const ERR_NOT_AUTHENTICATED = 'ERR_NOT_AUTHENTICATED';
+/** Permission level insufficient for delete operation */
+export const ERR_DELETE_FORBIDDEN = 'ERR_DELETE_FORBIDDEN';
+/** Permission level insufficient for edit operation */
+export const ERR_EDIT_FORBIDDEN = 'ERR_EDIT_FORBIDDEN';
+/** Permission level insufficient for view operation */
+export const ERR_VIEW_FORBIDDEN = 'ERR_VIEW_FORBIDDEN';
+
+/**
+ * Check if an error string contains a specific error code.
+ */
+export function hasErrorCode(error: string, code: string): boolean {
+  return error.startsWith(code);
+}
+
+/**
+ * Check if an error is a permission error.
+ */
+export function isPermissionError(error: string): boolean {
+  return hasErrorCode(error, ERR_ACCESS_DENIED) ||
+         hasErrorCode(error, ERR_DELETE_FORBIDDEN) ||
+         hasErrorCode(error, ERR_EDIT_FORBIDDEN) ||
+         hasErrorCode(error, ERR_VIEW_FORBIDDEN) ||
+         hasErrorCode(error, ERR_NOT_AUTHENTICATED);
 }
 
 // ============ Encoding/Decoding Helpers ============

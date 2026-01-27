@@ -14,6 +14,7 @@
 //! - Consider firewall rules for additional protection
 
 pub mod documents;
+pub mod permissions;
 pub mod protocol;
 
 use axum::{
@@ -35,6 +36,7 @@ use tokio::sync::{broadcast, mpsc, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 
 use documents::DocumentStore;
+use permissions::{check_read_permission, check_write_permission, check_delete_permission, to_error_string};
 use protocol::*;
 use crate::auth::{UserStore, create_token, verify_password, TokenConfig};
 
@@ -885,6 +887,34 @@ async fn handle_doc_get(client_id: u64, data: &[u8], state: &Arc<ServerState>) {
         }
     };
 
+    // Get client info for permission check
+    let (user_id, role) = {
+        let clients = state.clients.read().await;
+        let client = clients.get(&client_id);
+        (
+            client.and_then(|c| c.user_id.clone()),
+            client.and_then(|c| c.role.clone()),
+        )
+    };
+
+    // Check read permission
+    if let Err(perm_err) = check_read_permission(
+        &state.doc_store,
+        &request.doc_id,
+        user_id.as_deref(),
+        role.as_deref(),
+    ) {
+        let response = DocGetResponse {
+            request_id: request.request_id,
+            document: None,
+            error: Some(to_error_string(&perm_err)),
+        };
+        if let Ok(data) = encode_message(MESSAGE_DOC_GET, &response) {
+            send_to_client(client_id, data, state).await;
+        }
+        return;
+    }
+
     let response = match state.doc_store.get_document(&request.doc_id) {
         Ok(doc) => DocGetResponse {
             request_id: request.request_id,
@@ -918,21 +948,50 @@ async fn handle_doc_save(client_id: u64, data: &[u8], state: &Arc<ServerState>) 
         .unwrap_or("")
         .to_string();
 
-    // Get user info for the event
-    let user_id = {
+    // Get user info for permission check and event
+    let (user_id, role) = {
         let clients = state.clients.read().await;
-        clients.get(&client_id).and_then(|c| c.user_id.clone()).unwrap_or_default()
+        let client = clients.get(&client_id);
+        (
+            client.and_then(|c| c.user_id.clone()),
+            client.and_then(|c| c.role.clone()),
+        )
     };
+    let user_id_for_event = user_id.clone().unwrap_or_default();
+
+    // Check if document exists (determines if this is create vs update)
+    let doc_exists = state.doc_store.get_metadata(&doc_id).is_some();
+
+    // For new documents, no permission check needed (user becomes owner)
+    // For existing documents, check write permission
+    if doc_exists {
+        if let Err(perm_err) = check_write_permission(
+            &state.doc_store,
+            &doc_id,
+            user_id.as_deref(),
+            role.as_deref(),
+        ) {
+            let response = DocSaveResponse {
+                request_id: request.request_id,
+                success: false,
+                error: Some(to_error_string(&perm_err)),
+            };
+            if let Ok(data) = encode_message(MESSAGE_DOC_SAVE, &response) {
+                send_to_client(client_id, data, state).await;
+            }
+            return;
+        }
+    }
 
     let response = match state.doc_store.save_document(request.document) {
         Ok(()) => {
             // Broadcast document event to all clients
             let metadata = state.doc_store.get_metadata(&doc_id);
             let event = DocEvent {
-                event_type: if metadata.is_some() { DocEventType::Updated } else { DocEventType::Created },
+                event_type: if doc_exists { DocEventType::Updated } else { DocEventType::Created },
                 doc_id: doc_id.clone(),
                 metadata,
-                user_id,
+                user_id: user_id_for_event,
             };
 
             if let Ok(event_data) = encode_message(MESSAGE_DOC_EVENT, &event) {
@@ -967,11 +1026,34 @@ async fn handle_doc_delete(client_id: u64, data: &[u8], state: &Arc<ServerState>
         }
     };
 
-    // Get user info for the event
-    let user_id = {
+    // Get user info for permission check and event
+    let (user_id, role) = {
         let clients = state.clients.read().await;
-        clients.get(&client_id).and_then(|c| c.user_id.clone()).unwrap_or_default()
+        let client = clients.get(&client_id);
+        (
+            client.and_then(|c| c.user_id.clone()),
+            client.and_then(|c| c.role.clone()),
+        )
     };
+    let user_id_for_event = user_id.clone().unwrap_or_default();
+
+    // Check delete permission (requires Owner)
+    if let Err(perm_err) = check_delete_permission(
+        &state.doc_store,
+        &request.doc_id,
+        user_id.as_deref(),
+        role.as_deref(),
+    ) {
+        let response = DocDeleteResponse {
+            request_id: request.request_id,
+            success: false,
+            error: Some(to_error_string(&perm_err)),
+        };
+        if let Ok(data) = encode_message(MESSAGE_DOC_DELETE, &response) {
+            send_to_client(client_id, data, state).await;
+        }
+        return;
+    }
 
     let response = match state.doc_store.delete_document(&request.doc_id) {
         Ok(deleted) => {
@@ -981,7 +1063,7 @@ async fn handle_doc_delete(client_id: u64, data: &[u8], state: &Arc<ServerState>
                     event_type: DocEventType::Deleted,
                     doc_id: request.doc_id.clone(),
                     metadata: None,
-                    user_id,
+                    user_id: user_id_for_event,
                 };
 
                 if let Ok(event_data) = encode_message(MESSAGE_DOC_EVENT, &event) {
