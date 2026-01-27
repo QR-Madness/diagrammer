@@ -601,17 +601,17 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Pass container dimensions to presence components
   - Integrated presenceStore with collaborationStore
 
-##### Phase 14.1.5: Access Control Implementation - PENDING
+##### Phase 14.1.5: Access Control Implementation - COMPLETE
 
-- [ ] Create permissions.rs (`src-tauri/src/server/permissions.rs`)
-- [ ] Add permission middleware to server handlers
-- [ ] Add permission error codes to protocol
+- [x] Create permissions.rs (`src-tauri/src/server/permissions.rs`)
+- [x] Add permission middleware to server handlers
+- [x] Add permission error codes to protocol
 
-##### Phase 14.1.6: UI Consolidation - PENDING
+##### Phase 14.1.6: UI Consolidation - COMPLETE
 
-- [ ] Create DocumentBrowser component (replaces DocumentsSettings + TeamDocumentsManager)
-- [ ] Create DocumentCard component
-- [ ] Create SyncStatusBadge component
+- [x] Create DocumentBrowser component (replaces DocumentsSettings + TeamDocumentsManager)
+- [x] Create DocumentCard component
+- [x] Create SyncStatusBadge component
 
 #### Phase 14.2: UX Improvements
 
