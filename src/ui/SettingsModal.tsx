@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { ShapeLibraryManager } from './ShapeLibraryManager';
-import { DocumentsSettings } from './settings/DocumentsSettings';
+import { DocumentBrowser } from './settings/DocumentBrowser';
 import { GeneralSettings } from './settings/GeneralSettings';
 import { StorageSettings } from './settings/StorageSettings';
 import { StyleProfileSettings } from './settings/StyleProfileSettings';
@@ -115,7 +115,7 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: Setti
 
           {/* Tab content */}
           <div className="settings-modal-content">
-            {activeTab === 'documents' && <DocumentsSettings />}
+            {activeTab === 'documents' && <DocumentBrowser />}
             {activeTab === 'general' && <GeneralSettings />}
             {activeTab === 'collaboration' && <CollaborationSettings />}
             {activeTab === 'storage' && <StorageSettings />}
