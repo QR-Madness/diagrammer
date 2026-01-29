@@ -14,6 +14,7 @@ import { usePersistenceStore } from '../../store/persistenceStore';
 import { useUserStore } from '../../store/userStore';
 import { useTeamStore } from '../../store/teamStore';
 import { useTeamDocumentStore } from '../../store/teamDocumentStore';
+import { useConnectionStore } from '../../store/connectionStore';
 import { DocumentMetadata, DocumentShare } from '../../types/Document';
 import './TeamDocumentsManager.css';
 
@@ -206,6 +207,10 @@ export function TeamDocumentsManager() {
   const loadTeamDocument = useTeamDocumentStore((state) => state.loadTeamDocument);
   const isLoadingList = useTeamDocumentStore((state) => state.isLoadingList);
 
+  // Connection status for showing cached state
+  const hostAddress = useConnectionStore((state) => state.host?.address);
+  const wasConnectedAsClient = hostAddress !== null;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [showOnlyTeam, setShowOnlyTeam] = useState(false);
 
@@ -213,6 +218,8 @@ export function TeamDocumentsManager() {
   // when the client authenticates. No need to trigger it here.
 
   const isClient = serverMode === 'client';
+  // Show cached documents when we were a client but are now disconnected
+  const showCachedDocs = !isClient && wasConnectedAsClient && !isAuthenticated;
 
   // Modal states
   const [renameModal, setRenameModal] = useState<{ doc: DocumentMetadata; name: string } | null>(null);
@@ -224,7 +231,7 @@ export function TeamDocumentsManager() {
 
   // Filter and sort documents - merge local and team documents for clients
   const filteredDocuments = useMemo(() => {
-    let docs: (DocumentMetadata & { _fromHost?: true })[] = [];
+    let docs: (DocumentMetadata & { _fromHost?: true; _cached?: true })[] = [];
 
     if (isClient && isAuthenticated) {
       // For clients: personal docs (local) + team docs (from host, source of truth)
@@ -271,6 +278,14 @@ export function TeamDocumentsManager() {
       }
 
       docs = dedupedDocs;
+    } else if (showCachedDocs) {
+      // Disconnected client - show local docs with team docs marked as cached
+      const localDocs = Object.values(documents);
+      docs = localDocs.map((d) => 
+        d.isTeamDocument 
+          ? { ...d, _cached: true as const }
+          : d
+      );
     } else {
       // Not connected as client - use local documents
       docs = Object.values(documents);
@@ -293,7 +308,7 @@ export function TeamDocumentsManager() {
 
     // Sort by modified date (newest first)
     return docs.sort((a, b) => b.modifiedAt - a.modifiedAt);
-  }, [documents, teamDocuments, searchQuery, showOnlyTeam, isClient, isAuthenticated]);
+  }, [documents, teamDocuments, searchQuery, showOnlyTeam, isClient, isAuthenticated, showCachedDocs]);
 
   const isAdmin = currentUser?.role === 'admin';
   const userId = currentUser?.id;
@@ -430,13 +445,14 @@ export function TeamDocumentsManager() {
             const isOwner = doc.ownerId === userId || !doc.ownerId;
             const isCurrent = doc.id === currentDocumentId;
             const fromHost = '_fromHost' in doc && doc._fromHost === true;
+            const isCached = '_cached' in doc && doc._cached === true;
             // Use unique key based on source to avoid React key collisions during sync
             const key = fromHost ? `host-${doc.id}` : `local-${doc.id}`;
 
             return (
               <div
                 key={key}
-                className={`team-doc-item ${isCurrent ? 'current' : ''} ${fromHost ? 'from-host' : ''}`}
+                className={`team-doc-item ${isCurrent ? 'current' : ''} ${fromHost ? 'from-host' : ''} ${isCached ? 'cached' : ''}`}
                 onClick={() => handleOpenDocument(doc.id, fromHost)}
               >
                 <div className="team-doc-info">
@@ -447,7 +463,12 @@ export function TeamDocumentsManager() {
                         Host
                       </span>
                     )}
-                    {doc.isTeamDocument && !fromHost && (
+                    {isCached && (
+                      <span className="cached-badge" title="Cached team document (offline)">
+                        Cached
+                      </span>
+                    )}
+                    {doc.isTeamDocument && !fromHost && !isCached && (
                       <span className="team-badge" title="Team document">
                         T
                       </span>

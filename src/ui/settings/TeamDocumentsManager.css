@@ -149,6 +149,21 @@
   flex-shrink: 0;
 }
 
+.cached-badge {
+  padding: 2px 6px;
+  background: var(--color-text-secondary, #888);
+  color: white;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.team-doc-item.cached {
+  opacity: 0.8;
+  border-left: 3px solid var(--color-text-secondary, #888);
+}
+
 .team-doc-item.from-host {
   border-left: 3px solid var(--color-warning, #ed8936);
 }

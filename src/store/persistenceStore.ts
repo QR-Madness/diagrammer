@@ -739,46 +739,52 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
       // Load a remote document (from host) directly into the editor
       loadRemoteDocument: (doc: DiagramDocument) => {
+        // Ensure team document flag is set for documents loaded from host
+        const docWithTeamFlag = {
+          ...doc,
+          isTeamDocument: true,
+        };
+
         // Load into page store
-        loadDocumentToPageStore(doc);
+        loadDocumentToPageStore(docWithTeamFlag);
 
         // Also save to localStorage so it's cached locally
-        saveDocumentToStorage(doc);
+        saveDocumentToStorage(docWithTeamFlag);
 
         // Update metadata index
-        const metadata = getDocumentMetadata(doc);
+        const metadata = getDocumentMetadata(docWithTeamFlag);
 
         set((state) => ({
-          currentDocumentId: doc.id,
-          currentDocumentName: doc.name,
+          currentDocumentId: docWithTeamFlag.id,
+          currentDocumentName: docWithTeamFlag.name,
           documents: {
             ...state.documents,
-            [doc.id]: metadata,
+            [docWithTeamFlag.id]: metadata,
           },
           isDirty: false,
-          lastSavedAt: doc.modifiedAt,
+          lastSavedAt: docWithTeamFlag.modifiedAt,
         }));
 
         // Register in document registry
         // Note: For remote documents, the registry entry should already exist
         // from fetchDocumentList - we just set it as active and cache content
         const registry = useDocumentRegistry.getState();
-        if (!registry.hasDocument(doc.id)) {
+        if (!registry.hasDocument(docWithTeamFlag.id)) {
           // If not registered yet, register as local (cached copy)
           registry.registerLocal(metadata);
         }
-        registry.setActiveDocument(doc.id);
-        registry.setDocumentContent(doc.id, doc);
+        registry.setActiveDocument(docWithTeamFlag.id);
+        registry.setDocumentContent(docWithTeamFlag.id, docWithTeamFlag);
 
         // Switch collaboration session to this document
         // This ensures CRDT sync happens for the correct document
         const collabStore = useCollaborationStore.getState();
         if (collabStore.isActive) {
-          collabStore.switchDocument(doc.id);
+          collabStore.switchDocument(docWithTeamFlag.id);
         }
 
         // Save current document ID
-        localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, doc.id);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, docWithTeamFlag.id);
       },
 
       // Reset to initial state
