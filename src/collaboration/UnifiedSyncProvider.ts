@@ -548,9 +548,10 @@ export class UnifiedSyncProvider {
     // Send initial awareness
     this.sendAwarenessUpdate();
 
-    // Rejoin document if we were on one
-    if (this.currentDocId) {
-      this.joinDocument(this.currentDocId);
+    // Join document - either rejoin previous or join initial document from options
+    const docToJoin = this.currentDocId ?? this.options.documentId;
+    if (docToJoin) {
+      this.joinDocument(docToJoin);
     }
   };
 

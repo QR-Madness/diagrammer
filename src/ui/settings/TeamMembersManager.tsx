@@ -118,8 +118,6 @@ export function TeamMembersManager() {
     }
   }, [loadUsers]);
 
-  const isHosting = serverMode === 'host';
-
   // Reset form when modals close
   const resetAddUserForm = () => {
     setNewUsername('');
@@ -296,9 +294,10 @@ export function TeamMembersManager() {
     setEditRoleModal(member);
   };
 
-  // User management is only available on the host machine
-  // Clients (even admin clients) cannot manage users - they must connect to the host
-  if (!isHosting) {
+  // User management is available on the host machine (Tauri app)
+  // Show when hosting or when offline (to prepare users before hosting)
+  // Clients cannot manage users - they must connect to the host
+  if (!isTauriEnv || serverMode === 'client') {
     return null;
   }
 

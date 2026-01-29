@@ -324,3 +324,86 @@
 :root[data-theme="dark"] .network-mode-button.active {
   color: var(--color-primary-light, #63b3ed);
 }
+
+:root[data-theme="dark"] .collaboration-settings {
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .mode-label {
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .mode-description {
+  color: var(--text-secondary, #9d9d9d);
+}
+
+:root[data-theme="dark"] .status-label {
+  color: var(--text-secondary, #9d9d9d);
+}
+
+:root[data-theme="dark"] .status-value {
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .status-item {
+  background: var(--bg-secondary, #252526);
+}
+
+:root[data-theme="dark"] .mode-button {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .mode-button:hover:not(:disabled) {
+  background: var(--bg-tertiary, #333333);
+}
+
+:root[data-theme="dark"] .mode-button.active {
+  background: var(--color-primary-light, #0d3868);
+  border-color: var(--color-primary, #0078d4);
+}
+
+:root[data-theme="dark"] .settings-input {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .user-info {
+  background: var(--bg-secondary, #252526);
+}
+
+:root[data-theme="dark"] .user-name {
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .settings-notice {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+  color: var(--text-secondary, #9d9d9d);
+}
+
+:root[data-theme="dark"] .settings-notice code {
+  background: var(--bg-tertiary, #333333);
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .addresses-label {
+  color: var(--text-primary, #cccccc);
+}
+
+:root[data-theme="dark"] .address-item {
+  background: var(--bg-secondary, #252526);
+}
+
+:root[data-theme="dark"] .copy-button {
+  background: var(--bg-tertiary, #333333);
+  border-color: var(--border-color, #404040);
+  color: var(--text-secondary, #9d9d9d);
+}
+
+:root[data-theme="dark"] .copy-button:hover {
+  color: var(--color-primary, #0078d4);
+  border-color: var(--color-primary, #0078d4);
+}
