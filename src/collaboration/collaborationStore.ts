@@ -144,8 +144,6 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         get().stopSession();
       }
 
-      console.log('[CollaborationStore] Starting session:', config.serverUrl, config.documentId);
-
       // Set host info in connection store
       useConnectionStore.getState().setHost({
         address: new URL(config.serverUrl).host,
@@ -162,7 +160,6 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         token: config.token,
         credentials: config.credentials,
         onStatusChange: (status, error) => {
-          console.log('[CollaborationStore] Status change:', status, error ?? '');
           get()._setConnectionStatus(status);
           if (error) {
             get()._setError(error);
@@ -178,11 +175,9 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
           }
         },
         onSynced: () => {
-          console.log('[CollaborationStore] CRDT synced');
           get()._setSynced(true);
         },
         onAuthenticated: (success, user) => {
-          console.log('[CollaborationStore] Authenticated:', success, user?.username ?? '');
           useTeamDocumentStore.getState().setAuthenticated(success);
 
           // Update config user info if we logged in with credentials
@@ -194,7 +189,6 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
           }
         },
         onDocumentEvent: (event: DocEvent) => {
-          console.log('[CollaborationStore] Document event:', event.eventType, event.docId);
           useTeamDocumentStore.getState().handleDocumentEvent(event);
         },
       });
@@ -233,7 +227,6 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
     },
 
     stopSession: () => {
-      console.log('[CollaborationStore] Stopping session');
 
       // Unsubscribe from awareness changes before destroying provider
       if (awarenessUnsubscribe) {
@@ -297,7 +290,6 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
     },
 
     switchDocument: (docId: string) => {
-      console.log('[CollaborationStore] Switching to document:', docId);
       
       if (yjsDoc) {
         // Clear the CRDT document state for the new document

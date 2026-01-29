@@ -779,8 +779,6 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, doc.id);
-
-        console.log('[persistenceStore] Loaded remote document:', doc.name);
       },
 
       // Reset to initial state

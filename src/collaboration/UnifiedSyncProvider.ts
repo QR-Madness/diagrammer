@@ -35,7 +35,6 @@ import {
   decodeMessageType,
   decodePayload,
   generateRequestId,
-  getMessageTypeName,
   type AuthLoginRequest,
   type AuthResponse,
   type DocListRequest,
@@ -202,11 +201,9 @@ export class UnifiedSyncProvider {
   /** Connect to the WebSocket server */
   connect(): void {
     if (this.ws) {
-      console.log('[UnifiedSyncProvider] Already connected, skipping');
       return;
     }
 
-    console.log('[UnifiedSyncProvider] Connecting to:', this.options.url);
     this.setStatus('connecting');
 
     try {
@@ -377,7 +374,6 @@ export class UnifiedSyncProvider {
   /** Join a document for CRDT routing */
   joinDocument(docId: string): void {
     this.currentDocId = docId;
-    console.log('[UnifiedSyncProvider] Joining document:', docId);
 
     if (this.ws?.readyState === WebSocket.OPEN) {
       const request: JoinDocRequest = { docId };
@@ -456,7 +452,6 @@ export class UnifiedSyncProvider {
 
         try {
           const response = decodePayload<AuthResponse>(data);
-          console.log('[UnifiedSyncProvider] Login response:', response.success ? 'success' : 'failed');
 
           if (response.success) {
             this.authenticated = true;
@@ -523,19 +518,16 @@ export class UnifiedSyncProvider {
   }
 
   private handleOpen = (): void => {
-    console.log('[UnifiedSyncProvider] WebSocket opened');
     this.setStatus('connected');
     this.reconnectAttempts = 0;
     useConnectionStore.getState().resetReconnectAttempts();
 
     // Authenticate if we have token
     if (this.options.token) {
-      console.log('[UnifiedSyncProvider] Sending auth token');
       this.setStatus('authenticating');
       useConnectionStore.getState().setAuthMethod('token');
       this.sendAuth(this.options.token);
     } else if (this.options.credentials) {
-      console.log('[UnifiedSyncProvider] Logging in with credentials');
       this.setStatus('authenticating');
       useConnectionStore.getState().setAuthMethod('credentials');
       this.loginWithCredentials(
@@ -545,7 +537,6 @@ export class UnifiedSyncProvider {
         console.error('[UnifiedSyncProvider] Credentials login failed:', err);
       });
     } else {
-      console.log('[UnifiedSyncProvider] No auth credentials, skipping');
       useConnectionStore.getState().setAuthMethod('none');
     }
 
@@ -570,7 +561,6 @@ export class UnifiedSyncProvider {
     if (arr.length === 0) return;
 
     const msgType = arr[0]!;
-    console.log('[UnifiedSyncProvider] Received:', getMessageTypeName(msgType));
 
     switch (msgType) {
       case MESSAGE_SYNC:
@@ -597,8 +587,7 @@ export class UnifiedSyncProvider {
     }
   };
 
-  private handleClose = (event: CloseEvent): void => {
-    console.log('[UnifiedSyncProvider] WebSocket closed, code:', event.code);
+  private handleClose = (_event: CloseEvent): void => {
     this.ws = null;
     this.synced = false;
     this.authenticated = false;
@@ -715,7 +704,6 @@ export class UnifiedSyncProvider {
 
     try {
       const response = decodePayload<AuthResponse>(data);
-      console.log('[UnifiedSyncProvider] Auth response:', response.success ? 'success' : 'failed');
 
       if (response.success) {
         this.authenticated = true;
