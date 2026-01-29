@@ -404,9 +404,10 @@ export function CollaborationSettings() {
           <div className="status-grid">
             <div className="status-item">
               <span className="status-label">Sync</span>
-              <span className={`status-value ${collabStatus === 'connected' ? 'running' : 'stopped'}`}>
-                {collabStatus === 'connected' ? '● Connected' :
-                 collabStatus === 'connecting' ? '○ Connecting...' : '○ Disconnected'}
+              <span className={`status-value ${collabStatus === 'connected' || collabStatus === 'authenticated' ? 'running' : 'stopped'}`}>
+                {collabStatus === 'authenticated' ? '● Authenticated' :
+                 collabStatus === 'connected' ? '● Connected' :
+                 collabStatus === 'connecting' || collabStatus === 'authenticating' ? '○ Connecting...' : '○ Disconnected'}
               </span>
             </div>
             <div className="status-item">

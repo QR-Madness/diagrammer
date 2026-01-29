@@ -211,7 +211,9 @@ export function ClientConnectionPanel() {
   // Get connection status display
   const getStatusDisplay = () => {
     if (isConnecting) return { text: 'Connecting...', className: 'connecting' };
+    if (collabStatus === 'authenticated') return { text: 'Authenticated', className: 'connected' };
     if (collabStatus === 'connected') return { text: 'Connected', className: 'connected' };
+    if (collabStatus === 'authenticating') return { text: 'Authenticating...', className: 'connecting' };
     if (collabStatus === 'connecting') return { text: 'Connecting...', className: 'connecting' };
     if (collabError) return { text: 'Error', className: 'error' };
     return { text: 'Disconnected', className: 'disconnected' };
