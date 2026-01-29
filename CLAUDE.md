@@ -4,24 +4,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API. The project prioritizes correctness, extensibility, and performance over rapid feature accumulation, targeting 10,000+ shapes at 60fps.
+A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API, targeting 10,000+ shapes at 60fps. Prioritizes correctness, extensibility, and performance. Runs as both a web app (Vite) and a desktop app (Tauri with Rust backend).
 
 ## Technology Stack
 
-- **Runtime**: Bun (fast JavaScript runtime and package manager)
-- **Desktop Runtime**: Tauri (Rust backend for native desktop features)
+- **Runtime**: Bun (package manager and JS runtime — not Node.js)
+- **Desktop**: Tauri v2 (Rust backend: Axum + Tokio WebSocket server, JWT auth, file system)
 - **Language**: TypeScript (strict mode), Rust (Tauri backend)
-- **UI Framework**: React 18+ (for UI chrome only, not canvas rendering)
+- **UI Framework**: React 18+ (UI chrome only — canvas rendering is pure Canvas 2D API)
 - **State Management**: Zustand with Immer middleware
-- **Rendering**: Canvas 2D API (no abstraction libraries)
-- **Rich Text Editor**: Tiptap (ProseMirror wrapper)
-- **Spatial Indexing**: RBush (R-tree implementation)
-- **Build Tool**: Vite (frontend), Cargo (Rust backend)
-- **Testing**: Vitest + Playwright for e2e
+- **Collaboration**: Yjs CRDTs over WebSocket
+- **Rich Text**: Tiptap (ProseMirror wrapper)
+- **Spatial Indexing**: RBush (R-tree)
+- **Build**: Vite (frontend), Cargo (Rust)
+- **Testing**: Vitest (jsdom environment, globals enabled)
 
 ## Development Commands
-
-**Note**: This project uses Bun as the runtime and package manager for faster installs and builds.
 
 ```bash
 # Install dependencies
@@ -42,7 +40,7 @@ bun run test --run
 # Run a single test file
 bun run test src/engine/Camera.test.ts
 
-# Run tests with UI
+# Run tests with Vitest UI
 bun run test:ui
 
 # Build for production (web)
@@ -53,15 +51,7 @@ bun run tauri:dev
 
 # Build desktop application
 bun run tauri:build
-```
 
-### Tauri Development Requirements
-
-For desktop development, you need:
-- Rust toolchain (rustc, cargo) - install via [rustup](https://rustup.rs/)
-- Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
-
-```bash
 # Check Rust backend compiles
 cargo check --manifest-path src-tauri/Cargo.toml
 
@@ -69,15 +59,29 @@ cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-The Tauri backend is in `src-tauri/` and provides:
-- Native file system access for Team Documents
-- WebSocket server for Protected Local collaboration mode (Axum + Tokio)
-- JWT authentication and bcrypt password hashing
-- User management with persistent JSON storage (`users.json`)
+A `Taskfile.yml` is also available for use with [Task](https://taskfile.dev/) — `task check` runs typecheck + all tests.
+
+### Tauri Requirements
+
+Desktop development requires Rust toolchain (via [rustup](https://rustup.rs/)) and platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/)).
+
+## TypeScript Configuration
+
+- **Path alias**: `@/*` maps to `./src/*` (configured in both `tsconfig.json` and `vite.config.ts`)
+- **Strict flags beyond standard `strict: true`**: `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature`, `noUnusedLocals`, `noUnusedParameters`, `noImplicitReturns`
+- These flags mean: index access returns `T | undefined`, optional properties must use `undefined` explicitly, and all variables/params must be used
+
+## Testing
+
+Tests use Vitest with jsdom environment. Config is inline in `vite.config.ts` (no separate vitest config file). Test globals (`describe`, `it`, `expect`) are available without imports.
+
+Test files live alongside source code with `.test.ts` suffix:
+- `/src/math/` — Vec2, Mat3, Box, geometry (204 tests)
+- `/src/engine/` — Camera, InputHandler, Renderer, SpatialIndex, HitTester
+- `/src/store/` — DocumentStore, SessionStore, PageStore, HistoryStore
+- `/src/shapes/` — Shape handlers and utilities (bounds, transforms)
 
 ## Architecture Layers
-
-The application follows a strict layered architecture:
 
 ```
 React UI Layer (Toolbar, PropertyPanel, LayerPanel, SettingsModal)
@@ -86,121 +90,51 @@ Bridge Layer (CanvasContainer.tsx - mounts canvas, forwards events)
     ↓
 Engine Core (Camera, Renderer, InputHandler, ToolManager, SpatialIndex, ShapeRegistry, HitTester)
     ↓
-Store Layer (DocumentStore, SessionStore, HistoryStore, PageStore, PersistenceStore, + feature stores)
+Store Layer (Zustand stores — see below)
     ↓
-Storage Layer (localStorage for state, IndexedDB for blobs)
+Storage Layer (localStorage for state, IndexedDB for blobs via BlobStorage)
     ↓
-Tauri Backend (src-tauri/ - native file system, WebSocket server, authentication)
+Tauri Backend (src-tauri/ — native file system, WebSocket server, authentication)
 ```
 
 ### Store Separation
 
-Core Zustand stores with distinct responsibilities:
+Zustand stores are split by responsibility:
 
-**Document & Session (Core)**
-1. **DocumentStore** (`/store/documentStore.ts`): Shape data, connections, groups. All persistent document state.
-2. **SessionStore** (`/store/sessionStore.ts`): Selection, camera state, active tool, interaction state, cursor. Ephemeral UI state.
-3. **HistoryStore** (`/store/historyStore.ts`): Undo/redo stack with complete document snapshots.
-4. **PageStore** (`/store/pageStore.ts`): Multi-page document structure, page ordering, active page.
-5. **PersistenceStore** (`/store/persistenceStore.ts`): Document save/load, auto-save, localStorage management.
-6. **RichTextStore** (`/store/richTextStore.ts`): Tiptap editor content for the document editor panel.
+**Core stores** (`/src/store/`):
+- **DocumentStore**: Shape data, connections, groups — the single source of truth for document content
+- **SessionStore**: Selection, camera state, active tool, cursor — ephemeral UI state
+- **HistoryStore**: Undo/redo with complete document snapshots
+- **PageStore**: Multi-page document structure and ordering
+- **PersistenceStore**: Document save/load, auto-save, localStorage management
 
-**Feature Stores (UI & Libraries)**
-7. **ThemeStore**: Dark/light mode with system detection.
-8. **StyleProfileStore**: Reusable shape style profiles.
-9. **ColorPaletteStore**: Recent colors and custom color tracking.
-10. **IconLibraryStore**: Built-in and custom SVG icons for shapes.
-11. **ShapeLibraryStore**: Built-in shape library definitions (flowcharts, UML).
-12. **CustomShapeLibraryStore**: User-created shape libraries with IndexedDB storage.
-13. **UIPreferencesStore**: Collapsible section states and UI preferences.
+**Collaboration stores** (`/src/store/` and `/src/collaboration/`):
+- **connectionStore**: WebSocket connection state, auth status, reconnection
+- **collaborationStore**: Session management, remote users
+- **teamStore / teamDocumentStore / userStore**: Server mode, team documents, authentication
 
-**Collaboration Stores**
-14. **collaborationStore** (`/collaboration/collaborationStore.ts`): Session management, connection status, remote users.
-15. **connectionStore** (`/store/connectionStore.ts`): Centralized WebSocket connection state, auth status, reconnection tracking.
-16. **teamStore** (`/store/teamStore.ts`): Server mode (offline/host/client), host address, connection status.
-17. **teamDocumentStore** (`/store/teamDocumentStore.ts`): Team document list, loading states, host connection.
-18. **userStore** (`/store/userStore.ts`): Current user, authentication state, login/logout.
+**Feature stores**: Theme, style profiles, color palettes, icon library, shape libraries, UI preferences — each in its own file under `/src/store/`.
 
 ### Storage Layer
 
-The project uses a hybrid storage architecture:
-- **localStorage**: Document metadata, store state, preferences
-- **IndexedDB**: Binary blobs (images, custom icons, custom shape library data)
+Hybrid storage: localStorage for document metadata and preferences, IndexedDB for binary blobs.
 
-Key storage components in `/src/storage/`:
-- **BlobStorage** (`BlobStorage.ts`): Content-addressed storage using SHA-256 hashing for automatic deduplication. Supports multiple blob types (images, icons, shape libraries) with reference counting.
-- **BlobGarbageCollector** (`BlobGarbageCollector.ts`): Cleans up orphaned blobs by scanning document references and removing unreferenced entries.
-- **BlobTypes** (`BlobTypes.ts`): Type definitions for blob metadata and storage interfaces.
-- **builtinIcons** (`builtinIcons.ts`): 30+ built-in SVG icons organized by category (arrows, shapes, symbols, tech, general).
-- **IconTypes** / **ShapeLibraryTypes**: Type definitions for icon and shape library storage.
+`/src/storage/BlobStorage.ts` provides content-addressed storage using SHA-256 hashing with automatic deduplication and reference counting. `BlobGarbageCollector` cleans up orphaned blobs.
 
 ### Collaboration Architecture
 
-The collaboration system enables real-time multi-user editing via "Protected Local" mode:
+Real-time multi-user editing via "Protected Local" mode. The Tauri host runs a WebSocket server (`src-tauri/src/server/`); clients connect via `UnifiedSyncProvider` which multiplexes CRDT sync (Yjs), document CRUD, and JWT auth over a single WebSocket.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ Host (Tauri Desktop App)                                    │
-├─────────────────────────────────────────────────────────────┤
-│  WebSocket Server (src-tauri/src/server/)                   │
-│  ├─ Axum + Tokio async runtime                              │
-│  ├─ Per-client state (auth, current document)               │
-│  ├─ Message routing by type                                 │
-│  └─ Document-scoped CRDT broadcast                          │
-│                                                             │
-│  DocumentStore (server/documents.rs)                        │
-│  ├─ File-based persistence (~/.local/share/diagrammer/)     │
-│  └─ Team document CRUD operations                           │
-│                                                             │
-│  UserStore (auth/users.rs)                                  │
-│  ├─ bcrypt password hashing                                 │
-│  └─ JWT token generation/validation                         │
-└─────────────────────────────────────────────────────────────┘
-                           ↕ WebSocket (single connection)
-┌─────────────────────────────────────────────────────────────┐
-│ Client (Browser or Tauri)                                   │
-├─────────────────────────────────────────────────────────────┤
-│  UnifiedSyncProvider   → Single WebSocket for all operations│
-│  ├─ CRDT channel (Yjs sync + awareness)                     │
-│  ├─ Document channel (list/get/save/delete)                 │
-│  └─ Auth channel (login/logout/token refresh)               │
-│                                                             │
-│  connectionStore       → WebSocket state, auth, reconnection│
-│  collaborationStore    → Session management, remote users   │
-│  teamDocumentStore     → Team document state                │
-│  userStore             → Current user, authentication       │
-└─────────────────────────────────────────────────────────────┘
-```
+**Critical**: The TypeScript protocol (`/src/collaboration/protocol.ts`) must stay in sync with the Rust protocol (`src-tauri/src/server/protocol.rs`). Message types include: SYNC (0), AWARENESS (1), AUTH (2), DOC_LIST/GET/SAVE/DELETE (3-6), DOC_EVENT (7), JOIN_DOC (10), AUTH_LOGIN (11).
 
-**Key components in `/src/collaboration/`:**
-- **YjsDocument**: Wraps Y.Doc for shape and order sync via Y.Map/Y.Array
-- **UnifiedSyncProvider**: Single WebSocket provider handling CRDT sync, document operations, and authentication
-- **protocol.ts**: Message type constants, encoding/decoding, and routing helpers (must match Rust `server/protocol.rs`)
-- **useCollaborationSync**: Hook for bidirectional sync between CRDT and documentStore
+### Coordinate System
 
-**Legacy components (deprecated, kept for reference):**
-- **SyncProvider**: Old CRDT-only WebSocket transport (replaced by UnifiedSyncProvider)
-- **DocumentSyncProvider**: Old document operations transport (replaced by UnifiedSyncProvider)
-
-**WebSocket Protocol Messages:**
-- `MESSAGE_SYNC (0)`: Yjs CRDT sync
-- `MESSAGE_AWARENESS (1)`: Presence (cursors, selections)
-- `MESSAGE_AUTH (2)`: JWT token authentication
-- `MESSAGE_AUTH_LOGIN (11)`: Username/password login (returns JWT)
-- `MESSAGE_DOC_LIST/GET/SAVE/DELETE (3-6)`: Document operations
-- `MESSAGE_DOC_EVENT (7)`: Document change broadcasts
-- `MESSAGE_JOIN_DOC (10)`: Join document for CRDT routing
-
-### Coordinate System Flow
-
-All coordinate transforms flow through the Camera class. Never manually apply pan/zoom transformations elsewhere.
+All coordinate transforms flow through the Camera class. Never manually apply pan/zoom.
 
 ```
 Screen Space (canvas pixels)
-  → camera.screenToWorld(point)
-  → World Space (infinite 2D plane)
-  → shape.worldToLocal(point) [for rotated shapes]
-  → Local Space
+  → camera.screenToWorld(point) → World Space (infinite 2D plane)
+  → shape.worldToLocal(point)   → Local Space (for rotated shapes)
 ```
 
 ### Shape System
@@ -208,111 +142,40 @@ Screen Space (canvas pixels)
 Shapes are plain data objects. Behavior is implemented via the **ShapeRegistry pattern**:
 - Each shape type registers handlers for: `render`, `hitTest`, `getBounds`, `getHandles`, `create`
 - Shape data extends `BaseShape` interface with type-specific properties
-- No methods on shape objects - all behavior is external
+- No methods on shape objects — all behavior is external
 - Shape metadata (`/shapes/ShapeMetadata.ts`) provides property definitions for dynamic PropertyPanel rendering
 
-### Shape Libraries
+Shape library tiers: basic shapes (Rectangle, Ellipse, Line, Text, Connector, Group), flowchart shapes (`/shapes/library/`), UML shapes, and user-created custom libraries (stored in IndexedDB).
 
-The project supports multiple shape library tiers:
-- **Basic shapes**: Rectangle, Ellipse, Line, Text, Connector, Group
-- **Flowchart shapes** (`/shapes/library/`): Diamond, Terminator, Data, Document, Process variants
-- **UML shapes**: Actor, Use Case, System Boundary
-- **User libraries**: Custom shapes saved via context menu "Save to Library...", stored in IndexedDB
+### Tool Architecture
+
+- Tools are state machines responding to normalized input events (`NormalizedPointerEvent` with both screenPoint and worldPoint)
+- One tool active at a time via ToolManager
+- Tools receive `ToolContext` with camera, stores, hitTester, requestRender
+- Tools can render overlays (selection boxes, guides) in screen space
 
 ## Critical Implementation Rules
 
-### Coordinate Transforms
-- All viewport transforms go through Camera class
-- Never manually apply pan/zoom in render or hit test code
-- Always use `camera.screenToWorld()` and `camera.worldToScreen()`
-
-### State Management
-- DocumentStore is the single source of truth for shape data
-- All document mutations must be immutable (use Immer)
-- History stores complete snapshots - implement structural sharing later if needed
-- Never mutate state directly
-
-### Canvas Rendering
-- React handles UI chrome only, never touches canvas rendering
-- Canvas rendering happens in Engine core using requestAnimationFrame
-- Implement viewport culling - don't render shapes outside visible bounds
-- Apply camera transform once per frame, render all shapes in world coordinates
-
-### Tool Architecture
-- Tools are state machines responding to normalized input events
-- One tool active at a time via ToolManager
-- Tools receive ToolContext with camera, stores, hitTester, requestRender
-- Tools can render overlays (selection boxes, guides) in screen space
-
-### Input Handling
-- InputHandler normalizes mouse, touch, and pen to `NormalizedPointerEvent`
-- Always includes both screenPoint and worldPoint
-- Handle pointer capture on down, release on up
-- Prevent default on wheel events to stop page scroll
-
-### Hit Testing
-- Use SpatialIndex (RBush) to get candidate shapes, then precise hit test
-- Hit testing respects z-order (shapeOrder array)
-- Rebuild spatial index when shapes change significantly
+- **Coordinate transforms**: Always use `camera.screenToWorld()` / `camera.worldToScreen()`. Never manually apply pan/zoom.
+- **State mutations**: All document mutations through Immer. Never mutate state directly. DocumentStore is the single source of truth.
+- **Canvas rendering**: React handles UI chrome only. Canvas rendering uses requestAnimationFrame in Engine core. Apply camera transform once per frame. Implement viewport culling.
+- **Hit testing**: Use SpatialIndex (RBush) for candidates, then precise hit test. Respects z-order (`shapeOrder` array). Rebuild spatial index when shapes change.
+- **Input handling**: InputHandler normalizes mouse/touch/pen. Handle pointer capture on down, release on up. Prevent default on wheel events.
 
 ## Code Style
 
-1. **No `any` types** - Use `unknown` and type guards
-2. **Immutable updates** - Never mutate state directly (enforced by Immer)
-3. **Pure functions** - Shape handlers should be pure where possible
-4. **Small, focused files** - Each file has one clear responsibility
-5. **Explicit over implicit** - Prefer verbose, clear code over clever shortcuts
-6. **Test the math** - Vec2, Mat3, Box, geometry functions require unit tests
+1. **No `any` types** — Use `unknown` and type guards
+2. **Immutable updates** — Enforced by Immer
+3. **Pure functions** — Shape handlers should be pure where possible
+4. **Small, focused files** — One clear responsibility per file
+5. **Explicit over implicit** — Verbose, clear code over clever shortcuts
+6. **Test the math** — Vec2, Mat3, Box, geometry functions require unit tests
 
 ## Implementation Status
 
-Completed phases:
-- **Phase 1-6**: Core foundation, shape system, tools, UI, extended features, export
-- **Phase 7**: Multi-page documents, offline persistence, auto-save
-- **Phase 8**: Rich text document editor (Tiptap-based split-screen editor)
-- **Phase 9**: UI improvements (enhanced color palette, property panel redesign, unified toolbar, status bar)
-- **Phase 9.5**: IndexedDB storage for images and blobs with content-addressed deduplication
-- **Phase 10**: Advanced diagramming (connector labels, orthogonal routing, icon library, shape icons)
-- **Phase 10.5-10.7**: Shape libraries (flowcharts, UML use-case, user-expandable libraries, settings modal)
-- **Phase 11.1-11.2**: Property panel overhaul, label customization, context menu upgrades with submenus
-- **Phase 11.3**: Layer panel upgrades (group colors with inheritance, layer views with regex/manual filtering, shape label preview)
-- **Phase 14.Pre**: Tauri migration (desktop app packaging, native file system)
-- **Phase 14.0**: Collaboration infrastructure (CRDT sync, presence indicators, collaborative cursors)
-- **Phase 14.1.1**: Unified connection layer (UnifiedSyncProvider, connectionStore, document type definitions)
+See `Todo.md` for detailed phase tracking and current tasks.
 
-Current: Phase 14.1.2-14.1.6 (Document registry, offline sync queue, presence overhaul, access control, UI consolidation).
-
-See Todo.md for detailed task tracking.
-
-## Key Architectural Decisions
-
-### Why Bun instead of Node.js?
-Bun provides significantly faster package installs, faster TypeScript execution, and better developer experience while maintaining full compatibility with npm packages and Node.js tooling.
-
-### Why Canvas API directly?
-Performance and control. Abstraction libraries add overhead for 10K+ shapes.
-
-### Why separated stores?
-Clear separation of concerns. DocumentStore can be serialized/synced. SessionStore is ephemeral. HistoryStore manages time-travel. Feature stores (theme, styles, libraries) handle specific UI concerns independently without bloating core stores.
-
-### Why ShapeRegistry pattern?
-Extensibility. Adding new shape types requires zero changes to core engine code.
-
-### Why normalized input events?
-Uniform handling of mouse, touch, and pen. Simplifies tool implementation.
-
-### Why plugin extensibility?
-The `/src/plugins/PanelExtensions.ts` registry pattern allows extending UI panels without modifying core components. Supports custom property sections, property renderers, and panel actions.
-
-## Performance Targets
-
-- 10,000+ shapes at 60fps
-- Smooth pan/zoom
-- Responsive input handling
-- Fast hit testing via spatial indexing
-- Viewport culling for off-screen shapes
-
-## UI Layout Structure
+## UI Layout
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -322,7 +185,6 @@ The `/src/plugins/PanelExtensions.ts` registry pattern allows extending UI panel
 │  Document Editor │  Canvas Area                     │
 │  (resizable)     │                      PropertyPanel│
 │  ┌──────────────┐│                       (collapsible)
-│  │Toolbar       ││                                  │
 │  │Tiptap Editor ││                      LayerPanel  │
 │  └──────────────┘│                       (collapsible)
 ├──────────────────┴──────────────────────────────────┤
@@ -330,7 +192,4 @@ The `/src/plugins/PanelExtensions.ts` registry pattern allows extending UI panel
 └─────────────────────────────────────────────────────┘
 ```
 
-- **Unified Toolbar**: Consolidated header replacing separate header, toolbar, and page tabs
-- **SplitPane**: Resizable left/right panels (document editor / canvas area)
-- **PropertyPanel & LayerPanel**: Collapsible right-side panels with persistent state
-- **SettingsModal**: Tab-based modal for shape libraries and future settings
+Plugin extensibility: `/src/plugins/PanelExtensions.ts` registry pattern allows extending UI panels without modifying core components.

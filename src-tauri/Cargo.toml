@@ -1,10 +1,10 @@
 [package]
 name = "diagrammer"
-version = "0.1.0"
+version = "0.8.1"
 description = "A high-performance diagramming and whiteboard application"
 authors = ["Diagrammer Team"]
 license = "MIT"
-repository = "https://github.com/your-org/diagrammer"
+repository = "https://github.com/QR-Madness/diagrammer"
 edition = "2021"
 rust-version = "1.77.2"
 

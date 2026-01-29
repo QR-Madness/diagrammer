@@ -623,7 +623,8 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Add border radius for group-labels
 - [ ] Select dropdown is pure white and gray (tested in dark mode)
 - [ ] Checkboxes have weird pallettes; especially in dark mode
-- [ ] Move all document lists to the document settings area: showing an area for remote documents, and an area for local documents
+- [ ] Documents area doesn't update with UI (won't register a document name-change until a few component renders)
+- [ ] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
 
 ##### Phase 14.2.2: UX Improvements - Chunk 2
 
