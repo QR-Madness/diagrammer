@@ -299,14 +299,16 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
     switchDocument: (docId: string) => {
       console.log('[CollaborationStore] Switching to document:', docId);
       
-      if (syncProvider) {
-        // Tell the server we're now on a different document
-        syncProvider.joinDocument(docId);
-      }
-      
       if (yjsDoc) {
         // Clear the CRDT document state for the new document
         yjsDoc.clear();
+      }
+      
+      if (syncProvider) {
+        // Tell the server we're now on a different document
+        syncProvider.joinDocument(docId);
+        // Request initial sync for the new document
+        syncProvider.requestSync();
       }
       
       // Update the config

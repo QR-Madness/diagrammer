@@ -81,6 +81,7 @@ tasks:
     desc: Wipe all application data (settings, diagrams, etc.)
     cmds:
       - rm -rf ~/.local/share/io.diagrammer
+      - rm -rf ~/.local/share/io.diagrammer.app
       - rm -rf ~/.local/share/diagrammer
 
   # ============================================

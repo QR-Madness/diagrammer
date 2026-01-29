@@ -386,6 +386,12 @@ export class UnifiedSyncProvider {
     }
   }
 
+  /** Request initial sync after joining a document */
+  requestSync(): void {
+    this.synced = false;
+    this.sendSyncStep1();
+  }
+
   /** Leave current document */
   leaveDocument(): void {
     this.currentDocId = null;
@@ -543,17 +549,18 @@ export class UnifiedSyncProvider {
       useConnectionStore.getState().setAuthMethod('none');
     }
 
-    // Send initial CRDT sync step 1
-    this.sendSyncStep1();
-
-    // Send initial awareness
-    this.sendAwarenessUpdate();
-
-    // Join document - either rejoin previous or join initial document from options
+    // Join document FIRST - this sets current_doc_id on server for routing
+    // Must happen before sending any CRDT messages
     const docToJoin = this.currentDocId ?? this.options.documentId;
     if (docToJoin) {
       this.joinDocument(docToJoin);
     }
+
+    // Send initial CRDT sync step 1 (now routed to correct document)
+    this.sendSyncStep1();
+
+    // Send initial awareness
+    this.sendAwarenessUpdate();
   };
 
   private handleMessage = (event: MessageEvent): void => {
