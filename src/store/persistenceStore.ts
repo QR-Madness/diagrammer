@@ -22,6 +22,7 @@ import { useTeamDocumentStore } from './teamDocumentStore';
 import { useSessionStore } from './sessionStore';
 import { useHistoryStore } from './historyStore';
 import { useDocumentRegistry } from './documentRegistry';
+import { useCollaborationStore } from '../collaboration';
 import { blobStorage } from '../storage/BlobStorage';
 import { isTauri } from '../tauri/commands';
 
@@ -452,6 +453,12 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         useDocumentRegistry.getState().setActiveDocument(id);
         useDocumentRegistry.getState().setDocumentContent(id, doc);
 
+        // Switch collaboration session to this document if active
+        const collabStore = useCollaborationStore.getState();
+        if (collabStore.isActive) {
+          collabStore.switchDocument(id);
+        }
+
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, id);
 
@@ -762,6 +769,13 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }
         registry.setActiveDocument(doc.id);
         registry.setDocumentContent(doc.id, doc);
+
+        // Switch collaboration session to this document
+        // This ensures CRDT sync happens for the correct document
+        const collabStore = useCollaborationStore.getState();
+        if (collabStore.isActive) {
+          collabStore.switchDocument(doc.id);
+        }
 
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, doc.id);

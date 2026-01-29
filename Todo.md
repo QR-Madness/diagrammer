@@ -509,6 +509,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 #### Phase 14.1 Collaboration Overhaul
 
 **Design Decisions (User-Approved):**
+
 - Offline editing: Editable - queue changes locally, sync/merge when reconnected
 - Conflict resolution: Auto-merge via CRDT for shapes, last-write-wins for metadata
 - Permissions: Owner/Editor/Viewer (3-tier model)
@@ -615,7 +616,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 #### Phase 14.2: UX Improvements
 
-##### Phase 14.2.1: UX Improvements - Chunk 1
+##### Phase 14.2.1: UX Improvements - Chunk 1 (Large)
 
 - [ ] Make the canvas not-focused effect more friendly; the red border is annoying; consider a light blue top-border or similar
 - [ ] Minimap for large canvases; add a toggle for this in the settings
@@ -623,29 +624,35 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Add border radius for group-labels
 - [ ] Select dropdown is pure white and gray (tested in dark mode)
 - [ ] Checkboxes have weird pallettes; especially in dark mode
-- [ ] Documents area doesn't update with UI (won't register a document name-change until a few component renders)
-- [ ] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
 
-##### Phase 14.2.2: UX Improvements - Chunk 2
+##### Phase 14.2.1: UX Improvements - Chunk 1.5 (Large)
+
+- [ ] Settings overhaul; do a complete settings modal overhaul, re-organizing areas, and creating a more intuitive, vibrant, and fluid menu.
+- [ ] Documents area doesn't update with UI (won't register a document name-change until a few component renders)
+- [ ] Add document management settings & info for cached/disconnected team documents ()
+- [ ] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
+- [ ] Add a cool animation for authenticating clients
+
+##### Phase 14.2.2: UX Improvements - Chunk 2 (Medium)
 
 - [ ] Smart-alignment for shape resize
 - [ ] Allow LaTeX equations for shape text by prepending `=` to the
 - [ ] Return focus to canvas when the layer panel is collapsed
 - [ ] Remove focus from the canvas when focus when working in the rich text editor
 
-##### Phase 14.2.3: UX Improvements - Chunk 3
+##### Phase 14.2.3: UX Improvements - Chunk 3 (Medium)
 
 - [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
 - [ ] Cool Saving/Saved icon & animation
 - [ ] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
 
-##### Phase 14.2.4: UX Improvements - Chunk 4
+##### Phase 14.2.4: UX Improvements - Chunk 4 (Small)
 
 - [ ] Translate selected items using arrow keys
 - [ ] Add a test regex button to layer view creator to get a results-preview
 - [ ] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
 
-#### Phase 14.3: Rich Document Editor Upgrades
+#### Phase 14.3: Rich Document Editor Upgrades (Large)
 
 - [ ] Tiptap Tables
 - [ ] LaTeX Equation Support
@@ -756,3 +763,4 @@ Replace this list with your own checklists of areas needed for improvement befor
 | Shape bounds                     | 24      |
 |                                  |         |
 | **Total**                        | **633** |
+

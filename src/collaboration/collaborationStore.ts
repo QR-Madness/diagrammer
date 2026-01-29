@@ -91,6 +91,10 @@ interface CollaborationActions {
   /** Sync shape order to remote peers */
   syncShapeOrder: (order: string[]) => void;
 
+  // Document switching
+  /** Switch to a different document for CRDT sync */
+  switchDocument: (docId: string) => void;
+
   // Presence
   /** Update local cursor position */
   updateCursor: (x: number, y: number) => void;
@@ -289,6 +293,29 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
     syncShapeOrder: (order: string[]) => {
       if (yjsDoc) {
         yjsDoc.setShapeOrder(order);
+      }
+    },
+
+    switchDocument: (docId: string) => {
+      console.log('[CollaborationStore] Switching to document:', docId);
+      
+      if (syncProvider) {
+        // Tell the server we're now on a different document
+        syncProvider.joinDocument(docId);
+      }
+      
+      if (yjsDoc) {
+        // Clear the CRDT document state for the new document
+        yjsDoc.clear();
+      }
+      
+      // Update the config
+      const config = get().config;
+      if (config) {
+        set({
+          config: { ...config, documentId: docId },
+          isSynced: false,
+        });
       }
     },
 

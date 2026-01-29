@@ -377,6 +377,7 @@ export class UnifiedSyncProvider {
   /** Join a document for CRDT routing */
   joinDocument(docId: string): void {
     this.currentDocId = docId;
+    console.log('[UnifiedSyncProvider] Joining document:', docId);
 
     if (this.ws?.readyState === WebSocket.OPEN) {
       const request: JoinDocRequest = { docId };
