@@ -36,6 +36,7 @@ export function CollaborationSettings() {
   const goOffline = useTeamStore((state) => state.goOffline);
 
   const currentUser = useUserStore((state) => state.currentUser);
+  const sessionToken = useUserStore((state) => state.sessionToken);
 
   // Collaboration store
   const startSession = useCollaborationStore((state) => state.startSession);
@@ -146,11 +147,13 @@ export function CollaborationSettings() {
           name: user.displayName,
           color: '#4a90d9',
         },
+        // Pass the session token so the host authenticates with its own server
+        ...(sessionToken?.token ? { token: sessionToken.token } : {}),
       });
     } finally {
       setIsStarting(false);
     }
-  }, [portInput, setHostPort, startHosting, currentDocumentId, currentUser, startSession, handleSaveConfig]);
+  }, [portInput, setHostPort, startHosting, currentDocumentId, currentUser, sessionToken, startSession, handleSaveConfig]);
 
   const handleStopServer = useCallback(async () => {
     setIsStopping(true);
