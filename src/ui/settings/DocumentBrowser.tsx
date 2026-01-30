@@ -428,7 +428,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               onOpen={handleOpen}
               onDelete={canDelete(record, currentUser?.id) ? handleDelete : undefined}
               onRename={canEdit(record, currentUser?.id) ? handleRename : undefined}
-              onEditPermissions={canManagePermissions(record, isInTeamMode) ? setPermissionsDocId : undefined}
+              onEditPermissions={canManagePermissions(record, isInTeamMode, currentUser?.id, currentUser?.role) ? setPermissionsDocId : undefined}
               onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
               mode={compact ? 'compact' : 'full'}
             />
@@ -467,12 +467,20 @@ function canEdit(record: DocumentRecord, _userId?: string): boolean {
 }
 
 /** Check if user can manage permissions on a document */
-function canManagePermissions(record: DocumentRecord, isInTeamMode: boolean): boolean {
+function canManagePermissions(
+  record: DocumentRecord,
+  isInTeamMode: boolean,
+  _userId?: string,
+  userRole?: string
+): boolean {
   // Only remote documents in team mode can have permissions managed
   if (!isInTeamMode) return false;
   if (record.type !== 'remote') return false;
-  // Only owners can manage permissions
-  return record.permission === 'owner';
+  // Owners can manage their own documents
+  if (record.permission === 'owner') return true;
+  // Admins can manage any document
+  if (userRole === 'admin') return true;
+  return false;
 }
 
 /** Check if user can publish a document to the team */

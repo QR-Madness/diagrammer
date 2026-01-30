@@ -7,7 +7,7 @@
 //!
 //! Permission hierarchy:
 //! - Document owner is set on creation
-//! - Admins have implicit Editor access to all documents
+//! - Admins have implicit Owner access to all documents (full management)
 //! - Users with explicit shares have their assigned permission level
 //! - No implicit access for unshared documents
 
@@ -134,9 +134,10 @@ pub fn get_user_permission(
         }
     }
 
-    // Admin users get implicit Editor access (but not Owner)
+    // Admin users get implicit Owner access for management purposes
+    // (can manage shares, transfer ownership, delete)
     if user_role == Some("admin") {
-        return Permission::Editor;
+        return Permission::Owner;
     }
 
     // Check explicit shares
