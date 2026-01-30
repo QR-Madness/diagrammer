@@ -25,6 +25,8 @@ interface DocumentCardProps {
   onRename?: ((id: string, newName: string) => void) | undefined;
   /** Callback to edit permissions (ownership/access) */
   onEditPermissions?: ((id: string) => void) | undefined;
+  /** Callback to publish local document to team */
+  onPublishToTeam?: ((id: string) => void | Promise<void>) | undefined;
   /** Display mode */
   mode?: 'compact' | 'full' | undefined;
 }
@@ -90,11 +92,13 @@ export function DocumentCard({
   onDelete,
   onRename,
   onEditPermissions,
+  onPublishToTeam,
   mode = 'compact',
 }: DocumentCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(record.name);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Sync editName when record.name changes externally
   useEffect(() => {
@@ -102,6 +106,17 @@ export function DocumentCard({
       setEditName(record.name);
     }
   }, [record.name, isEditing]);
+
+  const handlePublish = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onPublishToTeam) return;
+    setIsPublishing(true);
+    try {
+      await onPublishToTeam(record.id);
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [onPublishToTeam, record.id]);
 
   const handleClick = useCallback(() => {
     if (!isEditing && onOpen) {
@@ -218,14 +233,24 @@ export function DocumentCard({
 
       {/* Actions */}
       <div className="document-card__actions">
-        {onEditPermissions && record.type === 'remote' && (record as { permission: Permission }).permission === 'owner' && (
+        {onPublishToTeam && (
+          <button
+            className="document-card__action document-card__action--publish"
+            onClick={handlePublish}
+            disabled={isPublishing}
+            title="Share with team"
+          >
+            {isPublishing ? '⏳' : '📤'}
+          </button>
+        )}
+        {onEditPermissions && (
           <button
             className="document-card__action"
             onClick={(e) => {
               e.stopPropagation();
               onEditPermissions(record.id);
             }}
-            title="Manage permissions"
+            title="Manage access"
           >
             👥
           </button>

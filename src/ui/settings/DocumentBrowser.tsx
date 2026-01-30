@@ -20,6 +20,7 @@ import { SyncStatusBadge } from '../SyncStatusBadge';
 import { PDFExportDialog } from '../PDFExportDialog';
 import { DocumentPermissionsDialog } from '../DocumentPermissionsDialog';
 import type { DocumentRecord } from '../../types/DocumentRegistry';
+import type { DiagramDocument } from '../../types/Document';
 import './DocumentBrowser.css';
 
 type FilterMode = 'all' | 'local' | 'team' | 'cached';
@@ -56,6 +57,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   const fetchDocumentList = useTeamDocumentStore((s) => s.fetchDocumentList);
   const loadTeamDocument = useTeamDocumentStore((s) => s.loadTeamDocument);
   const deleteFromHost = useTeamDocumentStore((s) => s.deleteFromHost);
+  const saveToHost = useTeamDocumentStore((s) => s.saveToHost);
 
   // User store
   const currentUser = useUserStore((s) => s.currentUser);
@@ -189,6 +191,36 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       }
     },
     [currentDocumentId, renameDocument]
+  );
+
+  const handlePublishToTeam = useCallback(
+    async (docId: string) => {
+      if (!currentUser?.id) return;
+
+      // Load the document if not current
+      if (docId !== currentDocumentId) {
+        loadDocument(docId);
+        // Give it a moment to load
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+
+      // Get document data via export
+      const json = usePersistenceStore.getState().exportJSON();
+      const doc = JSON.parse(json) as DiagramDocument;
+
+      // Mark as team document
+      const teamDoc: DiagramDocument = {
+        ...doc,
+        isTeamDocument: true,
+        ownerId: currentUser.id,
+        ownerName: currentUser.displayName || currentUser.username || 'Unknown',
+      };
+
+      await saveToHost(teamDoc);
+      // Refresh document list
+      await fetchDocumentList();
+    },
+    [currentDocumentId, loadDocument, saveToHost, fetchDocumentList, currentUser]
   );
 
   const handleExport = useCallback(() => {
@@ -389,6 +421,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               onDelete={canDelete(record, currentUser?.id) ? handleDelete : undefined}
               onRename={canEdit(record, currentUser?.id) ? handleRename : undefined}
               onEditPermissions={canManagePermissions(record, isInTeamMode) ? setPermissionsDocId : undefined}
+              onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
               mode={compact ? 'compact' : 'full'}
             />
           ))
@@ -432,6 +465,13 @@ function canManagePermissions(record: DocumentRecord, isInTeamMode: boolean): bo
   if (record.type !== 'remote') return false;
   // Only owners can manage permissions
   return record.permission === 'owner';
+}
+
+/** Check if user can publish a document to the team */
+function canPublishToTeam(record: DocumentRecord, isInTeamMode: boolean): boolean {
+  // Only local documents can be published, and only in team mode
+  if (!isInTeamMode) return false;
+  return record.type === 'local';
 }
 
 export default DocumentBrowser;
