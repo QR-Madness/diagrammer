@@ -19,9 +19,6 @@ import { useConnectionStore } from './connectionStore';
 import { useUserStore } from './userStore';
 import type { Permission } from '../types/DocumentRegistry';
 
-// Legacy import for backwards compatibility during transition
-import { DocumentSyncProvider } from '../collaboration/DocumentSyncProvider';
-
 /**
  * Calculate the effective permission for a user on a document.
  * Mirrors the backend permission logic in permissions.rs
@@ -103,11 +100,8 @@ interface DocumentProvider {
 
 /** Team document store actions */
 interface TeamDocumentActions {
-  /** Set the document sync provider (legacy - uses DocumentSyncProvider) */
-  setProvider: (provider: DocumentSyncProvider | null) => void;
-
-  /** Set provider from UnifiedSyncProvider (new unified architecture) */
-  setProviderFromUnified: (provider: UnifiedSyncProvider | null) => void;
+  /** Set provider from UnifiedSyncProvider */
+  setProvider: (provider: UnifiedSyncProvider | null) => void;
 
   /** Fetch document list from host */
   fetchDocumentList: () => Promise<void>;
@@ -159,11 +153,8 @@ interface TeamDocumentActions {
   getCachedDocument: (docId: string) => DiagramDocument | undefined;
 }
 
-/** Document provider instance (module-level singleton) - works with either provider type */
+/** Document provider instance (module-level singleton) */
 let docProvider: DocumentProvider | null = null;
-
-/** Legacy provider reference for backwards compatibility */
-let legacyDocSyncProvider: DocumentSyncProvider | null = null;
 
 /** Create the team document store */
 export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActions>(
@@ -180,20 +171,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
     // Actions
     setProvider: (provider) => {
-      legacyDocSyncProvider = provider;
       docProvider = provider;
-
-      if (provider) {
-        // Subscribe to document events
-        provider.onDocumentEvent((event) => {
-          get().handleDocumentEvent(event);
-        });
-      }
-    },
-
-    setProviderFromUnified: (provider) => {
-      docProvider = provider;
-      legacyDocSyncProvider = null;
 
       // Note: Document events are handled by collaborationStore's onDocumentEvent callback
       // which calls handleDocumentEvent directly, so no subscription needed here
@@ -492,12 +470,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
   })
 );
 
-/** Get the document sync provider (legacy - returns DocumentSyncProvider if available) */
-export function getDocSyncProvider(): DocumentSyncProvider | null {
-  return legacyDocSyncProvider;
-}
-
-/** Get the current document provider (works with either provider type) */
+/** Get the current document provider */
 export function getDocProvider(): DocumentProvider | null {
   return docProvider;
 }

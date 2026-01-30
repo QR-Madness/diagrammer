@@ -213,8 +213,7 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
       });
 
       // Register provider with team document store
-      // Note: teamDocumentStore now works with UnifiedSyncProvider through a wrapper
-      useTeamDocumentStore.getState().setProviderFromUnified(syncProvider);
+      useTeamDocumentStore.getState().setProvider(syncProvider);
 
       // Connect
       syncProvider.connect();
@@ -245,7 +244,7 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
       }
 
       // Clear team document store
-      useTeamDocumentStore.getState().setProviderFromUnified(null);
+      useTeamDocumentStore.getState().setProvider(null);
       useTeamDocumentStore.getState().clearTeamDocuments();
 
       // Clear presence store

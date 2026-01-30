@@ -12,15 +12,13 @@
 export { YjsDocument } from './YjsDocument';
 export type { YjsDocumentMetadata, ShapeChangeCallback, OrderChangeCallback, MetadataChangeCallback } from './YjsDocument';
 
-// New unified provider (Phase 14.1)
+// Unified provider (Phase 14.1)
 export { UnifiedSyncProvider } from './UnifiedSyncProvider';
 export type { UnifiedSyncProviderOptions, AwarenessUserState } from './UnifiedSyncProvider';
 
-// Legacy exports for backwards compatibility during transition
+// Legacy SyncProvider kept for reference (not actively used)
 export { SyncProvider } from './SyncProvider';
 export type { SyncProviderOptions, ConnectionStatus } from './SyncProvider';
-export { DocumentSyncProvider } from './DocumentSyncProvider';
-export type { DocumentSyncProviderOptions } from './DocumentSyncProvider';
 
 export {
   useCollaborationStore,
