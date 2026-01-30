@@ -28,6 +28,8 @@ export interface SettingsState {
   saveIconStyleToProfile: boolean;
   /** Include label style when saving to style profiles */
   saveLabelStyleToProfile: boolean;
+  /** Show minimap for canvas navigation */
+  showMinimap: boolean;
 }
 
 /**
@@ -54,6 +56,10 @@ export interface SettingsActions {
   toggleSaveLabelStyleToProfile: () => void;
   /** Set saving label style to profiles */
   setSaveLabelStyleToProfile: (save: boolean) => void;
+  /** Toggle minimap visibility */
+  toggleShowMinimap: () => void;
+  /** Set minimap visibility */
+  setShowMinimap: (show: boolean) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -68,6 +74,7 @@ const initialState: SettingsState = {
   hideDefaultStyleProfiles: false,
   saveIconStyleToProfile: true,
   saveLabelStyleToProfile: true,
+  showMinimap: false,
 };
 
 /**
@@ -133,6 +140,14 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         set({ saveLabelStyleToProfile: save });
       },
 
+      toggleShowMinimap: () => {
+        set({ showMinimap: !get().showMinimap });
+      },
+
+      setShowMinimap: (show: boolean) => {
+        set({ showMinimap: show });
+      },
+
       resetSettings: () => {
         set(initialState);
       },
@@ -146,6 +161,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         hideDefaultStyleProfiles: state.hideDefaultStyleProfiles,
         saveIconStyleToProfile: state.saveIconStyleToProfile,
         saveLabelStyleToProfile: state.saveLabelStyleToProfile,
+        showMinimap: state.showMinimap,
       }),
     }
   )

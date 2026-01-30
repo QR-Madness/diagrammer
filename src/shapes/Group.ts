@@ -210,7 +210,10 @@ export const groupHandler: GroupShapeHandler = {
       }
 
       ctx.fillStyle = labelBackground;
-      ctx.fillRect(bgX, bgY, bgWidth, bgHeight);
+      const bgRadius = 4;
+      ctx.beginPath();
+      ctx.roundRect(bgX, bgY, bgWidth, bgHeight, bgRadius);
+      ctx.fill();
     }
 
     // Draw label text

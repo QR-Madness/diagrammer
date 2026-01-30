@@ -7,6 +7,7 @@ import { ExportDialog } from './ExportDialog';
 import { SaveToLibraryDialog } from './SaveToLibraryDialog';
 import { CollaborativeCursors } from './CollaborativeCursors';
 import { SelectionHighlight } from './SelectionHighlight';
+import { Minimap } from './Minimap';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 
@@ -292,16 +293,20 @@ export function CanvasContainer({
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
             pointerEvents: 'none',
-            boxShadow: 'inset 0 0 0 3px rgba(239, 68, 68, 0.5)',
-            borderRadius: '2px',
+            background: 'linear-gradient(90deg, rgba(59, 130, 246, 0.6) 0%, rgba(147, 197, 253, 0.4) 50%, rgba(59, 130, 246, 0.6) 100%)',
+            boxShadow: '0 1px 4px rgba(59, 130, 246, 0.3)',
           }}
         />
       )}
       {/* Collaborative presence overlays */}
       <SelectionHighlight width={dimensions.width} height={dimensions.height} />
       <CollaborativeCursors width={dimensions.width} height={dimensions.height} />
+      <Minimap canvasWidth={dimensions.width} canvasHeight={dimensions.height} />
       <TextEditor camera={camera} />
       {contextMenu && (
         <ContextMenu

@@ -9,9 +9,10 @@
  * - "+" button to add new pages
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
+import { clampToViewport } from './contextMenuUtils';
 import './PageTabs.css';
 
 /**
@@ -47,6 +48,8 @@ export function PageTabs() {
     y: 0,
     pageId: '',
   });
+  const [adjustedContextMenuPos, setAdjustedContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Drag state
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -122,12 +125,25 @@ export function PageTabs() {
 
   // Close context menu on click outside
   useEffect(() => {
-    if (!contextMenu.visible) return;
+    if (!contextMenu.visible) {
+      setAdjustedContextMenuPos(null);
+      return;
+    }
 
     const handleClick = () => closeContextMenu();
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, [contextMenu.visible, closeContextMenu]);
+
+  // Adjust context menu position to stay within viewport
+  useLayoutEffect(() => {
+    if (!contextMenu.visible || !contextMenuRef.current) return;
+
+    const menu = contextMenuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const adjusted = clampToViewport(contextMenu.x, contextMenu.y, rect.width, rect.height);
+    setAdjustedContextMenuPos(adjusted);
+  }, [contextMenu.visible, contextMenu.x, contextMenu.y]);
 
   // Context menu actions
   const handleContextRename = useCallback(() => {
@@ -288,10 +304,13 @@ export function PageTabs() {
       </button>
 
       {/* Context Menu */}
-      {contextMenu.visible && (
+      {contextMenu.visible && (() => {
+        const menuPos = adjustedContextMenuPos ?? { x: contextMenu.x, y: contextMenu.y };
+        return (
         <div
+          ref={contextMenuRef}
           className="page-tab-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{ left: menuPos.x, top: menuPos.y }}
         >
           <button onClick={handleContextRename}>Rename</button>
           <button onClick={handleContextDuplicate}>Duplicate</button>
@@ -303,7 +322,8 @@ export function PageTabs() {
             Delete
           </button>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

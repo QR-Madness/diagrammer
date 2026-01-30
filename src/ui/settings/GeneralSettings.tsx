@@ -23,6 +23,8 @@ export function GeneralSettings() {
   const setShowStaticProperties = useSettingsStore((state) => state.setShowStaticProperties);
   const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
   const setHideDefaultStyleProfiles = useSettingsStore((state) => state.setHideDefaultStyleProfiles);
+  const showMinimap = useSettingsStore((state) => state.showMinimap);
+  const setShowMinimap = useSettingsStore((state) => state.setShowMinimap);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   const profiles = useStyleProfileStore((state) => state.profiles);
@@ -155,6 +157,21 @@ export function GeneralSettings() {
           </label>
           <span className="settings-hint">
             Only show custom style profiles in the Property Panel
+          </span>
+        </div>
+
+        <div className="settings-row settings-row-checkbox">
+          <label className="settings-checkbox-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={showMinimap}
+              onChange={(e) => setShowMinimap(e.target.checked)}
+            />
+            <span className="settings-checkbox-text">Show Minimap</span>
+          </label>
+          <span className="settings-hint">
+            Display a minimap for navigating large canvases
           </span>
         </div>
       </div>

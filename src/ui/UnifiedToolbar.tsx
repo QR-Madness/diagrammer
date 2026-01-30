@@ -8,7 +8,7 @@
  * - Settings button (opens Settings modal with Documents, theme, etc.)
  */
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { useSessionStore, ToolType } from '../store/sessionStore';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -16,6 +16,7 @@ import { usePersistenceStore } from '../store/persistenceStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { ShapePicker } from './ShapePicker';
 import { CustomShapePicker } from './CustomShapePicker';
+import { clampToViewport } from './contextMenuUtils';
 import './UnifiedToolbar.css';
 
 /**
@@ -180,6 +181,8 @@ function InlinePageTabs() {
     y: 0,
     pageId: '',
   });
+  const [adjustedContextMenuPos, setAdjustedContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Editing state
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
@@ -213,11 +216,24 @@ function InlinePageTabs() {
 
   // Close context menu on click outside
   useEffect(() => {
-    if (!contextMenu.visible) return;
+    if (!contextMenu.visible) {
+      setAdjustedContextMenuPos(null);
+      return;
+    }
     const handleClick = () => closeContextMenu();
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
   }, [contextMenu.visible, closeContextMenu]);
+
+  // Adjust context menu position to stay within viewport
+  useLayoutEffect(() => {
+    if (!contextMenu.visible || !contextMenuRef.current) return;
+
+    const menu = contextMenuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const adjusted = clampToViewport(contextMenu.x, contextMenu.y, rect.width, rect.height);
+    setAdjustedContextMenuPos(adjusted);
+  }, [contextMenu.visible, contextMenu.x, contextMenu.y]);
 
   const handleContextRename = useCallback(() => {
     const page = pages[contextMenu.pageId];
@@ -316,10 +332,13 @@ function InlinePageTabs() {
       </button>
 
       {/* Context Menu */}
-      {contextMenu.visible && (
+      {contextMenu.visible && (() => {
+        const menuPos = adjustedContextMenuPos ?? { x: contextMenu.x, y: contextMenu.y };
+        return (
         <div
+          ref={contextMenuRef}
           className="inline-tab-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{ left: menuPos.x, top: menuPos.y }}
         >
           <button onClick={handleContextRename}>Rename</button>
           <button onClick={handleContextDuplicate}>Duplicate</button>
@@ -331,7 +350,8 @@ function InlinePageTabs() {
             Delete
           </button>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

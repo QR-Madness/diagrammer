@@ -618,12 +618,12 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ##### Phase 14.2.1: UX Improvements - Chunk 1 (Large)
 
-- [ ] Make the canvas not-focused effect more friendly; the red border is annoying; consider a light blue top-border or similar
-- [ ] Minimap for large canvases; add a toggle for this in the settings
-- [ ] Context menu for style profiles clips overflows outside of window viewport
-- [ ] Add border radius for group-labels
-- [ ] Select dropdown is pure white and gray (tested in dark mode)
-- [ ] Checkboxes have weird pallettes; especially in dark mode
+- [x] Make the canvas not-focused effect more friendly; the red border is annoying; consider a light blue top-border or similar
+- [x] Minimap for large canvases; add a toggle for this in the settings
+- [x] Context menu for style profiles clips overflows outside of window viewport
+- [x] Add border radius for group-labels
+- [x] Select dropdown is pure white and gray (tested in dark mode)
+- [x] Checkboxes have weird pallettes; especially in dark mode
 
 ##### Phase 14.2.1: UX Improvements - Chunk 1.5 (Large)
 

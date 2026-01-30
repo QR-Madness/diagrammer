@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo, useLayoutEffect } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -6,6 +6,7 @@ import { useLayerViewStore, getMatchingShapeIds } from '../store/layerViewStore'
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 import { LayerViewManager } from './LayerViewManager';
+import { clampToViewport } from './contextMenuUtils';
 import './LayerPanel.css';
 
 /**
@@ -171,6 +172,8 @@ export function LayerPanel() {
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; shapeId: string } | null>(null);
+  const [adjustedContextMenuPos, setAdjustedContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Rename state
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
@@ -591,7 +594,10 @@ export function LayerPanel() {
 
   // Close context menu on click outside
   useEffect(() => {
-    if (!contextMenu) return;
+    if (!contextMenu) {
+      setAdjustedContextMenuPos(null);
+      return;
+    }
 
     const handleClick = () => setContextMenu(null);
     const handleEscape = (e: KeyboardEvent) => {
@@ -608,6 +614,16 @@ export function LayerPanel() {
       document.removeEventListener('click', handleClick);
       document.removeEventListener('keydown', handleEscape);
     };
+  }, [contextMenu]);
+
+  // Adjust context menu position to stay within viewport
+  useLayoutEffect(() => {
+    if (!contextMenu || !contextMenuRef.current) return;
+
+    const menu = contextMenuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const adjusted = clampToViewport(contextMenu.x, contextMenu.y, rect.width, rect.height);
+    setAdjustedContextMenuPos(adjusted);
   }, [contextMenu]);
 
   /**
@@ -890,10 +906,13 @@ export function LayerPanel() {
       )}
 
       {/* Context menu */}
-      {contextMenu && (
+      {contextMenu && (() => {
+        const menuPos = adjustedContextMenuPos ?? { x: contextMenu.x, y: contextMenu.y };
+        return (
         <div
+          ref={contextMenuRef}
           className="layer-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{ left: menuPos.x, top: menuPos.y }}
           onClick={(e) => e.stopPropagation()}
         >
           {shapes[contextMenu.shapeId] && isGroup(shapes[contextMenu.shapeId]!) && (
@@ -993,7 +1012,8 @@ export function LayerPanel() {
             Delete
           </button>
         </div>
-      )}
+        );
+      })()}
 
       {/* Layer View Manager Modal */}
       <LayerViewManager

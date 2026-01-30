@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, useLayoutEffect } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -100,6 +100,8 @@ function Submenu({ label, items, onClose }: SubmenuProps) {
  * Shows contextual actions based on current selection.
  */
 export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPosition, setAdjustedPosition] = useState({ x, y });
   const selectedIds = useSessionStore((state) => state.selectedIds);
   const shapes = useDocumentStore((state) => state.shapes);
   const updateShape = useDocumentStore((state) => state.updateShape);
@@ -173,6 +175,44 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
       return !isDescendant(group.id, selectedArray);
     });
   }, [shapes, selectedArray]);
+
+  // Adjust position to keep menu within viewport
+  useLayoutEffect(() => {
+    if (!menuRef.current) return;
+
+    const menu = menuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 8;
+
+    let newX = x;
+    let newY = y;
+
+    // Check if menu overflows right edge
+    if (x + rect.width > viewportWidth - padding) {
+      newX = Math.max(padding, viewportWidth - rect.width - padding);
+    }
+
+    // Check if menu overflows bottom edge
+    if (y + rect.height > viewportHeight - padding) {
+      newY = Math.max(padding, viewportHeight - rect.height - padding);
+    }
+
+    // Check left edge
+    if (newX < padding) {
+      newX = padding;
+    }
+
+    // Check top edge
+    if (newY < padding) {
+      newY = padding;
+    }
+
+    if (newX !== adjustedPosition.x || newY !== adjustedPosition.y) {
+      setAdjustedPosition({ x: newX, y: newY });
+    }
+  }, [x, y, adjustedPosition.x, adjustedPosition.y]);
 
   // Close menu on click outside or escape
   useEffect(() => {
@@ -348,8 +388,9 @@ export function ContextMenu({ x, y, onClose, onExport, onSaveToLibrary }: Contex
 
   return (
     <div
+      ref={menuRef}
       className="context-menu"
-      style={{ left: x, top: y }}
+      style={{ left: adjustedPosition.x, top: adjustedPosition.y }}
       onClick={(e) => e.stopPropagation()}
     >
       {canGroup && (

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { useDocumentStore } from '../store/documentStore';
 import { getSelectedShapes } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
@@ -44,6 +44,8 @@ export function StyleProfilePanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmOverwriteId, setConfirmOverwriteId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [adjustedContextMenuPos, setAdjustedContextMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
 
@@ -170,7 +172,37 @@ export function StyleProfilePanel() {
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
+    setAdjustedContextMenuPos(null);
   }, []);
+
+  // Adjust context menu position to stay within viewport
+  useLayoutEffect(() => {
+    if (!contextMenu || !contextMenuRef.current) {
+      setAdjustedContextMenuPos(null);
+      return;
+    }
+
+    const menu = contextMenuRef.current;
+    const rect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const padding = 8;
+
+    let newX = contextMenu.x;
+    let newY = contextMenu.y;
+
+    // Check if menu overflows right edge
+    if (contextMenu.x + rect.width > viewportWidth - padding) {
+      newX = Math.max(padding, viewportWidth - rect.width - padding);
+    }
+
+    // Check if menu overflows bottom edge
+    if (contextMenu.y + rect.height > viewportHeight - padding) {
+      newY = Math.max(padding, viewportHeight - rect.height - padding);
+    }
+
+    setAdjustedContextMenuPos({ x: newX, y: newY });
+  }, [contextMenu]);
 
   // Close context menu on click outside or escape
   useEffect(() => {
@@ -467,11 +499,13 @@ export function StyleProfilePanel() {
         const profile = profiles.find((p) => p.id === contextMenu.profileId);
         if (!profile) return null;
         const isDefault = profile.id.startsWith('default-');
+        const menuPos = adjustedContextMenuPos ?? { x: contextMenu.x, y: contextMenu.y };
 
         return (
           <div
+            ref={contextMenuRef}
             className="style-profile-context-menu"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
+            style={{ left: menuPos.x, top: menuPos.y }}
             onClick={(e) => e.stopPropagation()}
           >
             {hasSelection && (
