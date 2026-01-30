@@ -16,10 +16,6 @@ export type { YjsDocumentMetadata, ShapeChangeCallback, OrderChangeCallback, Met
 export { UnifiedSyncProvider } from './UnifiedSyncProvider';
 export type { UnifiedSyncProviderOptions, AwarenessUserState } from './UnifiedSyncProvider';
 
-// Legacy SyncProvider kept for reference (not actively used)
-export { SyncProvider } from './SyncProvider';
-export type { SyncProviderOptions, ConnectionStatus } from './SyncProvider';
-
 export {
   useCollaborationStore,
   subscribeToRemoteChanges,
