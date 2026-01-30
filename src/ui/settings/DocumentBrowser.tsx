@@ -18,6 +18,7 @@ import { useRichTextStore } from '../../store/richTextStore';
 import { DocumentCard } from '../DocumentCard';
 import { SyncStatusBadge } from '../SyncStatusBadge';
 import { PDFExportDialog } from '../PDFExportDialog';
+import { DocumentPermissionsDialog } from '../DocumentPermissionsDialog';
 import type { DocumentRecord } from '../../types/DocumentRegistry';
 import './DocumentBrowser.css';
 
@@ -63,6 +64,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [pdfExportOpen, setPdfExportOpen] = useState(false);
+  const [permissionsDocId, setPermissionsDocId] = useState<string | null>(null);
 
   const isInTeamMode = serverMode !== 'offline';
   const isConnectedToHost = serverMode === 'client' && authenticated;
@@ -386,6 +388,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               onOpen={handleOpen}
               onDelete={canDelete(record, currentUser?.id) ? handleDelete : undefined}
               onRename={canEdit(record, currentUser?.id) ? handleRename : undefined}
+              onEditPermissions={isHost ? setPermissionsDocId : undefined}
               mode={compact ? 'compact' : 'full'}
             />
           ))
@@ -394,6 +397,14 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
 
       {/* PDF Export Dialog */}
       {pdfExportOpen && <PDFExportDialog isOpen={pdfExportOpen} onClose={() => setPdfExportOpen(false)} />}
+
+      {/* Permissions Dialog */}
+      {permissionsDocId && (
+        <DocumentPermissionsDialog
+          documentId={permissionsDocId}
+          onClose={() => setPermissionsDocId(null)}
+        />
+      )}
     </div>
   );
 }

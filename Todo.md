@@ -627,11 +627,11 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ##### Phase 14.2.1: UX Improvements - Chunk 1.5 (Large)
 
-- [ ] Settings overhaul; do a complete settings modal overhaul, re-organizing areas, and creating a more intuitive, vibrant, and fluid menu.
-- [ ] Documents area doesn't update with UI (won't register a document name-change until a few component renders)
-- [ ] Add document management settings & info for cached/disconnected team documents ()
-- [ ] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
-- [ ] Add a cool animation for authenticating clients
+- [x] Settings overhaul; do a complete settings modal overhaul, re-organizing areas, and creating a more intuitive, vibrant, and fluid menu.
+- [x] Documents area doesn't update with UI (won't register a document name-change until a few component renders)
+- [x] Add document management settings & info for cached/disconnected team documents ()
+- [x] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
+- [x] Add a cool animation for authenticating clients
 
 ##### Phase 14.2.2: UX Improvements - Chunk 2 (Medium)
 

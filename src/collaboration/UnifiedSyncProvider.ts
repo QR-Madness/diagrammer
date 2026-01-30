@@ -31,6 +31,8 @@ import {
   MESSAGE_DOC_DELETE,
   MESSAGE_DOC_EVENT,
   MESSAGE_JOIN_DOC,
+  MESSAGE_DOC_SHARE,
+  MESSAGE_DOC_TRANSFER,
   encodeMessage,
   decodeMessageType,
   decodePayload,
@@ -47,6 +49,10 @@ import {
   type DocDeleteResponse,
   type DocEvent,
   type JoinDocRequest,
+  type DocShareRequest,
+  type DocShareResponse,
+  type DocTransferRequest,
+  type DocTransferResponse,
 } from './protocol';
 import { useConnectionStore, type ConnectionStatus, type AuthenticatedUser } from '../store/connectionStore';
 
@@ -368,6 +374,45 @@ export class UnifiedSyncProvider {
 
     if (!response.success) {
       throw new Error(response.error ?? 'Failed to delete document');
+    }
+  }
+
+  /** Update document sharing permissions */
+  async updateDocumentShares(
+    docId: string,
+    shares: Array<{ userId: string; userName: string; permission: string }>
+  ): Promise<void> {
+    const requestId = generateRequestId();
+    const request: DocShareRequest = { requestId, docId, shares };
+
+    const response = await this.sendRequest<DocShareResponse>(
+      MESSAGE_DOC_SHARE,
+      request,
+      requestId
+    );
+
+    if (!response.success) {
+      throw new Error(response.error ?? 'Failed to update shares');
+    }
+  }
+
+  /** Transfer document ownership to another user */
+  async transferDocumentOwnership(
+    docId: string,
+    newOwnerId: string,
+    newOwnerName: string
+  ): Promise<void> {
+    const requestId = generateRequestId();
+    const request: DocTransferRequest = { requestId, docId, newOwnerId, newOwnerName };
+
+    const response = await this.sendRequest<DocTransferResponse>(
+      MESSAGE_DOC_TRANSFER,
+      request,
+      requestId
+    );
+
+    if (!response.success) {
+      throw new Error(response.error ?? 'Failed to transfer ownership');
     }
   }
 

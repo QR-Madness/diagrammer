@@ -1,0 +1,298 @@
+/**
+ * DocumentPermissionsDialog styles
+ */
+
+.document-permissions-dialog__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+.document-permissions-dialog {
+  background: var(--bg-primary, #fff);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.document-permissions-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.document-permissions-dialog__header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.document-permissions-dialog__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--text-secondary, #666);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.document-permissions-dialog__close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary, #333);
+}
+
+.document-permissions-dialog__content {
+  padding: 20px;
+}
+
+.document-permissions-dialog__doc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.document-permissions-dialog__doc-name {
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.document-permissions-dialog__doc-owner {
+  font-size: 13px;
+  color: var(--text-secondary, #666);
+}
+
+.document-permissions-dialog__error {
+  padding: 10px 12px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.document-permissions-dialog__section {
+  margin-bottom: 20px;
+}
+
+.document-permissions-dialog__section h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary, #666);
+}
+
+.document-permissions-dialog__empty {
+  color: var(--text-muted, #999);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.document-permissions-dialog__members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.document-permissions-dialog__member {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #f5f5f5);
+  border-radius: 8px;
+}
+
+.document-permissions-dialog__member-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary, #333);
+}
+
+.document-permissions-dialog__permission-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.document-permissions-dialog__permission-select:focus {
+  outline: none;
+  border-color: var(--primary-color, #4a90d9);
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.1);
+}
+
+.document-permissions-dialog__transfer-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  opacity: 0.6;
+}
+
+.document-permissions-dialog__transfer-btn:hover {
+  background: rgba(251, 191, 36, 0.2);
+  opacity: 1;
+}
+
+.document-permissions-dialog__transfer-confirm {
+  padding: 16px;
+  background: #fffbeb;
+  border: 1px solid #fbbf24;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.document-permissions-dialog__transfer-confirm p {
+  margin: 0 0 8px 0;
+  color: var(--text-primary, #333);
+}
+
+.document-permissions-dialog__transfer-warning {
+  color: #b45309;
+  font-size: 13px;
+}
+
+.document-permissions-dialog__transfer-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.document-permissions-dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.document-permissions-dialog__btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  background: var(--bg-primary, #fff);
+  color: var(--text-primary, #333);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.document-permissions-dialog__btn:hover:not(:disabled) {
+  background: var(--bg-secondary, #f5f5f5);
+}
+
+.document-permissions-dialog__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.document-permissions-dialog__btn--primary {
+  background: var(--primary-color, #4a90d9);
+  border-color: var(--primary-color, #4a90d9);
+  color: white;
+}
+
+.document-permissions-dialog__btn--primary:hover:not(:disabled) {
+  background: var(--primary-hover, #3a7bc8);
+}
+
+.document-permissions-dialog__btn--danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
+}
+
+.document-permissions-dialog__btn--danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+/* Dark mode */
+:root[data-theme="dark"] .document-permissions-dialog {
+  background: var(--bg-primary-dark, #1e1e1e);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__header {
+  background: linear-gradient(135deg, #2d2d2d 0%, #252525 100%);
+  border-color: var(--border-color-dark, #444);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__header h3,
+:root[data-theme="dark"] .document-permissions-dialog__doc-name,
+:root[data-theme="dark"] .document-permissions-dialog__member-name {
+  color: var(--text-primary-dark, #eee);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__doc-info,
+:root[data-theme="dark"] .document-permissions-dialog__member {
+  background: var(--bg-secondary-dark, #2d2d2d);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__permission-select {
+  background: var(--bg-secondary-dark, #2d2d2d);
+  border-color: var(--border-color-dark, #444);
+  color: var(--text-primary-dark, #eee);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__actions {
+  border-color: var(--border-color-dark, #444);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__btn {
+  background: var(--bg-secondary-dark, #2d2d2d);
+  border-color: var(--border-color-dark, #444);
+  color: var(--text-primary-dark, #eee);
+}
+
+:root[data-theme="dark"] .document-permissions-dialog__btn:hover:not(:disabled) {
+  background: var(--bg-hover-dark, #3d3d3d);
+}

@@ -281,6 +281,113 @@ impl DocumentStore {
         }
         false
     }
+
+    /// Get document metadata (alias for get_metadata)
+    pub fn get_document_metadata(&self, doc_id: &str) -> Option<DocumentMetadata> {
+        self.get_metadata(doc_id)
+    }
+
+    /// Update document sharing permissions
+    pub fn update_document_shares(
+        &self,
+        doc_id: &str,
+        shares: &[super::protocol::ShareEntry],
+    ) -> Result<(), String> {
+        // Load document
+        let mut doc = self.get_document(doc_id)?;
+
+        // Build new shares list
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+
+        let new_shares: Vec<DocumentShare> = shares
+            .iter()
+            .filter(|s| s.permission != "none") // "none" means remove access
+            .map(|s| DocumentShare {
+                user_id: s.user_id.clone(),
+                user_name: s.user_name.clone(),
+                permission: s.permission.clone(),
+                shared_at: now,
+            })
+            .collect();
+
+        // Update document JSON
+        doc["sharedWith"] = serde_json::to_value(&new_shares)
+            .map_err(|e| format!("Failed to serialize shares: {}", e))?;
+
+        // Save document
+        self.save_document(doc)?;
+
+        log::info!(
+            "Updated shares for document {}: {} users",
+            doc_id,
+            new_shares.len()
+        );
+        Ok(())
+    }
+
+    /// Transfer document ownership to another user
+    pub fn transfer_ownership(
+        &self,
+        doc_id: &str,
+        new_owner_id: &str,
+        new_owner_name: &str,
+        previous_owner_id: &str,
+    ) -> Result<(), String> {
+        // Load document
+        let mut doc = self.get_document(doc_id)?;
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+
+        // Update owner fields
+        doc["ownerId"] = serde_json::json!(new_owner_id);
+        doc["ownerName"] = serde_json::json!(new_owner_name);
+
+        // Add previous owner as an editor in the shares
+        let mut shares: Vec<DocumentShare> = doc["sharedWith"]
+            .as_array()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| serde_json::from_value(v.clone()).ok())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Remove new owner from shares (they're owner now)
+        shares.retain(|s| s.user_id != new_owner_id);
+
+        // Add previous owner as editor if not already in shares
+        if !shares.iter().any(|s| s.user_id == previous_owner_id) {
+            shares.push(DocumentShare {
+                user_id: previous_owner_id.to_string(),
+                user_name: doc["lastModifiedByName"]
+                    .as_str()
+                    .unwrap_or("Previous Owner")
+                    .to_string(),
+                permission: "edit".to_string(),
+                shared_at: now,
+            });
+        }
+
+        doc["sharedWith"] = serde_json::to_value(&shares)
+            .map_err(|e| format!("Failed to serialize shares: {}", e))?;
+
+        // Save document
+        self.save_document(doc)?;
+
+        log::info!(
+            "Transferred ownership of document {} from {} to {}",
+            doc_id,
+            previous_owner_id,
+            new_owner_id
+        );
+        Ok(())
+    }
 }
 
 #[cfg(test)]

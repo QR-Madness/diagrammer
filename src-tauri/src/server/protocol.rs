@@ -20,6 +20,8 @@ pub const MESSAGE_ERROR: u8 = 8;
 pub const MESSAGE_AUTH_RESPONSE: u8 = 9;
 pub const MESSAGE_JOIN_DOC: u8 = 10;
 pub const MESSAGE_AUTH_LOGIN: u8 = 11;
+pub const MESSAGE_DOC_SHARE: u8 = 12;
+pub const MESSAGE_DOC_TRANSFER: u8 = 13;
 
 /// Authentication request with JWT token (sent by client)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -150,6 +152,56 @@ pub struct DocEvent {
 #[serde(rename_all = "camelCase")]
 pub struct JoinDocRequest {
     pub doc_id: String,
+}
+
+/// Document share/permission update request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocShareRequest {
+    pub request_id: String,
+    pub doc_id: String,
+    /// List of permission entries to set
+    pub shares: Vec<ShareEntry>,
+}
+
+/// Individual share entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShareEntry {
+    pub user_id: String,
+    pub user_name: String,
+    /// "viewer" | "editor" | "none" (none = revoke)
+    pub permission: String,
+}
+
+/// Document share response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocShareResponse {
+    pub request_id: String,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Document ownership transfer request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocTransferRequest {
+    pub request_id: String,
+    pub doc_id: String,
+    pub new_owner_id: String,
+    pub new_owner_name: String,
+}
+
+/// Document ownership transfer response
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocTransferResponse {
+    pub request_id: String,
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
 }
 
 /// Error response

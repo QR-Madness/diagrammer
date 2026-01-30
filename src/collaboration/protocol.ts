@@ -46,6 +46,12 @@ export const MESSAGE_JOIN_DOC = 10;
 /** Authentication with username/password (for client login to host) */
 export const MESSAGE_AUTH_LOGIN = 11;
 
+/** Document share/permissions update */
+export const MESSAGE_DOC_SHARE = 12;
+
+/** Document ownership transfer */
+export const MESSAGE_DOC_TRANSFER = 13;
+
 // ============ Request/Response Types ============
 
 /** Authentication login request (username/password) */
@@ -131,6 +137,43 @@ export interface DocEvent {
 /** Join document request (for CRDT routing) */
 export interface JoinDocRequest {
   docId: string;
+}
+
+/** Share entry for permission updates */
+export interface ShareEntry {
+  userId: string;
+  userName: string;
+  /** "viewer" | "editor" | "none" (none = revoke) */
+  permission: string;
+}
+
+/** Document share request */
+export interface DocShareRequest {
+  requestId: string;
+  docId: string;
+  shares: ShareEntry[];
+}
+
+/** Document share response */
+export interface DocShareResponse {
+  requestId: string;
+  success: boolean;
+  error?: string;
+}
+
+/** Document ownership transfer request */
+export interface DocTransferRequest {
+  requestId: string;
+  docId: string;
+  newOwnerId: string;
+  newOwnerName: string;
+}
+
+/** Document ownership transfer response */
+export interface DocTransferResponse {
+  requestId: string;
+  success: boolean;
+  error?: string;
 }
 
 /** Error response */

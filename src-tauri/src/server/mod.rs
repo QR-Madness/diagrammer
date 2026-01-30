@@ -640,6 +640,8 @@ async fn handle_message(client_id: u64, msg_type: u8, data: &[u8], state: &Arc<S
         MESSAGE_DOC_SAVE => handle_doc_save(client_id, data, state).await,
         MESSAGE_DOC_DELETE => handle_doc_delete(client_id, data, state).await,
         MESSAGE_JOIN_DOC => handle_join_doc(client_id, data, state).await,
+        MESSAGE_DOC_SHARE => handle_doc_share(client_id, data, state).await,
+        MESSAGE_DOC_TRANSFER => handle_doc_transfer(client_id, data, state).await,
         _ => {
             log::warn!("Unknown message type {} from client {}", msg_type, client_id);
         }
@@ -1105,6 +1107,164 @@ async fn handle_join_doc(client_id: u64, data: &[u8], state: &Arc<ServerState>) 
             client.current_doc_id = Some(request.doc_id.clone());
             log::info!("Client {} joined document {}", client_id, request.doc_id);
         }
+    }
+}
+
+/// Handle document share/permission update request
+async fn handle_doc_share(client_id: u64, data: &[u8], state: &Arc<ServerState>) {
+    use protocol::{DocShareRequest, DocShareResponse, MESSAGE_DOC_SHARE};
+
+    let request: DocShareRequest = match decode_payload(data) {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("Failed to decode doc share request: {}", e);
+            return;
+        }
+    };
+
+    // Get user info for permission check
+    let (user_id, role) = {
+        let clients = state.clients.read().await;
+        let client = clients.get(&client_id);
+        (
+            client.and_then(|c| c.user_id.clone()),
+            client.and_then(|c| c.role.clone()),
+        )
+    };
+
+    // Check that user is owner of the document
+    if let Err(perm_err) = check_delete_permission(
+        &state.doc_store,
+        &request.doc_id,
+        user_id.as_deref(),
+        role.as_deref(),
+    ) {
+        // Delete permission == owner permission
+        let response = DocShareResponse {
+            request_id: request.request_id,
+            success: false,
+            error: Some(format!("Permission denied: {}", to_error_string(&perm_err))),
+        };
+        if let Ok(data) = encode_message(MESSAGE_DOC_SHARE, &response) {
+            send_to_client(client_id, data, state).await;
+        }
+        return;
+    }
+
+    // Update document shares
+    let result = state.doc_store.update_document_shares(&request.doc_id, &request.shares);
+
+    let response = match result {
+        Ok(()) => {
+            // Broadcast updated document event
+            if let Some(metadata) = state.doc_store.get_document_metadata(&request.doc_id) {
+                let event = DocEvent {
+                    event_type: DocEventType::Updated,
+                    doc_id: request.doc_id.clone(),
+                    metadata: Some(metadata),
+                    user_id: user_id.unwrap_or_default(),
+                };
+                if let Ok(event_data) = encode_message(MESSAGE_DOC_EVENT, &event) {
+                    state.broadcast_to_all(event_data, None);
+                }
+            }
+
+            DocShareResponse {
+                request_id: request.request_id,
+                success: true,
+                error: None,
+            }
+        }
+        Err(e) => DocShareResponse {
+            request_id: request.request_id,
+            success: false,
+            error: Some(e),
+        },
+    };
+
+    if let Ok(data) = encode_message(MESSAGE_DOC_SHARE, &response) {
+        send_to_client(client_id, data, state).await;
+    }
+}
+
+/// Handle document ownership transfer request
+async fn handle_doc_transfer(client_id: u64, data: &[u8], state: &Arc<ServerState>) {
+    use protocol::{DocTransferRequest, DocTransferResponse, MESSAGE_DOC_TRANSFER};
+
+    let request: DocTransferRequest = match decode_payload(data) {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("Failed to decode doc transfer request: {}", e);
+            return;
+        }
+    };
+
+    // Get user info for permission check
+    let (user_id, role) = {
+        let clients = state.clients.read().await;
+        let client = clients.get(&client_id);
+        (
+            client.and_then(|c| c.user_id.clone()),
+            client.and_then(|c| c.role.clone()),
+        )
+    };
+
+    // Check that user is owner of the document
+    if let Err(perm_err) = check_delete_permission(
+        &state.doc_store,
+        &request.doc_id,
+        user_id.as_deref(),
+        role.as_deref(),
+    ) {
+        let response = DocTransferResponse {
+            request_id: request.request_id,
+            success: false,
+            error: Some(format!("Only owner can transfer: {}", to_error_string(&perm_err))),
+        };
+        if let Ok(data) = encode_message(MESSAGE_DOC_TRANSFER, &response) {
+            send_to_client(client_id, data, state).await;
+        }
+        return;
+    }
+
+    // Transfer ownership
+    let result = state.doc_store.transfer_ownership(
+        &request.doc_id,
+        &request.new_owner_id,
+        &request.new_owner_name,
+        user_id.as_deref().unwrap_or("unknown"),
+    );
+
+    let response = match result {
+        Ok(()) => {
+            // Broadcast updated document event
+            if let Some(metadata) = state.doc_store.get_document_metadata(&request.doc_id) {
+                let event = DocEvent {
+                    event_type: DocEventType::Updated,
+                    doc_id: request.doc_id.clone(),
+                    metadata: Some(metadata),
+                    user_id: user_id.unwrap_or_default(),
+                };
+                if let Ok(event_data) = encode_message(MESSAGE_DOC_EVENT, &event) {
+                    state.broadcast_to_all(event_data, None);
+                }
+            }
+
+            DocTransferResponse {
+                request_id: request.request_id,
+                success: true,
+                error: None,
+            }
+        }
+        Err(e) => DocTransferResponse {
+            request_id: request.request_id,
+            success: false,
+            error: Some(e),
+        },
+    };
+
+    if let Ok(data) = encode_message(MESSAGE_DOC_TRANSFER, &response) {
+        send_to_client(client_id, data, state).await;
     }
 }
 

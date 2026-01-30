@@ -56,6 +56,15 @@ interface DocumentProvider {
   getDocument(docId: string): Promise<DiagramDocument>;
   saveDocument(doc: DiagramDocument): Promise<void>;
   deleteDocument(docId: string): Promise<void>;
+  updateDocumentShares?(
+    docId: string,
+    shares: Array<{ userId: string; userName: string; permission: string }>
+  ): Promise<void>;
+  transferDocumentOwnership?(
+    docId: string,
+    newOwnerId: string,
+    newOwnerName: string
+  ): Promise<void>;
 }
 
 /** Team document store actions */
@@ -77,6 +86,19 @@ interface TeamDocumentActions {
 
   /** Delete a team document from host */
   deleteFromHost: (docId: string) => Promise<void>;
+
+  /** Update document sharing permissions */
+  updateDocumentShares: (
+    docId: string,
+    shares: Array<{ userId: string; userName: string; permission: string }>
+  ) => Promise<void>;
+
+  /** Transfer document ownership */
+  transferDocumentOwnership: (
+    docId: string,
+    newOwnerId: string,
+    newOwnerName: string
+  ) => Promise<void>;
 
   /** Handle document events from host */
   handleDocumentEvent: (event: DocEvent) => void;
@@ -290,6 +312,42 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         useDocumentRegistry.getState().removeDocument(docId);
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to delete document';
+        set({ error });
+        throw e;
+      }
+    },
+
+    updateDocumentShares: async (docId, shares) => {
+      if (!docProvider) {
+        throw new Error('Not connected to host');
+      }
+
+      if (!docProvider.updateDocumentShares) {
+        throw new Error('Provider does not support share updates');
+      }
+
+      try {
+        await docProvider.updateDocumentShares(docId, shares);
+      } catch (e) {
+        const error = e instanceof Error ? e.message : 'Failed to update shares';
+        set({ error });
+        throw e;
+      }
+    },
+
+    transferDocumentOwnership: async (docId, newOwnerId, newOwnerName) => {
+      if (!docProvider) {
+        throw new Error('Not connected to host');
+      }
+
+      if (!docProvider.transferDocumentOwnership) {
+        throw new Error('Provider does not support ownership transfer');
+      }
+
+      try {
+        await docProvider.transferDocumentOwnership(docId, newOwnerId, newOwnerName);
+      } catch (e) {
+        const error = e instanceof Error ? e.message : 'Failed to transfer ownership';
         set({ error });
         throw e;
       }

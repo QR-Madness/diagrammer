@@ -155,6 +155,27 @@
   animation: pulse 1s infinite;
 }
 
+.status-indicator.authenticating {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #3b82f6 100%);
+  background-size: 200% 200%;
+  animation: auth-gradient 1.5s ease infinite, auth-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes auth-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes auth-glow {
+  from {
+    box-shadow: 0 0 4px rgba(59, 130, 246, 0.5), 0 0 8px rgba(139, 92, 246, 0.3);
+  }
+  to {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.8), 0 0 16px rgba(139, 92, 246, 0.5);
+  }
+}
+
 .status-indicator.disconnected {
   background: var(--text-muted, #999);
 }

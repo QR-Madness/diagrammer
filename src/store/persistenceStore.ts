@@ -519,6 +519,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
               [docId]: updatedMeta,
             },
           });
+
+          // Also update the document registry for reactivity
+          useDocumentRegistry.getState().updateRecord(docId, { name });
         }
       },
 

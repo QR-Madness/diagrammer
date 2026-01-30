@@ -5,7 +5,7 @@
  * Used in the DocumentBrowser for unified document listing.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { SyncStatusBadge, type ExtendedSyncState } from './SyncStatusBadge';
 import type { DocumentRecord, Permission } from '../types/DocumentRegistry';
 import './DocumentCard.css';
@@ -23,6 +23,8 @@ interface DocumentCardProps {
   onDelete?: ((id: string) => void | Promise<void>) | undefined;
   /** Callback when rename is requested */
   onRename?: ((id: string, newName: string) => void) | undefined;
+  /** Callback to edit permissions (ownership/access) */
+  onEditPermissions?: ((id: string) => void) | undefined;
   /** Display mode */
   mode?: 'compact' | 'full' | undefined;
 }
@@ -87,11 +89,19 @@ export function DocumentCard({
   onOpen,
   onDelete,
   onRename,
+  onEditPermissions,
   mode = 'compact',
 }: DocumentCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(record.name);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Sync editName when record.name changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setEditName(record.name);
+    }
+  }, [record.name, isEditing]);
 
   const handleClick = useCallback(() => {
     if (!isEditing && onOpen) {
@@ -208,6 +218,18 @@ export function DocumentCard({
 
       {/* Actions */}
       <div className="document-card__actions">
+        {onEditPermissions && record.type === 'remote' && (record as { permission: Permission }).permission === 'owner' && (
+          <button
+            className="document-card__action"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditPermissions(record.id);
+            }}
+            title="Manage permissions"
+          >
+            👥
+          </button>
+        )}
         {onRename && (
           <button
             className="document-card__action"

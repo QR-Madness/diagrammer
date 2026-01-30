@@ -23,7 +23,6 @@ import {
 } from '../../tauri/commands';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { ClientConnectionPanel } from './ClientConnectionPanel';
-import { TeamDocumentsManager } from './TeamDocumentsManager';
 import { TeamMembersManager } from './TeamMembersManager';
 import './CollaborationSettings.css';
 
@@ -429,11 +428,6 @@ export function CollaborationSettings() {
           </div>
         </div>
       )}
-
-      {/* Team Documents Manager */}
-      <div className="settings-group">
-        <TeamDocumentsManager />
-      </div>
 
       {/* Team Members Manager (Admin only) */}
       <div className="settings-group">
