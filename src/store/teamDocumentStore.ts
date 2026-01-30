@@ -16,9 +16,43 @@ import type { DocEvent } from '../collaboration/protocol';
 import type { UnifiedSyncProvider } from '../collaboration/UnifiedSyncProvider';
 import { useDocumentRegistry } from './documentRegistry';
 import { useConnectionStore } from './connectionStore';
+import { useUserStore } from './userStore';
+import type { Permission } from '../types/DocumentRegistry';
 
 // Legacy import for backwards compatibility during transition
 import { DocumentSyncProvider } from '../collaboration/DocumentSyncProvider';
+
+/**
+ * Calculate the effective permission for a user on a document.
+ * Mirrors the backend permission logic in permissions.rs
+ */
+function getEffectivePermission(
+  doc: DocumentMetadata,
+  userId: string | undefined,
+  userRole: string | undefined
+): Permission {
+  if (!userId) return 'viewer'; // Unauthenticated users get minimal access
+  
+  // Owner has full access
+  if (doc.ownerId === userId) return 'owner';
+  
+  // Admins have full access
+  if (userRole === 'admin') return 'owner';
+  
+  // Check explicit shares
+  if (doc.sharedWith) {
+    for (const share of doc.sharedWith) {
+      if (share.userId === userId) {
+        // Map share permission to our Permission type
+        if (share.permission === 'edit') return 'editor';
+        if (share.permission === 'view') return 'viewer';
+      }
+    }
+  }
+  
+  // Default: viewer (can see in list, but limited actions)
+  return 'viewer';
+}
 
 /** Team document store state */
 interface TeamDocumentState {
@@ -188,13 +222,19 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           isLoadingList: false,
         });
 
-        // Register remote documents in the registry
+        // Register remote documents in the registry with proper permissions
         const registry = useDocumentRegistry.getState();
         const connection = useConnectionStore.getState();
+        const userState = useUserStore.getState();
         const hostId = connection.host?.address ?? 'unknown';
+        const userId = userState.currentUser?.id;
+        const userRole = userState.currentUser?.role;
 
-        // Register all remote documents (default to 'editor' permission for now)
-        registry.registerRemoteBatch(documents, hostId, 'editor');
+        // Register each document with its calculated effective permission
+        for (const doc of documents) {
+          const permission = getEffectivePermission(doc, userId, userRole);
+          registry.registerRemote(doc, hostId, permission, 'synced');
+        }
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to fetch documents';
         set({ error, isLoadingList: false });
@@ -356,7 +396,10 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     handleDocumentEvent: (event) => {
       const registry = useDocumentRegistry.getState();
       const connection = useConnectionStore.getState();
+      const userState = useUserStore.getState();
       const hostId = connection.host?.address ?? 'unknown';
+      const userId = userState.currentUser?.id;
+      const userRole = userState.currentUser?.role;
 
       set((state) => {
         const teamDocuments = { ...state.teamDocuments };
@@ -367,8 +410,10 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           case 'updated':
             if (event.metadata) {
               teamDocuments[event.docId] = event.metadata;
+              // Calculate proper permission for this user
+              const permission = getEffectivePermission(event.metadata, userId, userRole);
               // Update registry
-              registry.registerRemote(event.metadata, hostId, 'editor', 'synced');
+              registry.registerRemote(event.metadata, hostId, permission, 'synced');
             }
             // Invalidate cache on update (will be refetched when needed)
             if (event.eventType === 'updated') {

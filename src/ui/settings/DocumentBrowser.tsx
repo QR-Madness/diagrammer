@@ -426,8 +426,8 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               record={record}
               isActive={record.id === currentDocumentId}
               onOpen={handleOpen}
-              onDelete={canDelete(record, currentUser?.id) ? handleDelete : undefined}
-              onRename={canEdit(record, currentUser?.id) ? handleRename : undefined}
+              onDelete={canDelete(record, currentUser?.id, currentUser?.role) ? handleDelete : undefined}
+              onRename={canEdit(record, currentUser?.id, currentUser?.role) ? handleRename : undefined}
               onEditPermissions={canManagePermissions(record, isInTeamMode, currentUser?.id, currentUser?.role) ? setPermissionsDocId : undefined}
               onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
               mode={compact ? 'compact' : 'full'}
@@ -451,17 +451,23 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
 }
 
 /** Check if user can delete a document */
-function canDelete(record: DocumentRecord, _userId?: string): boolean {
+function canDelete(record: DocumentRecord, _userId?: string, userRole?: string): boolean {
   if (record.type === 'local') return true;
+  // Owner can delete
   if (record.type === 'remote' && record.permission === 'owner') return true;
+  // Admin can delete any team document
+  if (record.type === 'remote' && userRole === 'admin') return true;
   if (record.type === 'cached') return true; // Can delete local cache
   return false;
 }
 
 /** Check if user can edit a document */
-function canEdit(record: DocumentRecord, _userId?: string): boolean {
+function canEdit(record: DocumentRecord, _userId?: string, userRole?: string): boolean {
   if (record.type === 'local') return true;
+  // Owner or editor can edit
   if (record.type === 'remote' && (record.permission === 'owner' || record.permission === 'editor')) return true;
+  // Admin can edit any team document
+  if (record.type === 'remote' && userRole === 'admin') return true;
   if (record.type === 'cached') return true;
   return false;
 }
