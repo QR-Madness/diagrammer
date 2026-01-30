@@ -217,10 +217,18 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       };
 
       await saveToHost(teamDoc);
-      // Refresh document list
+
+      // Remove the local copy from localStorage and registry
+      // This prevents it from being re-registered as local
+      deleteDocument(docId);
+
+      // Remove from registry (deleteDocument may have done this, but be explicit)
+      useDocumentRegistry.getState().removeDocument(docId);
+
+      // Refresh document list - this will re-add it as a remote document
       await fetchDocumentList();
     },
-    [currentDocumentId, loadDocument, saveToHost, fetchDocumentList, currentUser]
+    [currentDocumentId, loadDocument, saveToHost, deleteDocument, fetchDocumentList, currentUser]
   );
 
   const handleExport = useCallback(() => {
