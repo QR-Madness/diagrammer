@@ -388,7 +388,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               onOpen={handleOpen}
               onDelete={canDelete(record, currentUser?.id) ? handleDelete : undefined}
               onRename={canEdit(record, currentUser?.id) ? handleRename : undefined}
-              onEditPermissions={isHost ? setPermissionsDocId : undefined}
+              onEditPermissions={canManagePermissions(record, isInTeamMode) ? setPermissionsDocId : undefined}
               mode={compact ? 'compact' : 'full'}
             />
           ))
@@ -423,6 +423,15 @@ function canEdit(record: DocumentRecord, _userId?: string): boolean {
   if (record.type === 'remote' && (record.permission === 'owner' || record.permission === 'editor')) return true;
   if (record.type === 'cached') return true;
   return false;
+}
+
+/** Check if user can manage permissions on a document */
+function canManagePermissions(record: DocumentRecord, isInTeamMode: boolean): boolean {
+  // Only remote documents in team mode can have permissions managed
+  if (!isInTeamMode) return false;
+  if (record.type !== 'remote') return false;
+  // Only owners can manage permissions
+  return record.permission === 'owner';
 }
 
 export default DocumentBrowser;
