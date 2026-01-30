@@ -94,7 +94,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
 
     // Sort by modified date (newest first)
     return filtered.sort((a, b) => b.modifiedAt - a.modifiedAt);
-  }, [getFilteredDocuments, filterMode, searchQuery]);
+  }, [entries, getFilteredDocuments, filterMode, searchQuery]);
 
   // Count documents by type
   const documentCounts = useMemo(() => {
