@@ -376,6 +376,8 @@ describe('Message Channel Classification', () => {
       expect(getMessageChannel(MESSAGE_DOC_DELETE)).toBe('document');
       expect(getMessageChannel(MESSAGE_DOC_EVENT)).toBe('document');
       expect(getMessageChannel(MESSAGE_JOIN_DOC)).toBe('document');
+      expect(getMessageChannel(MESSAGE_DOC_SHARE)).toBe('document');
+      expect(getMessageChannel(MESSAGE_DOC_TRANSFER)).toBe('document');
       expect(getMessageChannel(MESSAGE_ERROR)).toBe('document');
     });
 
@@ -418,6 +420,8 @@ describe('Message Channel Classification', () => {
       expect(isDocumentMessage(MESSAGE_DOC_DELETE)).toBe(true);
       expect(isDocumentMessage(MESSAGE_DOC_EVENT)).toBe(true);
       expect(isDocumentMessage(MESSAGE_JOIN_DOC)).toBe(true);
+      expect(isDocumentMessage(MESSAGE_DOC_SHARE)).toBe(true);
+      expect(isDocumentMessage(MESSAGE_DOC_TRANSFER)).toBe(true);
       expect(isDocumentMessage(MESSAGE_ERROR)).toBe(true);
     });
 
@@ -433,6 +437,8 @@ describe('Message Channel Classification', () => {
       expect(isRequestMessage(MESSAGE_DOC_GET)).toBe(true);
       expect(isRequestMessage(MESSAGE_DOC_SAVE)).toBe(true);
       expect(isRequestMessage(MESSAGE_DOC_DELETE)).toBe(true);
+      expect(isRequestMessage(MESSAGE_DOC_SHARE)).toBe(true);
+      expect(isRequestMessage(MESSAGE_DOC_TRANSFER)).toBe(true);
       expect(isRequestMessage(MESSAGE_AUTH_LOGIN)).toBe(true);
     });
 
@@ -459,6 +465,8 @@ describe('getMessageTypeName', () => {
     expect(getMessageTypeName(MESSAGE_AUTH_RESPONSE)).toBe('AUTH_RESPONSE');
     expect(getMessageTypeName(MESSAGE_JOIN_DOC)).toBe('JOIN_DOC');
     expect(getMessageTypeName(MESSAGE_AUTH_LOGIN)).toBe('AUTH_LOGIN');
+    expect(getMessageTypeName(MESSAGE_DOC_SHARE)).toBe('DOC_SHARE');
+    expect(getMessageTypeName(MESSAGE_DOC_TRANSFER)).toBe('DOC_TRANSFER');
   });
 
   it('returns UNKNOWN for unknown types', () => {

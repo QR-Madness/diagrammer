@@ -291,6 +291,8 @@ export function getMessageChannel(msgType: number): MessageChannel {
     case MESSAGE_DOC_DELETE:
     case MESSAGE_DOC_EVENT:
     case MESSAGE_JOIN_DOC:
+    case MESSAGE_DOC_SHARE:
+    case MESSAGE_DOC_TRANSFER:
     case MESSAGE_ERROR:
       return 'document';
 
@@ -326,6 +328,8 @@ export function isDocumentMessage(msgType: number): boolean {
          msgType === MESSAGE_DOC_DELETE ||
          msgType === MESSAGE_DOC_EVENT ||
          msgType === MESSAGE_JOIN_DOC ||
+         msgType === MESSAGE_DOC_SHARE ||
+         msgType === MESSAGE_DOC_TRANSFER ||
          msgType === MESSAGE_ERROR;
 }
 
@@ -337,6 +341,8 @@ export function isRequestMessage(msgType: number): boolean {
          msgType === MESSAGE_DOC_GET ||
          msgType === MESSAGE_DOC_SAVE ||
          msgType === MESSAGE_DOC_DELETE ||
+         msgType === MESSAGE_DOC_SHARE ||
+         msgType === MESSAGE_DOC_TRANSFER ||
          msgType === MESSAGE_AUTH_LOGIN;
 }
 
@@ -357,6 +363,8 @@ export function getMessageTypeName(msgType: number): string {
     case MESSAGE_AUTH_RESPONSE: return 'AUTH_RESPONSE';
     case MESSAGE_JOIN_DOC: return 'JOIN_DOC';
     case MESSAGE_AUTH_LOGIN: return 'AUTH_LOGIN';
+    case MESSAGE_DOC_SHARE: return 'DOC_SHARE';
+    case MESSAGE_DOC_TRANSFER: return 'DOC_TRANSFER';
     default: return `UNKNOWN(${msgType})`;
   }
 }
