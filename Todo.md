@@ -657,9 +657,12 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] Add a test regex button to layer view creator to get a results-preview
 - [x] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
 
-##### Phase 14.2.5: Protocol & Backend Testing
+##### Phase 14.2.5: Protocol & Backend Testing - COMPLETE
 
-- [ ] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
+- [x] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
+  - 47 protocol tests: message encoding/decoding, error code helpers, channel classification, round-trip validation
+  - 42 UnifiedSyncProvider tests: connection lifecycle, token/credentials auth, document CRUD operations, events, awareness
+  - Fixed bug: MESSAGE_DOC_SHARE and MESSAGE_DOC_TRANSFER responses weren't being handled
 
 #### Phase 14.3: Rich Document Editor Upgrades (Large)
 

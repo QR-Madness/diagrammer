@@ -621,6 +621,8 @@ export class UnifiedSyncProvider {
       case MESSAGE_DOC_GET:
       case MESSAGE_DOC_SAVE:
       case MESSAGE_DOC_DELETE:
+      case MESSAGE_DOC_SHARE:
+      case MESSAGE_DOC_TRANSFER:
         this.handleDocResponse(data);
         break;
       case MESSAGE_DOC_EVENT:
