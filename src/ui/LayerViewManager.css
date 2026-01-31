@@ -367,3 +367,116 @@
 [data-theme="dark"] .layer-view-help code {
   background: var(--bg-tertiary, #3d3d3d);
 }
+
+/* Regex test button and preview */
+.layer-view-form-regex-row {
+  display: flex;
+  gap: 8px;
+}
+
+.layer-view-form-regex-row input {
+  flex: 1;
+}
+
+.layer-view-form-test {
+  padding: 6px 12px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 6px;
+  background: var(--bg-secondary, #f8f9fa);
+  color: var(--text-primary, #212529);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.layer-view-form-test:hover:not(:disabled) {
+  background: var(--bg-hover, #e9ecef);
+  border-color: var(--accent-color, #2196f3);
+}
+
+.layer-view-form-test:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.layer-view-preview {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary, #f8f9fa);
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #dee2e6);
+  font-size: 12px;
+}
+
+.layer-view-preview strong {
+  color: var(--text-primary, #212529);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.layer-view-preview-empty {
+  color: var(--text-muted, #868e96);
+  font-style: italic;
+  margin-left: 8px;
+}
+
+.layer-view-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layer-view-preview-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.layer-view-preview-type {
+  background: var(--accent-color, #2196f3);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.layer-view-preview-label {
+  color: var(--text-secondary, #6c757d);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-view-preview-more {
+  color: var(--text-muted, #868e96);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* Dark mode for regex test */
+[data-theme="dark"] .layer-view-form-test {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #3d3d3d);
+  color: var(--text-primary, #e0e0e0);
+}
+
+[data-theme="dark"] .layer-view-form-test:hover:not(:disabled) {
+  background: var(--bg-hover, #2a2a2a);
+}
+
+[data-theme="dark"] .layer-view-preview {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #3d3d3d);
+}
+
+[data-theme="dark"] .layer-view-preview strong {
+  color: var(--text-primary, #e0e0e0);
+}

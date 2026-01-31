@@ -653,9 +653,9 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ##### Phase 14.2.4: UX Improvements - Chunk 4 (Small)
 
-- [ ] Translate selected items using arrow keys
-- [ ] Add a test regex button to layer view creator to get a results-preview
-- [ ] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
+- [x] Translate selected items using arrow keys
+- [x] Add a test regex button to layer view creator to get a results-preview
+- [x] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
 
 ##### Phase 14.2.5: Protocol & Backend Testing
 

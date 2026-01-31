@@ -57,13 +57,20 @@ const DEFAULT_OPTIONS: Required<EngineOptions> = {
 /** Pan speed in world units per frame */
 const PAN_SPEED = 10;
 
+/** Nudge speed for translating shapes (world units) */
+const NUDGE_AMOUNT = 10;
+
 /** Zoom speed per frame (multiplier) */
 const ZOOM_SPEED = 0.02;
 
-/** Keys that trigger panning */
+/** Keys that trigger panning (WASD only - arrow keys nudge shapes when selected) */
 const PAN_KEYS = new Set([
-  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'w', 'W', 'a', 'A', 's', 'S', 'd', 'D',
+]);
+
+/** Arrow keys for nudging shapes or panning if no selection */
+const ARROW_KEYS = new Set([
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
 ]);
 
 /** Keys that trigger zooming */
@@ -650,7 +657,7 @@ export class Engine {
   }
 
   /**
-   * Handle keydown for keyboard navigation (pan and zoom).
+   * Handle keydown for keyboard navigation (pan, zoom, and shape nudging).
    * Returns true if the event was handled.
    */
   private handleKeyboardPanDown(event: KeyboardEvent): boolean {
@@ -659,11 +666,12 @@ export class Engine {
       return false;
     }
 
-    // Check if this is a navigation key (pan or zoom)
+    // Check key types
     const isPanKey = PAN_KEYS.has(event.key);
+    const isArrowKey = ARROW_KEYS.has(event.key);
     const isZoomKey = ZOOM_KEYS.has(event.key);
 
-    if (!isPanKey && !isZoomKey) {
+    if (!isPanKey && !isArrowKey && !isZoomKey) {
       return false;
     }
 
@@ -688,7 +696,17 @@ export class Engine {
     // Prevent page scrolling
     event.preventDefault();
 
-    // Add key to active set
+    // Arrow keys: nudge selected shapes if there's a selection, otherwise pan
+    if (isArrowKey) {
+      const selectedIds = useSessionStore.getState().getSelectedIds();
+      if (selectedIds.length > 0) {
+        this.nudgeSelectedShapes(event.key, event.shiftKey);
+        return true;
+      }
+      // Fall through to pan if no selection
+    }
+
+    // Add key to active set for panning
     this.activePanKeys.add(event.key);
 
     // Start pan animation if not already running
@@ -697,6 +715,68 @@ export class Engine {
     }
 
     return true;
+  }
+
+  /**
+   * Nudge selected shapes in the direction of the arrow key.
+   */
+  private nudgeSelectedShapes(key: string, shiftHeld: boolean): void {
+    const amount = shiftHeld ? NUDGE_AMOUNT * 10 : NUDGE_AMOUNT;
+    let dx = 0;
+    let dy = 0;
+
+    switch (key) {
+      case 'ArrowUp':
+        dy = -amount;
+        break;
+      case 'ArrowDown':
+        dy = amount;
+        break;
+      case 'ArrowLeft':
+        dx = -amount;
+        break;
+      case 'ArrowRight':
+        dx = amount;
+        break;
+    }
+
+    if (dx === 0 && dy === 0) return;
+
+    const selectedIds = useSessionStore.getState().getSelectedIds();
+    const shapes = useDocumentStore.getState().shapes;
+    const updateShape = useDocumentStore.getState().updateShape;
+
+    // Push to history on first nudge
+    pushHistory('Nudge shapes');
+
+    for (const id of selectedIds) {
+      const shape = shapes[id];
+      if (!shape || shape.locked) continue;
+
+      // Update shape position based on shape type
+      if ('x' in shape && 'y' in shape) {
+        updateShape(id, {
+          x: (shape as { x: number }).x + dx,
+          y: (shape as { y: number }).y + dy,
+        });
+      }
+
+      // Also update line/connector endpoints
+      if ('x2' in shape && 'y2' in shape) {
+        updateShape(id, {
+          x2: (shape as { x2: number }).x2 + dx,
+          y2: (shape as { y2: number }).y2 + dy,
+        });
+      }
+
+      // Update spatial index
+      const updatedShape = useDocumentStore.getState().shapes[id];
+      if (updatedShape) {
+        this.spatialIndex.update(updatedShape);
+      }
+    }
+
+    this.renderer.requestRender();
   }
 
   /**

@@ -185,16 +185,39 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   // First-time setup mode
   if (isSetupMode) {
     return (
-      <div className="login-page">
+      <div className="login-page setup-mode">
         <div className="login-container">
           <div className="login-header">
-            <h1>Diagrammer</h1>
-            <p className="login-subtitle">First-Time Setup</p>
+            <span className="setup-welcome-icon">🎨</span>
+            <h1>Welcome to Diagrammer</h1>
+            <p className="login-subtitle">Let's get you set up</p>
           </div>
 
-          <p className="setup-description">
-            Create an administrator account to get started with team collaboration.
-          </p>
+          <div className="setup-steps">
+            <div className="setup-step active">
+              <span className="setup-step-number">1</span>
+              <span>Create Admin</span>
+            </div>
+            <div className="setup-step">
+              <span className="setup-step-number">2</span>
+              <span>Start Collaborating</span>
+            </div>
+          </div>
+
+          <div className="setup-features">
+            <div className="setup-feature">
+              <span className="setup-feature-icon">👥</span>
+              <span>Invite team members to collaborate in real-time</span>
+            </div>
+            <div className="setup-feature">
+              <span className="setup-feature-icon">🔒</span>
+              <span>Secure local hosting — your data stays on your network</span>
+            </div>
+            <div className="setup-feature">
+              <span className="setup-feature-icon">📁</span>
+              <span>Share diagrams with fine-grained permissions</span>
+            </div>
+          </div>
 
           <form className="login-form" onSubmit={handleSetup}>
             <div className="form-group">
@@ -205,7 +228,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 type="text"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your Name"
+                placeholder="e.g. John Smith"
                 autoComplete="name"
                 disabled={isCreatingUser}
               />
@@ -219,7 +242,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="e.g. admin"
                 autoComplete="username"
                 disabled={isCreatingUser}
               />
@@ -233,7 +256,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
+                placeholder="At least 6 characters"
                 autoComplete="new-password"
                 disabled={isCreatingUser}
               />
@@ -247,7 +270,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
+                placeholder="Re-enter your password"
                 autoComplete="new-password"
                 disabled={isCreatingUser}
               />
