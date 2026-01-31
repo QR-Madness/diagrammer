@@ -168,7 +168,7 @@ export function GeneralSettings() {
               checked={showMinimap}
               onChange={(e) => setShowMinimap(e.target.checked)}
             />
-            <span className="settings-checkbox-text">Show Minimap</span>
+            <span className="settings-checkbox-text">Show Minimap (Experimental)</span>
           </label>
           <span className="settings-hint">
             Display a minimap for navigating large canvases

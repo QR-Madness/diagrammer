@@ -282,11 +282,34 @@ mod tests {
     }
 
     #[test]
-    fn test_admin_implicit_editor() {
+    fn test_admin_has_owner_permission() {
+        // Admins have implicit Owner access for management purposes
         let metadata = make_metadata("user-1", vec![]);
         assert_eq!(
             get_user_permission(&metadata, "user-2", Some("admin")),
-            Permission::Editor
+            Permission::Owner
+        );
+    }
+
+    #[test]
+    fn test_admin_can_manage_any_document() {
+        let metadata = make_metadata("user-1", vec![]);
+        let permission = get_user_permission(&metadata, "admin-user", Some("admin"));
+        
+        // Admin should have full management capabilities
+        assert!(permission.can_read());
+        assert!(permission.can_write());
+        assert!(permission.can_delete());
+        assert!(permission.can_manage_shares());
+    }
+
+    #[test]
+    fn test_owner_takes_precedence_over_share() {
+        // Even if owner is in shares with lower permission, they're still owner
+        let metadata = make_metadata("user-1", vec![("user-1", "view")]);
+        assert_eq!(
+            get_user_permission(&metadata, "user-1", None),
+            Permission::Owner
         );
     }
 
@@ -313,6 +336,16 @@ mod tests {
     }
 
     #[test]
+    fn test_no_access_with_user_role() {
+        // Non-admin user role should not grant access
+        let metadata = make_metadata("user-1", vec![]);
+        assert_eq!(
+            get_user_permission(&metadata, "user-2", Some("user")),
+            Permission::None
+        );
+    }
+
+    #[test]
     fn test_permission_ordering() {
         assert!(Permission::Owner > Permission::Editor);
         assert!(Permission::Editor > Permission::Viewer);
@@ -324,17 +357,40 @@ mod tests {
         assert!(Permission::Owner.can_read());
         assert!(Permission::Owner.can_write());
         assert!(Permission::Owner.can_delete());
+        assert!(Permission::Owner.can_manage_shares());
 
         assert!(Permission::Editor.can_read());
         assert!(Permission::Editor.can_write());
         assert!(!Permission::Editor.can_delete());
+        assert!(!Permission::Editor.can_manage_shares());
 
         assert!(Permission::Viewer.can_read());
         assert!(!Permission::Viewer.can_write());
         assert!(!Permission::Viewer.can_delete());
+        assert!(!Permission::Viewer.can_manage_shares());
 
         assert!(!Permission::None.can_read());
         assert!(!Permission::None.can_write());
         assert!(!Permission::None.can_delete());
+        assert!(!Permission::None.can_manage_shares());
+    }
+
+    #[test]
+    fn test_permission_from_str() {
+        assert_eq!(Permission::from_str("owner"), Permission::Owner);
+        assert_eq!(Permission::from_str("edit"), Permission::Editor);
+        assert_eq!(Permission::from_str("editor"), Permission::Editor);
+        assert_eq!(Permission::from_str("view"), Permission::Viewer);
+        assert_eq!(Permission::from_str("viewer"), Permission::Viewer);
+        assert_eq!(Permission::from_str("invalid"), Permission::None);
+        assert_eq!(Permission::from_str(""), Permission::None);
+    }
+
+    #[test]
+    fn test_permission_as_str() {
+        assert_eq!(Permission::Owner.as_str(), "owner");
+        assert_eq!(Permission::Editor.as_str(), "edit");
+        assert_eq!(Permission::Viewer.as_str(), "view");
+        assert_eq!(Permission::None.as_str(), "none");
     }
 }

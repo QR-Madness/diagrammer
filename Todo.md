@@ -633,6 +633,15 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] Move all document lists to a Documents area in the settings (remove any document management from the collaboration area); showing a section for remote documents, and a section for local documents and adding every-form of management into the dedicated documents area
 - [x] Add a cool animation for authenticating clients
 
+##### Known Issues
+
+- **Minimap**: Experimental feature with known bugs (navigation, rendering). Marked as experimental in settings.
+
+##### Phase 14.2.Testing: Protocol & Backend Testing
+
+- [ ] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
+- [ ] Playwright E2E tests for critical collaboration flows (auth, document publish, permissions)
+
 ##### Phase 14.2.2: UX Improvements - Chunk 2 (Medium)
 
 - [ ] Smart-alignment for shape resize
