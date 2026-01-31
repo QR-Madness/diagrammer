@@ -83,7 +83,7 @@ function ToolButton({
 function DocumentInfo() {
   const currentDocumentName = usePersistenceStore((state) => state.currentDocumentName);
   const renameDocument = usePersistenceStore((state) => state.renameDocument);
-  const { isDirty, saveNow } = useAutoSave();
+  const { isDirty, status, saveNow } = useAutoSave();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -139,13 +139,43 @@ function DocumentInfo() {
         </button>
       )}
       <span
-        className={`document-status ${isDirty ? 'dirty' : 'saved'}`}
+        className={`document-status ${status === 'saving' ? 'saving' : isDirty ? 'dirty' : 'saved'}`}
         onClick={isDirty ? saveNow : undefined}
-        title={isDirty ? 'Unsaved changes - click to save' : 'Saved'}
+        title={status === 'saving' ? 'Saving...' : isDirty ? 'Unsaved changes - click to save' : 'Saved'}
       >
-        {isDirty ? '🔥' : '✅'}
+        {status === 'saving' ? (
+          <SavingIcon />
+        ) : isDirty ? (
+          <DirtyIcon />
+        ) : (
+          <SavedIcon />
+        )}
       </span>
     </div>
+  );
+}
+
+function SavingIcon() {
+  return (
+    <svg className="status-icon saving-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="20 8" />
+    </svg>
+  );
+}
+
+function DirtyIcon() {
+  return (
+    <svg className="status-icon" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <circle cx="7" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function SavedIcon() {
+  return (
+    <svg className="status-icon saved-check" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path className="check-path" d="M3 7l3 3 5-6" />
+    </svg>
   );
 }
 

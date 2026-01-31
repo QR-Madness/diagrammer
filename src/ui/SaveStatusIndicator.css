@@ -66,10 +66,6 @@
   color: var(--color-primary);
 }
 
-.save-status-badge.saving .save-status-icon {
-  animation: spin 1s linear infinite;
-}
-
 .save-status-badge.dirty {
   background-color: rgba(245, 158, 11, 0.1);
   color: var(--color-warning, #f59e0b);
@@ -80,7 +76,29 @@
 }
 
 .save-status-icon {
-  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-icon-svg {
+  display: block;
+}
+
+.save-icon-svg.saving-spin {
+  animation: spin 1s linear infinite;
+}
+
+.save-icon-svg.saved-check .check-path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: draw-check 0.4s ease-out forwards;
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .save-status-text {

@@ -228,6 +228,9 @@
 }
 
 .document-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 0.875rem;
   cursor: default;
 }
@@ -237,8 +240,35 @@
   cursor: pointer;
 }
 
+.document-status.saving {
+  color: var(--color-primary, #4a90d9);
+}
+
 .document-status.saved {
   color: #10b981;
+}
+
+.status-icon {
+  display: block;
+}
+
+.status-icon.saving-spin {
+  animation: spin 1s linear infinite;
+}
+
+.status-icon.saved-check .check-path {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  animation: draw-check 0.4s ease-out forwards;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes draw-check {
+  to { stroke-dashoffset: 0; }
 }
 
 /* Inline Page Tabs */

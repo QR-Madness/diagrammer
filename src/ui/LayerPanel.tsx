@@ -3,6 +3,7 @@ import { useDocumentStore } from '../store/documentStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useHistoryStore } from '../store/historyStore';
 import { useLayerViewStore, getMatchingShapeIds } from '../store/layerViewStore';
+import { useSettingsStore } from '../store/settingsStore';
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { nanoid } from 'nanoid';
 import { LayerViewManager } from './LayerViewManager';
@@ -159,6 +160,7 @@ export function LayerPanel() {
   const clearSelection = useSessionStore((state) => state.clearSelection);
   const focusOnShape = useSessionStore((state) => state.focusOnShape);
   const push = useHistoryStore((state) => state.push);
+  const layerClickFocusShape = useSettingsStore((state) => state.layerClickFocusShape);
 
   // Layer view store
   const views = useLayerViewStore((state) => state.views);
@@ -478,9 +480,17 @@ export function LayerPanel() {
     } else {
       select([id]);
     }
-    // Focus camera on the shape and trigger emphasis animation
+    // Focus camera on the shape and trigger emphasis animation (if enabled)
+    if (layerClickFocusShape) {
+      focusOnShape(id);
+    }
+  }, [addToSelection, select, focusOnShape, layerClickFocusShape]);
+
+  // Manually focus on a shape (used by focus button)
+  const handleFocusShape = useCallback((e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     focusOnShape(id);
-  }, [addToSelection, select, focusOnShape]);
+  }, [focusOnShape]);
 
   const handleMoveToFront = useCallback((id: string) => {
     push('Bring to front');
@@ -741,6 +751,13 @@ export function LayerPanel() {
 
           <div className="layer-item-actions">
             <button
+              className="layer-action-btn"
+              onClick={(e) => handleFocusShape(e, id)}
+              title="Focus on shape"
+            >
+              <FocusIcon />
+            </button>
+            <button
               className={`layer-action-btn ${shape.visible ? '' : 'inactive'}`}
               onClick={(e) => {
                 e.stopPropagation();
@@ -798,7 +815,7 @@ export function LayerPanel() {
   }, [
     selectedIds, draggedId, dropZone, expandedGroups, shapes,
     handleDragStart, handleDragOver, handleDragLeave, handleDrop, handleDragEnd,
-    handleSelectShape, handleToggleExpand, handleToggleVisibility, handleToggleLock,
+    handleSelectShape, handleFocusShape, handleToggleExpand, handleToggleVisibility, handleToggleLock,
     handleMoveToFront, handleMoveToBack, handleContextMenu, renamingGroupId, renameValue,
     handleFinishRename, handleCancelRename
   ]);
@@ -1070,6 +1087,15 @@ function EyeIcon() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" />
       <circle cx="7" cy="7" r="2" />
+    </svg>
+  );
+}
+
+function FocusIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="7" cy="7" r="3" />
+      <path d="M7 1v2M7 11v2M1 7h2M11 7h2" />
     </svg>
   );
 }

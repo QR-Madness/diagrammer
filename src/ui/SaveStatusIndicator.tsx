@@ -79,18 +79,31 @@ export function SaveStatusIndicator() {
   // Get status icon and text
   const getStatusDisplay = () => {
     if (status === 'saving') {
-      return { icon: '↻', text: 'Saving...', className: 'saving' };
+      return { icon: 'saving', text: 'Saving...', className: 'saving' };
     }
     if (isDirty) {
-      return { icon: '●', text: 'Unsaved', className: 'dirty' };
+      return { icon: 'dirty', text: 'Unsaved', className: 'dirty' };
     }
     if (status === 'saved' || lastSavedAt) {
-      return { icon: '✓', text: formatLastSaved(lastSavedAt), className: 'saved' };
+      return { icon: 'saved', text: formatLastSaved(lastSavedAt), className: 'saved' };
     }
     return { icon: '', text: '', className: '' };
   };
 
   const statusDisplay = getStatusDisplay();
+
+  const renderStatusIcon = () => {
+    switch (statusDisplay.icon) {
+      case 'saving':
+        return <SavingIcon />;
+      case 'dirty':
+        return <DirtyIcon />;
+      case 'saved':
+        return <SavedIcon />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="save-status-indicator">
@@ -119,7 +132,7 @@ export function SaveStatusIndicator() {
 
       {statusDisplay.text && (
         <div className={`save-status-badge ${statusDisplay.className}`}>
-          <span className="save-status-icon">{statusDisplay.icon}</span>
+          <span className="save-status-icon">{renderStatusIcon()}</span>
           <span className="save-status-text">{statusDisplay.text}</span>
         </div>
       )}
@@ -130,5 +143,31 @@ export function SaveStatusIndicator() {
         </button>
       )}
     </div>
+  );
+}
+
+// SVG Icons for save status
+
+function SavingIcon() {
+  return (
+    <svg className="save-icon-svg saving-spin" width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="20 8" />
+    </svg>
+  );
+}
+
+function DirtyIcon() {
+  return (
+    <svg className="save-icon-svg" width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+      <circle cx="7" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function SavedIcon() {
+  return (
+    <svg className="save-icon-svg saved-check" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path className="check-path" d="M3 7l3 3 5-6" />
+    </svg>
   );
 }

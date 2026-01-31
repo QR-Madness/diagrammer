@@ -30,6 +30,8 @@ export interface SettingsState {
   saveLabelStyleToProfile: boolean;
   /** Show minimap for canvas navigation */
   showMinimap: boolean;
+  /** Auto-focus camera on shape when clicking layer item */
+  layerClickFocusShape: boolean;
 }
 
 /**
@@ -60,6 +62,10 @@ export interface SettingsActions {
   toggleShowMinimap: () => void;
   /** Set minimap visibility */
   setShowMinimap: (show: boolean) => void;
+  /** Toggle layer click focus shape */
+  toggleLayerClickFocusShape: () => void;
+  /** Set layer click focus shape */
+  setLayerClickFocusShape: (focus: boolean) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -75,6 +81,7 @@ const initialState: SettingsState = {
   saveIconStyleToProfile: true,
   saveLabelStyleToProfile: true,
   showMinimap: false,
+  layerClickFocusShape: false,
 };
 
 /**
@@ -148,6 +155,14 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         set({ showMinimap: show });
       },
 
+      toggleLayerClickFocusShape: () => {
+        set({ layerClickFocusShape: !get().layerClickFocusShape });
+      },
+
+      setLayerClickFocusShape: (focus: boolean) => {
+        set({ layerClickFocusShape: focus });
+      },
+
       resetSettings: () => {
         set(initialState);
       },
@@ -162,6 +177,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         saveIconStyleToProfile: state.saveIconStyleToProfile,
         saveLabelStyleToProfile: state.saveLabelStyleToProfile,
         showMinimap: state.showMinimap,
+        layerClickFocusShape: state.layerClickFocusShape,
       }),
     }
   )

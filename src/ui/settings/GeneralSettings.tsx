@@ -25,6 +25,8 @@ export function GeneralSettings() {
   const setHideDefaultStyleProfiles = useSettingsStore((state) => state.setHideDefaultStyleProfiles);
   const showMinimap = useSettingsStore((state) => state.showMinimap);
   const setShowMinimap = useSettingsStore((state) => state.setShowMinimap);
+  const layerClickFocusShape = useSettingsStore((state) => state.layerClickFocusShape);
+  const setLayerClickFocusShape = useSettingsStore((state) => state.setLayerClickFocusShape);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   const profiles = useStyleProfileStore((state) => state.profiles);
@@ -172,6 +174,21 @@ export function GeneralSettings() {
           </label>
           <span className="settings-hint">
             Display a minimap for navigating large canvases
+          </span>
+        </div>
+
+        <div className="settings-row settings-row-checkbox">
+          <label className="settings-checkbox-label">
+            <input
+              type="checkbox"
+              className="settings-checkbox"
+              checked={layerClickFocusShape}
+              onChange={(e) => setLayerClickFocusShape(e.target.checked)}
+            />
+            <span className="settings-checkbox-text">Auto-focus on layer click</span>
+          </label>
+          <span className="settings-hint">
+            Automatically pan camera to shape when clicking in the layer panel
           </span>
         </div>
       </div>

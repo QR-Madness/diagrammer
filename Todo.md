@@ -647,9 +647,9 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ##### Phase 14.2.3: UX Improvements - Chunk 3 (Medium)
 
-- [ ] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
-- [ ] Cool Saving/Saved icon & animation
-- [ ] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
+- [x] Implement a button to snap to a layer item instead of doing it on-layer-click (but add this option in the settings to enable the auto-snap again)
+- [x] Cool Saving/Saved icon & animation
+- [x] Add a small-search button on the style profiles action bar (with the view mode) which opens a search bar to filter style profiles, also add a clear filter button when the style profile filter is active
 
 ##### Phase 14.2.4: UX Improvements - Chunk 4 (Small)
 
@@ -660,7 +660,6 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 ##### Phase 14.2.5: Protocol & Backend Testing
 
 - [ ] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
-- [ ] Playwright E2E tests for critical collaboration flows (auth, document publish, permissions)
 
 #### Phase 14.3: Rich Document Editor Upgrades (Large)
 

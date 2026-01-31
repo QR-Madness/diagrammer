@@ -46,17 +46,28 @@ export function StyleProfilePanel() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [adjustedContextMenuPos, setAdjustedContextMenuPos] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
 
-  // Filter and sort profiles: optionally hide defaults, favorites first (alphabetically), then non-favorites (alphabetically)
+  // Filter and sort profiles: optionally hide defaults, apply search, favorites first (alphabetically), then non-favorites (alphabetically)
   const profiles = [...storeProfiles]
     .filter((profile) => !hideDefaultStyleProfiles || !profile.id.startsWith('default-'))
+    .filter((profile) => !searchQuery || profile.name.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
       if (a.favorite && !b.favorite) return -1;
       if (!a.favorite && b.favorite) return 1;
       return a.name.localeCompare(b.name);
     });
+
+  // Focus search input when search opens
+  useEffect(() => {
+    if (isSearching && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearching]);
 
   const selectedShapes = getSelectedShapes();
   const hasSelection = selectedShapes.length > 0;
@@ -242,6 +253,14 @@ export function StyleProfilePanel() {
       <div className="style-profile-header">
         <span>Style Profiles</span>
         <div className="style-profile-header-actions">
+          {/* Search button */}
+          <button
+            className={`style-profile-view-btn ${isSearching || searchQuery ? 'active' : ''}`}
+            onClick={() => setIsSearching(!isSearching)}
+            title="Search profiles"
+          >
+            <SearchIcon />
+          </button>
           {/* View mode toggle */}
           <button
             className={`style-profile-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
@@ -268,6 +287,52 @@ export function StyleProfilePanel() {
           )}
         </div>
       </div>
+
+      {/* Search bar */}
+      {isSearching && (
+        <div className="style-profile-search">
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search profiles..."
+            className="style-profile-search-input"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsSearching(false);
+                setSearchQuery('');
+              }
+            }}
+          />
+          {searchQuery && (
+            <button
+              className="style-profile-search-clear"
+              onClick={() => setSearchQuery('')}
+              title="Clear search"
+            >
+              <CloseIcon />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Active filter indicator */}
+      {searchQuery && !isSearching && (
+        <div className="style-profile-filter-active">
+          <span>Filtered: "{searchQuery}"</span>
+          <button
+            className="style-profile-filter-clear"
+            onClick={() => {
+              setSearchQuery('');
+              setIsSearching(false);
+            }}
+            title="Clear filter"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+      )}
 
       {/* Create new profile form */}
       {isCreating && firstShape && (
@@ -637,6 +702,23 @@ function OverwriteIcon() {
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
       <path d="M2 10v2h2l6-6-2-2-6 6z" />
       <path d="M9 3l2 2" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="6" cy="6" r="4" />
+      <path d="M9 9l3 3" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 2l8 8M10 2l-8 8" />
     </svg>
   );
 }
