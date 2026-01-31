@@ -100,7 +100,7 @@ function App() {
                 <CanvasContainer
                   className="canvas-area"
                   showGrid={true}
-                  showFps={true}
+                  showFps={import.meta.env.DEV}
                 />
                 <PropertyPanel />
                 <LayerPanel />

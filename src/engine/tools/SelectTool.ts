@@ -6,7 +6,7 @@ import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
 import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup, isConnector, isLibraryShape, Anchor, AnchorPosition } from '../../shapes/Shape';
 import { useDocumentStore } from '../../store/documentStore';
-import { snapBounds, SnapResult } from '../Snapping';
+import { snapBounds, snap, SnapResult } from '../Snapping';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
 
 /**
@@ -422,8 +422,8 @@ export class SelectTool extends BaseTool {
   renderOverlay(ctx2d: CanvasRenderingContext2D, toolCtx: ToolContext): void {
     const camera = toolCtx.camera;
 
-    // Draw snap guides when translating
-    if (this.state === 'translating' && this.currentSnapResult) {
+    // Draw snap guides when translating or resizing
+    if ((this.state === 'translating' || this.state === 'resizing') && this.currentSnapResult) {
       ctx2d.save();
       ctx2d.strokeStyle = '#ff4081'; // Pink/magenta for snap guides
       ctx2d.lineWidth = 1;
@@ -879,6 +879,39 @@ export class SelectTool extends BaseTool {
       } else {
         this.connectorHoveredAnchor = null;
       }
+    } else {
+      // For non-connectors, apply smart-alignment snapping
+      const snapSettings = ctx.getSnapSettings();
+      if (snapSettings.enabled) {
+        const shapes = ctx.getShapes();
+        const shapeOrder = ctx.getShapeOrder();
+        const excludeIds = new Set([this.resizeShapeId]);
+
+        const snapResult = snap(currentPoint, shapes, shapeOrder, {
+          snapToGrid: snapSettings.snapToGrid,
+          snapToShapes: snapSettings.snapToShapes,
+          gridSpacing: snapSettings.gridSpacing,
+          excludeIds,
+        });
+
+        if (snapResult.snappedX || snapResult.snappedY) {
+          currentPoint = snapResult.position;
+          this.currentSnapResult = snapResult;
+
+          // Set snap guides for visual feedback
+          const guides: { verticalX?: number; horizontalY?: number } = {};
+          if (snapResult.snappedX && snapResult.snapLineX !== undefined) {
+            guides.verticalX = snapResult.snapLineX;
+          }
+          if (snapResult.snappedY && snapResult.snapLineY !== undefined) {
+            guides.horizontalY = snapResult.snapLineY;
+          }
+          ctx.setSnapGuides(guides);
+        } else {
+          this.currentSnapResult = null;
+          ctx.clearSnapGuides();
+        }
+      }
     }
 
     // Calculate new shape properties based on handle type and original shape
@@ -1028,6 +1061,10 @@ export class SelectTool extends BaseTool {
    * Finish resize operation and update spatial index.
    */
   private finishResize(ctx: ToolContext): void {
+    // Clear snap guides
+    ctx.clearSnapGuides();
+    this.currentSnapResult = null;
+
     if (this.resizeShapeId) {
       const shape = ctx.getShapes()[this.resizeShapeId];
       if (shape) {

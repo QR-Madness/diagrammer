@@ -191,6 +191,23 @@ export function CanvasContainer({
   }, []);
 
   /**
+   * Listen for layer panel collapse to return focus to canvas.
+   */
+  useEffect(() => {
+    const handleLayerPanelCollapsed = () => {
+      canvasRef.current?.focus();
+    };
+
+    window.addEventListener('layer-panel-collapsed', handleLayerPanelCollapsed);
+    return () => {
+      window.removeEventListener(
+        'layer-panel-collapsed',
+        handleLayerPanelCollapsed
+      );
+    };
+  }, []);
+
+  /**
    * Set up ResizeObserver to handle container resize.
    */
   useEffect(() => {

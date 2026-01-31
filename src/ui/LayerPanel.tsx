@@ -271,7 +271,14 @@ export function LayerPanel() {
 
   // Toggle collapse
   const handleToggleCollapse = useCallback(() => {
-    setIsCollapsed((prev) => !prev);
+    setIsCollapsed((prev) => {
+      const newValue = !prev;
+      // When collapsing, dispatch event to focus canvas
+      if (newValue) {
+        window.dispatchEvent(new CustomEvent('layer-panel-collapsed'));
+      }
+      return newValue;
+    });
   }, []);
 
   // Display order is reversed (top of list = front = end of shapeOrder)

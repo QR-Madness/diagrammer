@@ -637,17 +637,13 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 - **Minimap**: Experimental feature with known bugs (navigation, rendering). Marked as experimental in settings.
 
-##### Phase 14.2.Testing: Protocol & Backend Testing
-
-- [ ] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
-- [ ] Playwright E2E tests for critical collaboration flows (auth, document publish, permissions)
-
 ##### Phase 14.2.2: UX Improvements - Chunk 2 (Medium)
 
-- [ ] Smart-alignment for shape resize
-- [ ] Allow LaTeX equations for shape text by prepending `=` to the
-- [ ] Return focus to canvas when the layer panel is collapsed
-- [ ] Remove focus from the canvas when focus when working in the rich text editor
+- [x] Smart-alignment for shape resize
+- [x] Return focus to canvas when the layer panel is collapsed
+- [x] Remove focus from the canvas when working in the rich text editor
+- [x] Ensure FPS counter is disabled in release builds
+- [ ] Allow LaTeX equations for shape text by prepending `=` (moved to Phase 14.3)
 
 ##### Phase 14.2.3: UX Improvements - Chunk 3 (Medium)
 
@@ -661,10 +657,15 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [ ] Add a test regex button to layer view creator to get a results-preview
 - [ ] First-time setup authentication page has misleading placeholder text (reduce contrast for placeholders), and make this page more vibrant like an onboarding page.
 
+##### Phase 14.2.5: Protocol & Backend Testing
+
+- [ ] TypeScript protocol unit tests (mock WebSocket, test UnifiedSyncProvider message encoding/decoding)
+- [ ] Playwright E2E tests for critical collaboration flows (auth, document publish, permissions)
+
 #### Phase 14.3: Rich Document Editor Upgrades (Large)
 
 - [ ] Tiptap Tables
-- [ ] LaTeX Equation Support
+- [ ] LaTeX Equation Support (both rich text and shape text with `=` prefix)
 - [ ] Image resizing handles
 - [ ] Deeper headings (preferred up to 7 levels)
 - [ ] Additional tweaks at your discretion

@@ -549,6 +549,19 @@ export class Engine {
   private handleGlobalKeyDown(event: KeyboardEvent): void {
     if (this.destroyed) return;
 
+    // Don't intercept shortcuts when focus is on an input/textarea/contenteditable
+    const activeEl = document.activeElement;
+    if (activeEl) {
+      const tagName = activeEl.tagName.toLowerCase();
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        (activeEl as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+    }
+
     const isCtrl = event.ctrlKey || event.metaKey;
     const isShift = event.shiftKey;
 
@@ -654,9 +667,22 @@ export class Engine {
       return false;
     }
 
-    // Don't handle if we're editing text
+    // Don't handle if we're editing text on canvas
     if (useSessionStore.getState().isEditingText()) {
       return false;
+    }
+
+    // Don't handle if focus is on an input/textarea/contenteditable element
+    const activeEl = document.activeElement;
+    if (activeEl) {
+      const tagName = activeEl.tagName.toLowerCase();
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        (activeEl as HTMLElement).isContentEditable
+      ) {
+        return false;
+      }
     }
 
     // Prevent page scrolling
