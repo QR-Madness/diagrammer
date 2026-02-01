@@ -3,6 +3,7 @@ import { Box } from '../math/Box';
 import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { GroupShapeHandler } from '../shapes/Group';
+import { setLatexRenderCallback } from '../utils/textUtils';
 
 /**
  * Configuration options for the Renderer.
@@ -150,6 +151,9 @@ export class Renderer {
     // Initialize timing
     this.lastFrameTime = performance.now();
     this.fpsUpdateTime = this.lastFrameTime;
+
+    // Register LaTeX render callback for async equation rendering
+    setLatexRenderCallback(() => this.requestRender());
   }
 
   /**

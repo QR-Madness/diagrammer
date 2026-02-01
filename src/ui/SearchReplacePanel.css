@@ -1,0 +1,211 @@
+/**
+ * SearchReplacePanel styles
+ */
+
+.search-replace-panel {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 320px;
+  max-width: 400px;
+  user-select: none;
+}
+
+.search-replace-panel.dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.search-replace-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  border-radius: 8px 8px 0 0;
+  cursor: grab;
+}
+
+.search-replace-panel.dragging .search-replace-header {
+  cursor: grabbing;
+}
+
+.search-replace-drag-handle {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: -2px;
+  cursor: grab;
+}
+
+.search-replace-panel.dragging .search-replace-drag-handle {
+  cursor: grabbing;
+}
+
+.search-replace-title {
+  flex: 1;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+
+.search-replace-toggle,
+.search-replace-close {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+.search-replace-toggle:hover,
+.search-replace-close:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.search-replace-body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  user-select: text;
+}
+
+.search-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: right;
+}
+
+.search-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.search-option {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.search-option input[type="checkbox"] {
+  display: none;
+}
+
+.search-option span:first-of-type {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color-input);
+  border-radius: 3px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  background: var(--bg-secondary);
+  transition: all 0.15s ease;
+}
+
+.search-option input[type="checkbox"]:checked + span {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.search-option-label {
+  display: none;
+}
+
+.search-option:hover .search-option-label {
+  display: inline;
+}
+
+.search-actions {
+  display: flex;
+  gap: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.search-action-btn {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border-color-input);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.search-action-btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--color-primary);
+}
+
+.search-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.search-action-btn.replace-btn,
+.search-action-btn.replace-all-btn {
+  flex: 1;
+}
+
+.search-action-btn.replace-all-btn {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.search-action-btn.replace-all-btn:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+}
+
+/* Dark mode */
+[data-theme="dark"] .search-replace-panel {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}

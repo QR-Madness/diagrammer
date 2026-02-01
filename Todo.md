@@ -643,7 +643,7 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] Return focus to canvas when the layer panel is collapsed
 - [x] Remove focus from the canvas when working in the rich text editor
 - [x] Ensure FPS counter is disabled in release builds
-- [ ] Allow LaTeX equations for shape text by prepending `=` (moved to Phase 14.3)
+- [x] Allow LaTeX equations for shape text by prepending `=` (completed in Phase 14.3)
 
 ##### Phase 14.2.3: UX Improvements - Chunk 3 (Medium)
 
@@ -664,14 +664,37 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - 42 UnifiedSyncProvider tests: connection lifecycle, token/credentials auth, document CRUD operations, events, awareness
   - Fixed bug: MESSAGE_DOC_SHARE and MESSAGE_DOC_TRANSFER responses weren't being handled
 
-#### Phase 14.3: Rich Document Editor Upgrades (Large)
+#### Phase 14.3: Rich Document Editor Upgrades (Large) - COMPLETE
 
-- [ ] Tiptap Tables
-- [ ] LaTeX Equation Support (both rich text and shape text with `=` prefix)
-- [ ] Image resizing handles
-- [ ] Deeper headings (preferred up to 7 levels)
-- [ ] Additional tweaks at your discretion
-- [ ] OPTIONAL: Interactive Tasks Lists
+- [x] Tiptap Tables (insert, add/delete rows/cols, resizable columns)
+- [x] LaTeX Equation Support (both rich text and shape text with `=` prefix)
+  - Inline math: `$...$` or ∑ button
+  - Block math: `$$...$$` or ∫ button (multiline textarea, Ctrl+Enter to insert)
+  - Shape text: prefix label with `=` for LaTeX
+- [x] Image resizing handles (8 handles with aspect ratio lock)
+- [x] Deeper headings (H1-H6 with appropriate styling)
+- [x] Interactive Task Lists (nested, with checkboxes)
+- [x] Additional tweaks: Math input modal, table controls in toolbar
+
+##### Phase 14.3.1: Rich Text Editor Enhancements - COMPLETE
+
+- [x] Table style controls (header row/column toggle, merge/split cells)
+- [x] Themed text level dropdown (dark mode support with styled arrow)
+- [x] Block equation textarea (multiline with Ctrl+Enter to insert)
+- [x] Text formatting extensions:
+  - Underline (Ctrl+U)
+  - Strikethrough
+  - Subscript
+  - Superscript
+- [x] Color tools:
+  - Text color picker with 40-color palette
+  - Highlight color picker with 12-color palette
+  - Click-outside-to-close behavior
+- [x] Search & Replace panel:
+  - Case-sensitive toggle
+  - Regex support
+  - Replace single / Replace all
+  - Keyboard shortcuts (Ctrl+F search, Ctrl+H replace)
 
 ### Phase 14.9: AI Insights Improvements Checklist
 
