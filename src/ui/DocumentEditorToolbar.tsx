@@ -44,6 +44,7 @@ export function DocumentEditorToolbar() {
   const [mathIsBlock, setMathIsBlock] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState<'text' | 'highlight' | null>(null);
   const [showTableStyles, setShowTableStyles] = useState(false);
+  const [showCellBgColor, setShowCellBgColor] = useState(false);
   const [showSearchReplace, setShowSearchReplace] = useState(false);
 
   // Get editor instance
@@ -88,6 +89,13 @@ export function DocumentEditorToolbar() {
   const toggleCode = useCallback(() => editor?.chain().focus().toggleCode().run(), [editor]);
   const toggleSubscript = useCallback(() => editor?.chain().focus().toggleSubscript().run(), [editor]);
   const toggleSuperscript = useCallback(() => editor?.chain().focus().toggleSuperscript().run(), [editor]);
+  const toggleBlockquote = useCallback(() => editor?.chain().focus().toggleBlockquote().run(), [editor]);
+  
+  // Alignment handlers
+  const setAlignLeft = useCallback(() => editor?.chain().focus().setTextAlign('left').run(), [editor]);
+  const setAlignCenter = useCallback(() => editor?.chain().focus().setTextAlign('center').run(), [editor]);
+  const setAlignRight = useCallback(() => editor?.chain().focus().setTextAlign('right').run(), [editor]);
+  const setAlignJustify = useCallback(() => editor?.chain().focus().setTextAlign('justify').run(), [editor]);
   
   // List handlers
   const toggleBulletList = useCallback(() => editor?.chain().focus().toggleBulletList().run(), [editor]);
@@ -130,6 +138,11 @@ export function DocumentEditorToolbar() {
   const toggleHeaderColumn = useCallback(() => editor?.chain().focus().toggleHeaderColumn().run(), [editor]);
   const mergeCells = useCallback(() => editor?.chain().focus().mergeCells().run(), [editor]);
   const splitCell = useCallback(() => editor?.chain().focus().splitCell().run(), [editor]);
+  
+  const setCellBackground = useCallback((color: string | null) => {
+    editor?.chain().focus().setCellAttribute('backgroundColor', color).run();
+    setShowCellBgColor(false);
+  }, [editor]);
 
   // Math handlers
   const openMathInput = useCallback((isBlock: boolean) => {
@@ -318,7 +331,7 @@ export function DocumentEditorToolbar() {
 
       <div className="document-editor-toolbar-divider" />
 
-      {/* Lists */}
+      {/* Lists & Blockquote */}
       <div className="document-editor-toolbar-group">
         <button
           className={`document-editor-toolbar-btn ${isActive('bulletList') ? 'active' : ''}`}
@@ -340,6 +353,47 @@ export function DocumentEditorToolbar() {
           title="Task List"
         >
           <span className="toolbar-icon">☑</span>
+        </button>
+        <button
+          className={`document-editor-toolbar-btn ${isActive('blockquote') ? 'active' : ''}`}
+          onClick={toggleBlockquote}
+          title="Block Quote"
+        >
+          <span className="toolbar-icon">❝</span>
+        </button>
+      </div>
+
+      <div className="document-editor-toolbar-divider" />
+
+      {/* Text Alignment */}
+      <div className="document-editor-toolbar-group">
+        <button
+          className={`document-editor-toolbar-btn ${editor?.isActive({ textAlign: 'left' }) ? 'active' : ''}`}
+          onClick={setAlignLeft}
+          title="Align Left"
+        >
+          <span className="align-icon align-left"><span /><span /><span /></span>
+        </button>
+        <button
+          className={`document-editor-toolbar-btn ${editor?.isActive({ textAlign: 'center' }) ? 'active' : ''}`}
+          onClick={setAlignCenter}
+          title="Align Center"
+        >
+          <span className="align-icon align-center"><span /><span /><span /></span>
+        </button>
+        <button
+          className={`document-editor-toolbar-btn ${editor?.isActive({ textAlign: 'right' }) ? 'active' : ''}`}
+          onClick={setAlignRight}
+          title="Align Right"
+        >
+          <span className="align-icon align-right"><span /><span /><span /></span>
+        </button>
+        <button
+          className={`document-editor-toolbar-btn ${editor?.isActive({ textAlign: 'justify' }) ? 'active' : ''}`}
+          onClick={setAlignJustify}
+          title="Justify"
+        >
+          <span className="align-icon align-justify"><span /><span /><span /></span>
         </button>
       </div>
 
@@ -370,6 +424,32 @@ export function DocumentEditorToolbar() {
                 <button onClick={() => { mergeCells(); setShowTableStyles(false); }}>Merge Cells</button>
                 <button onClick={() => { splitCell(); setShowTableStyles(false); }}>Split Cell</button>
               </div>
+            </ToolbarDropdown>
+            <ToolbarDropdown
+              trigger={<span className="toolbar-icon" style={{ fontSize: '0.75rem' }}>🎨</span>}
+              isOpen={showCellBgColor}
+              onToggle={() => setShowCellBgColor(!showCellBgColor)}
+              onClose={() => setShowCellBgColor(false)}
+              triggerClassName="document-editor-toolbar-btn"
+              title="Cell Background"
+            >
+              <div className="color-picker-grid" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                {HIGHLIGHT_PALETTE.map((color) => (
+                  <button
+                    key={color}
+                    className="color-picker-swatch"
+                    style={{ backgroundColor: color }}
+                    onClick={() => setCellBackground(color)}
+                    title={color}
+                  />
+                ))}
+              </div>
+              <button
+                className="color-picker-clear"
+                onClick={() => setCellBackground(null)}
+              >
+                Remove Background
+              </button>
             </ToolbarDropdown>
             <button className="document-editor-toolbar-btn" onClick={addColumnAfter} title="Add Column">
               <span className="toolbar-icon">+⇥</span>

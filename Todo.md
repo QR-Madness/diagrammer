@@ -696,6 +696,32 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Replace single / Replace all
   - Keyboard shortcuts (Ctrl+F search, Ctrl+H replace)
 
+##### Phase 14.3.2: Rich Text Editor Phase 2 - COMPLETE
+
+- [x] Block quotes:
+  - Enabled in StarterKit
+  - Toolbar button with quote icon
+  - Styled with left border and background
+- [x] Text alignment:
+  - TextAlign extension (left, center, right, justify)
+  - Alignment buttons in toolbar with icons
+  - Applied to headings and paragraphs
+- [x] Table options:
+  - Cell background color picker (40-color palette)
+  - Text alignment uses same TextAlign extension
+- [x] Enhanced context menu:
+  - Format submenu: bold, italic, underline, strike, code, subscript, superscript, clear formatting
+  - Heading submenu: paragraph, H1-H6
+  - List submenu: bullet, numbered, task
+  - Table submenu: insert/delete rows/cols, header toggles, merge/split, delete table
+- [x] Multi-page support:
+  - Tab bar with horizontal scrollable tabs
+  - Create/delete pages with context menu
+  - Inline rename (double-click)
+  - Tab color picker
+  - Drag reorder tabs
+  - Page content persistence on switch
+
 ### Phase 14.9: AI Insights Improvements Checklist
 
 Replace this list with your own checklists of areas needed for improvement before we get-ready for release of v.1.0

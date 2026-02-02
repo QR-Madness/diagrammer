@@ -2,8 +2,12 @@
  * DocumentEditorContextMenu - Context menu for the rich text editor.
  *
  * Provides options for:
+ * - Text formatting (bold, italic, underline, strikethrough, code)
+ * - Lists (bullet, numbered, task)
+ * - Headings (H1-H6, paragraph)
+ * - Block elements (blockquote, horizontal rule)
+ * - Table operations (when in table)
  * - Inserting embedded groups from the canvas
- * - Basic text formatting shortcuts
  */
 
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
@@ -51,11 +55,10 @@ export function DocumentEditorContextMenu({
 }: DocumentEditorContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
-  const menuItemRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [showGroupSubmenu, setShowGroupSubmenu] = useState(false);
+  const [activeSubmenu, setActiveSubmenu] = useState<'format' | 'heading' | 'list' | 'table' | 'group' | null>(null);
   const [submenuPosition, setSubmenuPosition] = useState({ x: 0, y: 0 });
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -63,6 +66,9 @@ export function DocumentEditorContextMenu({
   const shapes = useDocumentStore((state) => state.shapes);
   const shapeOrder = useDocumentStore((state) => state.shapeOrder);
   const groups = getAvailableGroups(shapes, shapeOrder);
+  
+  // Check if cursor is in a table
+  const isInTable = editor?.isActive('table') ?? false;
 
   // Get group display name
   const getGroupName = useCallback((group: GroupShape): string => {
@@ -95,8 +101,8 @@ export function DocumentEditorContextMenu({
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showGroupSubmenu) {
-          setShowGroupSubmenu(false);
+        if (activeSubmenu) {
+          setActiveSubmenu(null);
           setSearchQuery('');
         } else {
           onClose();
@@ -111,7 +117,7 @@ export function DocumentEditorContextMenu({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [onClose, showGroupSubmenu]);
+  }, [onClose, activeSubmenu]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -122,20 +128,19 @@ export function DocumentEditorContextMenu({
     };
   }, []);
 
-  // Focus search input when submenu opens
+  // Focus search input when group submenu opens
   useEffect(() => {
-    if (showGroupSubmenu && searchInputRef.current) {
-      // Small delay to ensure the input is rendered
+    if (activeSubmenu === 'group' && searchInputRef.current) {
       requestAnimationFrame(() => {
         searchInputRef.current?.focus();
       });
     }
-  }, [showGroupSubmenu]);
+  }, [activeSubmenu]);
 
   // Adjust position to stay within viewport
   const adjustedPosition = {
     x: Math.min(x, window.innerWidth - 220),
-    y: Math.min(y, window.innerHeight - 200),
+    y: Math.min(y, window.innerHeight - 400),
   };
 
   // Handle inserting an embedded group
@@ -154,12 +159,9 @@ export function DocumentEditorContextMenu({
     [editor, onClose]
   );
 
-  // Handle hover on "Insert Group" to show submenu
-  const handleGroupMenuEnter = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (groups.length === 0) return;
-
-      // Clear any pending close timeout
+  // Generic submenu hover handler
+  const handleSubmenuEnter = useCallback(
+    (submenu: typeof activeSubmenu, e: React.MouseEvent<HTMLDivElement>) => {
       if (hoverTimeoutRef.current) {
         clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = null;
@@ -168,23 +170,21 @@ export function DocumentEditorContextMenu({
       const rect = e.currentTarget.getBoundingClientRect();
       setSubmenuPosition({
         x: rect.right + 4,
-        y: rect.top - 8, // Offset up to account for search input
+        y: rect.top - 8,
       });
-      setShowGroupSubmenu(true);
+      setActiveSubmenu(submenu);
     },
-    [groups.length]
+    []
   );
 
   const handleMenuItemLeave = useCallback(() => {
-    // Delay closing to allow mouse to move to submenu
     hoverTimeoutRef.current = setTimeout(() => {
-      setShowGroupSubmenu(false);
+      setActiveSubmenu(null);
       setSearchQuery('');
     }, 150);
   }, []);
 
-  const handleSubmenuEnter = useCallback(() => {
-    // Cancel close timeout when entering submenu
+  const handleSubmenuHover = useCallback(() => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
       hoverTimeoutRef.current = null;
@@ -192,9 +192,8 @@ export function DocumentEditorContextMenu({
   }, []);
 
   const handleSubmenuLeave = useCallback(() => {
-    // Close submenu when leaving it
     hoverTimeoutRef.current = setTimeout(() => {
-      setShowGroupSubmenu(false);
+      setActiveSubmenu(null);
       setSearchQuery('');
     }, 150);
   }, []);
@@ -209,51 +208,52 @@ export function DocumentEditorContextMenu({
           top: adjustedPosition.y,
         }}
       >
-        {/* Insert Group option with submenu */}
+        {/* Format submenu */}
         <div
-          ref={menuItemRef}
-          className={`doc-editor-context-menu-item ${groups.length === 0 ? 'disabled' : 'has-submenu'}`}
-          onMouseEnter={handleGroupMenuEnter}
+          className="doc-editor-context-menu-item has-submenu"
+          onMouseEnter={(e) => handleSubmenuEnter('format', e)}
           onMouseLeave={handleMenuItemLeave}
         >
-          <span className="doc-editor-context-menu-icon">📊</span>
-          <span className="doc-editor-context-menu-label">Insert Group</span>
-          {groups.length > 0 && <span className="doc-editor-context-menu-arrow">›</span>}
-          {groups.length === 0 && (
-            <span className="doc-editor-context-menu-hint">No groups</span>
-          )}
+          <span className="doc-editor-context-menu-icon">A</span>
+          <span className="doc-editor-context-menu-label">Format</span>
+          <span className="doc-editor-context-menu-arrow">›</span>
+        </div>
+
+        {/* Heading submenu */}
+        <div
+          className="doc-editor-context-menu-item has-submenu"
+          onMouseEnter={(e) => handleSubmenuEnter('heading', e)}
+          onMouseLeave={handleMenuItemLeave}
+        >
+          <span className="doc-editor-context-menu-icon">H</span>
+          <span className="doc-editor-context-menu-label">Heading</span>
+          <span className="doc-editor-context-menu-arrow">›</span>
+        </div>
+
+        {/* List submenu */}
+        <div
+          className="doc-editor-context-menu-item has-submenu"
+          onMouseEnter={(e) => handleSubmenuEnter('list', e)}
+          onMouseLeave={handleMenuItemLeave}
+        >
+          <span className="doc-editor-context-menu-icon">≡</span>
+          <span className="doc-editor-context-menu-label">List</span>
+          <span className="doc-editor-context-menu-arrow">›</span>
         </div>
 
         <div className="doc-editor-context-menu-divider" />
 
-        {/* Basic formatting options */}
+        {/* Block quote */}
         <div
-          className="doc-editor-context-menu-item"
+          className={`doc-editor-context-menu-item ${editor?.isActive('blockquote') ? 'active' : ''}`}
           onClick={() => {
-            editor?.chain().focus().toggleBold().run();
+            editor?.chain().focus().toggleBlockquote().run();
             onClose();
           }}
         >
-          <span className="doc-editor-context-menu-icon">B</span>
-          <span className="doc-editor-context-menu-label">Bold</span>
-          <span className="doc-editor-context-menu-shortcut">Ctrl+B</span>
+          <span className="doc-editor-context-menu-icon">❝</span>
+          <span className="doc-editor-context-menu-label">Block Quote</span>
         </div>
-
-        <div
-          className="doc-editor-context-menu-item"
-          onClick={() => {
-            editor?.chain().focus().toggleItalic().run();
-            onClose();
-          }}
-        >
-          <span className="doc-editor-context-menu-icon" style={{ fontStyle: 'italic' }}>
-            I
-          </span>
-          <span className="doc-editor-context-menu-label">Italic</span>
-          <span className="doc-editor-context-menu-shortcut">Ctrl+I</span>
-        </div>
-
-        <div className="doc-editor-context-menu-divider" />
 
         {/* Horizontal rule */}
         <div
@@ -266,21 +266,278 @@ export function DocumentEditorContextMenu({
           <span className="doc-editor-context-menu-icon">—</span>
           <span className="doc-editor-context-menu-label">Horizontal Rule</span>
         </div>
+
+        {/* Table submenu - only when in table */}
+        {isInTable && (
+          <>
+            <div className="doc-editor-context-menu-divider" />
+            <div
+              className="doc-editor-context-menu-item has-submenu"
+              onMouseEnter={(e) => handleSubmenuEnter('table', e)}
+              onMouseLeave={handleMenuItemLeave}
+            >
+              <span className="doc-editor-context-menu-icon">⊞</span>
+              <span className="doc-editor-context-menu-label">Table</span>
+              <span className="doc-editor-context-menu-arrow">›</span>
+            </div>
+          </>
+        )}
+
+        <div className="doc-editor-context-menu-divider" />
+
+        {/* Insert Group option with submenu */}
+        <div
+          className={`doc-editor-context-menu-item ${groups.length === 0 ? 'disabled' : 'has-submenu'}`}
+          onMouseEnter={(e) => groups.length > 0 && handleSubmenuEnter('group', e)}
+          onMouseLeave={handleMenuItemLeave}
+        >
+          <span className="doc-editor-context-menu-icon">📊</span>
+          <span className="doc-editor-context-menu-label">Insert Group</span>
+          {groups.length > 0 && <span className="doc-editor-context-menu-arrow">›</span>}
+          {groups.length === 0 && (
+            <span className="doc-editor-context-menu-hint">No groups</span>
+          )}
+        </div>
       </div>
 
-      {/* Group submenu - rendered separately for better hover handling */}
-      {showGroupSubmenu && groups.length > 0 && (
+      {/* Format submenu */}
+      {activeSubmenu === 'format' && (
         <div
           ref={submenuRef}
           className="doc-editor-context-submenu"
-          style={{
-            left: submenuPosition.x,
-            top: submenuPosition.y,
-          }}
-          onMouseEnter={handleSubmenuEnter}
+          style={{ left: submenuPosition.x, top: submenuPosition.y }}
+          onMouseEnter={handleSubmenuHover}
           onMouseLeave={handleSubmenuLeave}
         >
-          {/* Search input */}
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('bold') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleBold().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon" style={{ fontWeight: 'bold' }}>B</span>
+            <span className="doc-editor-context-menu-label">Bold</span>
+            <span className="doc-editor-context-menu-shortcut">Ctrl+B</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('italic') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleItalic().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon" style={{ fontStyle: 'italic' }}>I</span>
+            <span className="doc-editor-context-menu-label">Italic</span>
+            <span className="doc-editor-context-menu-shortcut">Ctrl+I</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('underline') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleUnderline().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon" style={{ textDecoration: 'underline' }}>U</span>
+            <span className="doc-editor-context-menu-label">Underline</span>
+            <span className="doc-editor-context-menu-shortcut">Ctrl+U</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('strike') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleStrike().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon" style={{ textDecoration: 'line-through' }}>S</span>
+            <span className="doc-editor-context-menu-label">Strikethrough</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('code') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleCode().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">&lt;/&gt;</span>
+            <span className="doc-editor-context-menu-label">Code</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('subscript') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleSubscript().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">X<sub>2</sub></span>
+            <span className="doc-editor-context-menu-label">Subscript</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('superscript') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleSuperscript().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">X<sup>2</sup></span>
+            <span className="doc-editor-context-menu-label">Superscript</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().unsetAllMarks().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">⌫</span>
+            <span className="doc-editor-context-menu-label">Clear Formatting</span>
+          </div>
+        </div>
+      )}
+
+      {/* Heading submenu */}
+      {activeSubmenu === 'heading' && (
+        <div
+          ref={submenuRef}
+          className="doc-editor-context-submenu"
+          style={{ left: submenuPosition.x, top: submenuPosition.y }}
+          onMouseEnter={handleSubmenuHover}
+          onMouseLeave={handleSubmenuLeave}
+        >
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('paragraph') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().setParagraph().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">¶</span>
+            <span className="doc-editor-context-menu-label">Paragraph</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          {([1, 2, 3, 4, 5, 6] as const).map((level) => (
+            <div
+              key={level}
+              className={`doc-editor-context-menu-item ${editor?.isActive('heading', { level }) ? 'active' : ''}`}
+              onClick={() => { editor?.chain().focus().toggleHeading({ level }).run(); onClose(); }}
+            >
+              <span className="doc-editor-context-menu-icon" style={{ fontSize: `${1.2 - level * 0.1}rem`, fontWeight: 'bold' }}>H{level}</span>
+              <span className="doc-editor-context-menu-label">Heading {level}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* List submenu */}
+      {activeSubmenu === 'list' && (
+        <div
+          ref={submenuRef}
+          className="doc-editor-context-submenu"
+          style={{ left: submenuPosition.x, top: submenuPosition.y }}
+          onMouseEnter={handleSubmenuHover}
+          onMouseLeave={handleSubmenuLeave}
+        >
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('bulletList') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleBulletList().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">•</span>
+            <span className="doc-editor-context-menu-label">Bullet List</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('orderedList') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleOrderedList().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">1.</span>
+            <span className="doc-editor-context-menu-label">Numbered List</span>
+          </div>
+          <div
+            className={`doc-editor-context-menu-item ${editor?.isActive('taskList') ? 'active' : ''}`}
+            onClick={() => { editor?.chain().focus().toggleTaskList().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">☑</span>
+            <span className="doc-editor-context-menu-label">Task List</span>
+          </div>
+        </div>
+      )}
+
+      {/* Table submenu */}
+      {activeSubmenu === 'table' && isInTable && (
+        <div
+          ref={submenuRef}
+          className="doc-editor-context-submenu"
+          style={{ left: submenuPosition.x, top: submenuPosition.y }}
+          onMouseEnter={handleSubmenuHover}
+          onMouseLeave={handleSubmenuLeave}
+        >
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().addRowBefore().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">↑+</span>
+            <span className="doc-editor-context-menu-label">Insert Row Above</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().addRowAfter().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">↓+</span>
+            <span className="doc-editor-context-menu-label">Insert Row Below</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().addColumnBefore().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">←+</span>
+            <span className="doc-editor-context-menu-label">Insert Column Left</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().addColumnAfter().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">→+</span>
+            <span className="doc-editor-context-menu-label">Insert Column Right</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().deleteRow().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">↕✕</span>
+            <span className="doc-editor-context-menu-label">Delete Row</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().deleteColumn().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">↔✕</span>
+            <span className="doc-editor-context-menu-label">Delete Column</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().toggleHeaderRow().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">▤</span>
+            <span className="doc-editor-context-menu-label">Toggle Header Row</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().toggleHeaderColumn().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">▥</span>
+            <span className="doc-editor-context-menu-label">Toggle Header Column</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().mergeCells().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">⊞</span>
+            <span className="doc-editor-context-menu-label">Merge Cells</span>
+          </div>
+          <div
+            className="doc-editor-context-menu-item"
+            onClick={() => { editor?.chain().focus().splitCell().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">⊟</span>
+            <span className="doc-editor-context-menu-label">Split Cell</span>
+          </div>
+          <div className="doc-editor-context-menu-divider" />
+          <div
+            className="doc-editor-context-menu-item danger"
+            onClick={() => { editor?.chain().focus().deleteTable().run(); onClose(); }}
+          >
+            <span className="doc-editor-context-menu-icon">🗑</span>
+            <span className="doc-editor-context-menu-label">Delete Table</span>
+          </div>
+        </div>
+      )}
+
+      {/* Group submenu */}
+      {activeSubmenu === 'group' && groups.length > 0 && (
+        <div
+          ref={submenuRef}
+          className="doc-editor-context-submenu"
+          style={{ left: submenuPosition.x, top: submenuPosition.y }}
+          onMouseEnter={handleSubmenuHover}
+          onMouseLeave={handleSubmenuLeave}
+        >
           <div className="doc-editor-submenu-search">
             <input
               ref={searchInputRef}
@@ -292,8 +549,6 @@ export function DocumentEditorContextMenu({
               onClick={(e) => e.stopPropagation()}
             />
           </div>
-
-          {/* Group list */}
           <div className="doc-editor-submenu-list">
             {filteredGroups.length === 0 ? (
               <div className="doc-editor-context-menu-item disabled">

@@ -31,6 +31,7 @@ import Superscript from '@tiptap/extension-superscript';
 import Highlight from '@tiptap/extension-highlight';
 import TextStyle from '@tiptap/extension-text-style';
 import Color from '@tiptap/extension-color';
+import TextAlign from '@tiptap/extension-text-align';
 import { useRichTextStore } from '../store/richTextStore';
 import { blobStorage } from '../storage/BlobStorage';
 import { EmbeddedGroup } from '../tiptap/EmbeddedGroupExtension';
@@ -87,8 +88,7 @@ const extensions = [
   StarterKit.configure({
     heading: { levels: [1, 2, 3, 4, 5, 6] },
     // These are enabled by default, no need to set true
-    // bulletList, orderedList, horizontalRule, bold, italic, code, strike
-    blockquote: false,
+    // bulletList, orderedList, horizontalRule, bold, italic, code, strike, blockquote
     codeBlock: false,
   }),
   Placeholder.configure({
@@ -110,6 +110,10 @@ const extensions = [
   Underline,
   Subscript,
   Superscript,
+  TextAlign.configure({
+    types: ['heading', 'paragraph'],
+    alignments: ['left', 'center', 'right', 'justify'],
+  }),
   // Tables
   Table.configure({
     resizable: true,
@@ -118,8 +122,44 @@ const extensions = [
     },
   }),
   TableRow,
-  TableCell,
-  TableHeader,
+  TableCell.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        backgroundColor: {
+          default: null,
+          parseHTML: element => element.style.backgroundColor || null,
+          renderHTML: attributes => {
+            if (!attributes['backgroundColor']) {
+              return {};
+            }
+            return {
+              style: `background-color: ${attributes['backgroundColor']}`,
+            };
+          },
+        },
+      };
+    },
+  }),
+  TableHeader.extend({
+    addAttributes() {
+      return {
+        ...this.parent?.(),
+        backgroundColor: {
+          default: null,
+          parseHTML: element => element.style.backgroundColor || null,
+          renderHTML: attributes => {
+            if (!attributes['backgroundColor']) {
+              return {};
+            }
+            return {
+              style: `background-color: ${attributes['backgroundColor']}`,
+            };
+          },
+        },
+      };
+    },
+  }),
   // Task lists
   TaskList.configure({
     HTMLAttributes: {

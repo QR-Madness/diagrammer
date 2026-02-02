@@ -338,6 +338,34 @@
   background: var(--bg-hover);
 }
 
+/* Alignment icons */
+.align-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 14px;
+}
+
+.align-icon span {
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.align-left span:nth-child(1) { width: 100%; }
+.align-left span:nth-child(2) { width: 70%; }
+.align-left span:nth-child(3) { width: 85%; }
+
+.align-center span:nth-child(1) { width: 100%; margin: 0 auto; }
+.align-center span:nth-child(2) { width: 70%; margin: 0 auto; }
+.align-center span:nth-child(3) { width: 85%; margin: 0 auto; }
+
+.align-right span:nth-child(1) { width: 100%; margin-left: auto; }
+.align-right span:nth-child(2) { width: 70%; margin-left: auto; }
+.align-right span:nth-child(3) { width: 85%; margin-left: auto; }
+
+.align-justify span { width: 100%; }
+
 /* Dark mode adjustments */
 [data-theme="dark"] .color-picker-dropdown,
 [data-theme="dark"] .table-styles-dropdown {
