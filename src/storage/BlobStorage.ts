@@ -56,6 +56,7 @@ export class BlobStorage {
    * - Content hashing (SHA-256)
    * - Deduplication (same content = same ID)
    * - Reference counting
+   * - Proactive quota checking
    *
    * @param blob - Blob to save
    * @param name - Original filename
@@ -78,6 +79,9 @@ export class BlobStorage {
         return id;
       }
 
+      // Proactive quota check before saving new blob
+      await this.checkQuotaBeforeSave(blob.size);
+
       // Save blob data
       await this.saveBlobData(id, blob);
 
@@ -99,6 +103,36 @@ export class BlobStorage {
       }
       throw new BlobStorageError('Failed to save blob', error as Error);
     }
+  }
+
+  /**
+   * Check storage quota before saving a blob.
+   * Throws QuotaExceededError if there's not enough space.
+   */
+  private async checkQuotaBeforeSave(blobSize: number): Promise<void> {
+    const stats = await this.getStorageStats();
+
+    // Calculate what percentage would be used after adding this blob
+    const newUsed = stats.used + blobSize;
+    const newPercentUsed = stats.available > 0 ? (newUsed / stats.available) * 100 : 100;
+
+    // Reject if this would exceed 98% of quota (leave 2% buffer)
+    if (newPercentUsed >= 98) {
+      throw new QuotaExceededError(
+        `Not enough storage space. Need ${this.formatBytes(blobSize)}, only ${this.formatBytes(stats.available - stats.used)} available.`
+      );
+    }
+  }
+
+  /**
+   * Format bytes as human-readable string.
+   */
+  private formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   }
 
   /**
