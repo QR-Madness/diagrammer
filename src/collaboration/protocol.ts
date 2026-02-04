@@ -200,6 +200,65 @@ export const ERR_EDIT_FORBIDDEN = 'ERR_EDIT_FORBIDDEN';
 /** Permission level insufficient for view operation */
 export const ERR_VIEW_FORBIDDEN = 'ERR_VIEW_FORBIDDEN';
 
+// ============ Message Size Limits ============
+
+/** Maximum message size in bytes (16 MB) */
+export const MAX_MESSAGE_SIZE = 16 * 1024 * 1024;
+
+/** Warning threshold for large messages (1 MB) */
+export const MESSAGE_SIZE_WARNING_THRESHOLD = 1 * 1024 * 1024;
+
+/** Maximum document size in bytes (8 MB) */
+export const MAX_DOCUMENT_SIZE = 8 * 1024 * 1024;
+
+/** Error for messages that exceed size limit */
+export const ERR_MESSAGE_TOO_LARGE = 'ERR_MESSAGE_TOO_LARGE';
+
+/**
+ * Result of message size validation.
+ */
+export interface MessageSizeValidation {
+  valid: boolean;
+  size: number;
+  error?: string;
+  warning?: string;
+}
+
+/**
+ * Validate message size before sending.
+ * Returns validation result with size info.
+ */
+export function validateMessageSize(data: Uint8Array): MessageSizeValidation {
+  const size = data.length;
+  
+  if (size > MAX_MESSAGE_SIZE) {
+    return {
+      valid: false,
+      size,
+      error: `${ERR_MESSAGE_TOO_LARGE}: Message size ${formatBytes(size)} exceeds limit of ${formatBytes(MAX_MESSAGE_SIZE)}`,
+    };
+  }
+  
+  if (size > MESSAGE_SIZE_WARNING_THRESHOLD) {
+    return {
+      valid: true,
+      size,
+      warning: `Large message (${formatBytes(size)}). Consider chunking for better performance.`,
+    };
+  }
+  
+  return { valid: true, size };
+}
+
+/**
+ * Format bytes as human-readable string.
+ */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 /**
  * Check if an error string contains a specific error code.
  */
@@ -221,8 +280,32 @@ export function isPermissionError(error: string): boolean {
 // ============ Encoding/Decoding Helpers ============
 
 /**
+ * Result of encoding a message with size validation.
+ */
+export interface EncodeResult {
+  data: Uint8Array;
+  size: number;
+  warning?: string;
+}
+
+/**
+ * Error thrown when message exceeds size limit.
+ */
+export class MessageTooLargeError extends Error {
+  constructor(
+    public readonly size: number,
+    public readonly limit: number
+  ) {
+    super(`${ERR_MESSAGE_TOO_LARGE}: Message size ${formatBytes(size)} exceeds limit of ${formatBytes(limit)}`);
+    this.name = 'MessageTooLargeError';
+  }
+}
+
+/**
  * Encode a message with type prefix for sending over WebSocket.
  * Format: [msgType (1 byte)][JSON payload]
+ * 
+ * @throws MessageTooLargeError if encoded size exceeds MAX_MESSAGE_SIZE
  */
 export function encodeMessage<T>(msgType: number, payload: T): Uint8Array {
   const json = JSON.stringify(payload);
@@ -230,7 +313,29 @@ export function encodeMessage<T>(msgType: number, payload: T): Uint8Array {
   const data = new Uint8Array(1 + jsonBytes.length);
   data[0] = msgType;
   data.set(jsonBytes, 1);
+  
+  if (data.length > MAX_MESSAGE_SIZE) {
+    throw new MessageTooLargeError(data.length, MAX_MESSAGE_SIZE);
+  }
+  
   return data;
+}
+
+/**
+ * Encode a message with size validation, returning result with warnings.
+ * Does not throw on large messages within limit, but returns warnings.
+ * 
+ * @throws MessageTooLargeError if encoded size exceeds MAX_MESSAGE_SIZE
+ */
+export function encodeMessageSafe<T>(msgType: number, payload: T): EncodeResult {
+  const data = encodeMessage(msgType, payload);
+  const validation = validateMessageSize(data);
+  
+  return {
+    data,
+    size: validation.size,
+    ...(validation.warning !== undefined ? { warning: validation.warning } : {}),
+  };
 }
 
 /**
@@ -344,6 +449,29 @@ export function isRequestMessage(msgType: number): boolean {
          msgType === MESSAGE_DOC_SHARE ||
          msgType === MESSAGE_DOC_TRANSFER ||
          msgType === MESSAGE_AUTH_LOGIN;
+}
+
+/**
+ * Validate document size before saving.
+ * @returns Error message if too large, undefined if OK
+ */
+export function validateDocumentSize(document: unknown): string | undefined {
+  const json = JSON.stringify(document);
+  const size = new TextEncoder().encode(json).length;
+  
+  if (size > MAX_DOCUMENT_SIZE) {
+    return `Document size ${formatBytes(size)} exceeds limit of ${formatBytes(MAX_DOCUMENT_SIZE)}`;
+  }
+  
+  return undefined;
+}
+
+/**
+ * Get the serialized size of a document in bytes.
+ */
+export function getDocumentSize(document: unknown): number {
+  const json = JSON.stringify(document);
+  return new TextEncoder().encode(json).length;
 }
 
 /**

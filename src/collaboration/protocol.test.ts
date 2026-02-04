@@ -18,8 +18,14 @@ import {
   // Error codes
   ERR_ACCESS_DENIED,
   ERR_DOC_NOT_FOUND,
+  ERR_MESSAGE_TOO_LARGE,
+  // Size constants
+  MAX_MESSAGE_SIZE,
+  MESSAGE_SIZE_WARNING_THRESHOLD,
+  MAX_DOCUMENT_SIZE,
   // Functions
   encodeMessage,
+  encodeMessageSafe,
   decodeMessageType,
   decodePayload,
   generateRequestId,
@@ -31,6 +37,10 @@ import {
   isDocumentMessage,
   isRequestMessage,
   getMessageTypeName,
+  validateMessageSize,
+  validateDocumentSize,
+  getDocumentSize,
+  MessageTooLargeError,
   // Types
   type AuthLoginRequest,
   type AuthResponse,
@@ -510,5 +520,124 @@ describe('Round-trip Encoding/Decoding', () => {
 
     expect(decoded.trueVal).toBe(true);
     expect(decoded.falseVal).toBe(false);
+  });
+});
+
+describe('Message Size Validation', () => {
+  describe('validateMessageSize', () => {
+    it('validates small messages as OK', () => {
+      const data = new Uint8Array(100);
+      const result = validateMessageSize(data);
+
+      expect(result.valid).toBe(true);
+      expect(result.size).toBe(100);
+      expect(result.warning).toBeUndefined();
+      expect(result.error).toBeUndefined();
+    });
+
+    it('returns warning for messages over threshold but under limit', () => {
+      const data = new Uint8Array(MESSAGE_SIZE_WARNING_THRESHOLD + 1);
+      const result = validateMessageSize(data);
+
+      expect(result.valid).toBe(true);
+      expect(result.size).toBe(MESSAGE_SIZE_WARNING_THRESHOLD + 1);
+      expect(result.warning).toBeDefined();
+      expect(result.warning).toContain('Large message');
+      expect(result.error).toBeUndefined();
+    });
+
+    it('rejects messages over max size', () => {
+      const data = new Uint8Array(MAX_MESSAGE_SIZE + 1);
+      const result = validateMessageSize(data);
+
+      expect(result.valid).toBe(false);
+      expect(result.size).toBe(MAX_MESSAGE_SIZE + 1);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain(ERR_MESSAGE_TOO_LARGE);
+      expect(result.warning).toBeUndefined();
+    });
+  });
+
+  describe('encodeMessage with size limits', () => {
+    it('throws MessageTooLargeError for oversized messages', () => {
+      const largeString = 'x'.repeat(MAX_MESSAGE_SIZE);
+      const payload = { data: largeString };
+
+      expect(() => encodeMessage(MESSAGE_DOC_SAVE, payload)).toThrow(MessageTooLargeError);
+    });
+
+    it('MessageTooLargeError has correct properties', () => {
+      const error = new MessageTooLargeError(20_000_000, MAX_MESSAGE_SIZE);
+
+      expect(error.name).toBe('MessageTooLargeError');
+      expect(error.size).toBe(20_000_000);
+      expect(error.limit).toBe(MAX_MESSAGE_SIZE);
+      expect(error.message).toContain(ERR_MESSAGE_TOO_LARGE);
+    });
+  });
+
+  describe('encodeMessageSafe', () => {
+    it('returns warning for large messages within limit', () => {
+      const mediumString = 'x'.repeat(MESSAGE_SIZE_WARNING_THRESHOLD);
+      const payload = { data: mediumString };
+
+      const result = encodeMessageSafe(MESSAGE_DOC_SAVE, payload);
+
+      expect(result.data.length).toBeGreaterThan(MESSAGE_SIZE_WARNING_THRESHOLD);
+      expect(result.size).toBe(result.data.length);
+      expect(result.warning).toBeDefined();
+      expect(result.warning).toContain('Large message');
+    });
+
+    it('returns data without warning for small messages', () => {
+      const payload = { id: 'test', name: 'Small payload' };
+
+      const result = encodeMessageSafe(MESSAGE_DOC_SAVE, payload);
+
+      expect(result.data.length).toBeLessThan(MESSAGE_SIZE_WARNING_THRESHOLD);
+      expect(result.warning).toBeUndefined();
+    });
+
+    it('throws MessageTooLargeError for oversized messages', () => {
+      const largeString = 'x'.repeat(MAX_MESSAGE_SIZE);
+      const payload = { data: largeString };
+
+      expect(() => encodeMessageSafe(MESSAGE_DOC_SAVE, payload)).toThrow(MessageTooLargeError);
+    });
+  });
+});
+
+describe('Document Size Validation', () => {
+  describe('validateDocumentSize', () => {
+    it('returns undefined for small documents', () => {
+      const doc = { id: 'test', name: 'Test Doc', pages: [] };
+      const error = validateDocumentSize(doc);
+      expect(error).toBeUndefined();
+    });
+
+    it('returns error message for oversized documents', () => {
+      const largeData = 'x'.repeat(MAX_DOCUMENT_SIZE);
+      const doc = { id: 'test', data: largeData };
+      const error = validateDocumentSize(doc);
+
+      expect(error).toBeDefined();
+      expect(error).toContain('exceeds limit');
+    });
+  });
+
+  describe('getDocumentSize', () => {
+    it('returns correct byte size for document', () => {
+      const doc = { test: 'value' };
+      const expectedSize = new TextEncoder().encode(JSON.stringify(doc)).length;
+      expect(getDocumentSize(doc)).toBe(expectedSize);
+    });
+
+    it('accounts for unicode characters correctly', () => {
+      const doc = { name: '测试文档 📝' };
+      const expectedSize = new TextEncoder().encode(JSON.stringify(doc)).length;
+      expect(getDocumentSize(doc)).toBe(expectedSize);
+      // Unicode characters take more bytes
+      expect(getDocumentSize(doc)).toBeGreaterThan(doc.name.length);
+    });
   });
 });

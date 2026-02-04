@@ -267,27 +267,7 @@ describe('GroupHierarchy', () => {
     });
 
     it('returns true when exceeding max depth', () => {
-      // Create a chain that's at max depth - 1
-      // Each group contains the next one as a child
-      const shapes: Record<string, Shape> = {};
-
-      // Build from bottom up: group-0 is deepest, group-9 is root
-      for (let i = 0; i < MAX_GROUP_NESTING_DEPTH - 1; i++) {
-        const groupId = `group-${i}`;
-        const childId = i === 0 ? undefined : `group-${i - 1}`;
-        shapes[groupId] = createGroup(groupId, childId ? [childId] : []);
-      }
-
-      // The root group is group-(MAX-2), which is at depth 0
-      // We want to add a shape to the deepest existing group
-      const deepestGroupId = 'group-0';
-      const rootGroupId = `group-${MAX_GROUP_NESTING_DEPTH - 2}`;
-
-      // group-0 is already at depth (MAX_GROUP_NESTING_DEPTH - 2)
-      // Adding a new shape would put it at depth (MAX_GROUP_NESTING_DEPTH - 1)
-      // This is still within bounds, so let's create a scenario at the exact limit
-
-      // Actually, let's simplify: create exactly MAX_GROUP_NESTING_DEPTH groups nested
+      // Create exactly MAX_GROUP_NESTING_DEPTH groups nested
       const testShapes: Record<string, Shape> = {};
       let currentChildId: string | undefined = undefined;
 
