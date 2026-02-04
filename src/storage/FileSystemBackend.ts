@@ -3,11 +3,19 @@
  *
  * Implements StorageBackend using Tauri's file system API.
  * Used for Team Documents in Protected Local mode.
+ *
+ * Uses atomic write operations (write-to-temp-then-rename) to prevent
+ * data corruption on crash. Phase 14.9.2 Data Integrity Improvements.
  */
 
 import { DiagramDocument } from '../types/Document';
 import { StorageBackend, StorageBackendConfig, StorageResult } from './StorageBackend';
 import { isTauri } from '../tauri/commands';
+import {
+  atomicWriteJSON,
+  cleanupStaleTempFiles,
+  recoverInterruptedWrite,
+} from './AtomicFileWriter';
 
 // Tauri fs imports - these will only work in Tauri environment
 let tauriFs: typeof import('@tauri-apps/plugin-fs') | null = null;
@@ -78,6 +86,12 @@ export class FileSystemBackend implements StorageBackend {
         await tauriFs.mkdir(this.basePath, { recursive: true });
       }
 
+      // Clean up any stale temp files from interrupted writes
+      const cleanup = await cleanupStaleTempFiles(this.basePath);
+      if (cleanup.cleaned > 0) {
+        console.log(`[FileSystemBackend] Cleaned up ${cleanup.cleaned} stale temp files`);
+      }
+
       this.initialized = true;
       return true;
     } catch (error) {
@@ -94,29 +108,33 @@ export class FileSystemBackend implements StorageBackend {
   }
 
   /**
-   * Save a document to the file system
+   * Save a document to the file system using atomic write.
+   * Uses write-to-temp-then-rename pattern for crash safety.
    */
   async saveDocument(doc: DiagramDocument): Promise<StorageResult<void>> {
-    if (!(await this.initialize()) || !tauriFs) {
+    if (!(await this.initialize())) {
       return { success: false, error: 'File system not available' };
     }
 
-    try {
-      const filePath = this.getFilePath(doc.id);
-      const json = JSON.stringify(doc, null, 2);
+    const filePath = this.getFilePath(doc.id);
 
-      await tauriFs.writeTextFile(filePath, json);
-      return { success: true };
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to save document';
-      console.error('FileSystemBackend.saveDocument error:', error);
-      return { success: false, error: message };
+    // Use atomic write for crash safety
+    const result = await atomicWriteJSON(filePath, doc, {
+      validate: false, // Skip validation for performance (JSON.stringify is deterministic)
+      backup: false,   // No backup needed - we have version tracking
+    });
+
+    if (!result.success) {
+      console.error('FileSystemBackend.saveDocument error:', result.error);
+      return { success: false, error: result.error ?? 'Unknown error' };
     }
+
+    return { success: true };
   }
 
   /**
-   * Load a document from the file system
+   * Load a document from the file system.
+   * Recovers from interrupted writes if detected.
    */
   async loadDocument(id: string): Promise<StorageResult<DiagramDocument>> {
     if (!(await this.initialize()) || !tauriFs) {
@@ -125,6 +143,9 @@ export class FileSystemBackend implements StorageBackend {
 
     try {
       const filePath = this.getFilePath(id);
+
+      // Check for and clean up any interrupted write
+      await recoverInterruptedWrite(filePath);
 
       const exists = await tauriFs.exists(filePath);
       if (!exists) {

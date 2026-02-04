@@ -17,7 +17,6 @@ import {
   VersionConflictError,
   InvalidVersionError,
   type DocumentVersion,
-  type VersionConflict,
 } from './VersionConflict';
 import type { DiagramDocument } from './Document';
 

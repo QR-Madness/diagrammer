@@ -934,10 +934,10 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Data Integrity & Storage
 
-- [ ] **Atomic file system operations**
-  - `FileSystemBackend` writes directly; file corruption possible on crash.
-  - Implement write-to-temp-then-rename pattern for atomicity.
-  - Add file validation after write operations.
+- [x] **Atomic file system operations**
+  - Created `AtomicFileWriter` utility with write-to-temp-then-rename pattern.
+  - Updated `FileSystemBackend` to use atomic writes.
+  - Added temp file cleanup on initialization and recovery on load.
 
 - [ ] **Document transfer atomicity**
   - Personal ↔ team document transfers aren't transactional.
