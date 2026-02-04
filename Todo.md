@@ -1007,6 +1007,13 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Updated protocol, UnifiedSyncProvider, and teamDocumentStore with version support.
   - TODO: Conflict resolution UI and persistenceStore integration.
 
+- [x] **Offline team document access**
+  - Created `TeamDocumentCache` with IndexedDB persistence (17 tests).
+  - Team documents loaded while online are cached for offline access.
+  - `loadTeamDocument` checks cache tiers: memory → registry → IndexedDB.
+  - LRU eviction (max 50 entries, 50MB) prevents unbounded growth.
+  - Cache automatically updates on save and clears on delete.
+
 - [x] **Cache invalidation strategy**
   - Created `DocumentCacheManager` with TTL-based invalidation.
   - Added window focus/visibility refresh with throttling.

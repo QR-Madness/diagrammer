@@ -8,6 +8,7 @@
  * This store maintains the client-side view of team documents.
  *
  * Phase 14.1: Updated to work with UnifiedSyncProvider
+ * Phase 14.9.2: Added persistent offline cache support
  */
 
 import { create } from 'zustand';
@@ -24,6 +25,7 @@ import {
   hasBlobReferences,
   hasEmbeddedAssets,
 } from '../storage/AssetBundler';
+import { TeamDocumentCache } from '../storage/TeamDocumentCache';
 
 /**
  * Calculate the effective permission for a user on a document.
@@ -161,6 +163,12 @@ interface TeamDocumentActions {
 
   /** Get cached document content */
   getCachedDocument: (docId: string) => DiagramDocument | undefined;
+  
+  /** Check if a document is available in offline cache */
+  isAvailableOffline: (docId: string) => boolean;
+  
+  /** Get list of document IDs available offline */
+  getOfflineDocumentIds: () => string[];
 }
 
 /** Document provider instance (module-level singleton) */
@@ -231,16 +239,47 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     },
 
     loadTeamDocument: async (docId) => {
-      if (!docProvider) {
-        throw new Error('Not connected to host');
-      }
-
       const registry = useDocumentRegistry.getState();
 
-      // Check cache first
-      const cached = get().documentCache[docId];
-      if (cached) {
-        return cached;
+      // Check in-memory cache first (fastest)
+      const memoryCached = get().documentCache[docId];
+      if (memoryCached) {
+        return memoryCached;
+      }
+
+      // Check registry content cache
+      const registryCached = registry.getDocumentContent(docId);
+      if (registryCached) {
+        // Also update our in-memory cache
+        set((state) => ({
+          documentCache: {
+            ...state.documentCache,
+            [docId]: registryCached,
+          },
+        }));
+        return registryCached;
+      }
+
+      // Check persistent offline cache (works without connection)
+      const persistentCached = await TeamDocumentCache.get(docId);
+      if (persistentCached) {
+        console.log('[teamDocumentStore] Loaded from offline cache:', docId);
+        
+        // Update in-memory caches
+        set((state) => ({
+          documentCache: {
+            ...state.documentCache,
+            [docId]: persistentCached,
+          },
+        }));
+        registry.setDocumentContent(docId, persistentCached);
+        
+        return persistentCached;
+      }
+
+      // No cache available - need network connection
+      if (!docProvider) {
+        throw new Error('Not connected to host and document not cached');
       }
 
       // Mark as loading
@@ -282,7 +321,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           console.log(`[teamDocumentStore] Extracted ${assetResult.assetCount} assets`);
         }
 
-        // Cache the document
+        // Cache the document in memory
         set((state) => {
           const loadingDocs = new Set(state.loadingDocs);
           loadingDocs.delete(docId);
@@ -297,6 +336,11 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
         // Also cache in registry
         registry.setDocumentContent(docId, doc);
+
+        // Persist to offline cache for future offline access
+        const connection = useConnectionStore.getState();
+        const hostId = connection.host?.address ?? 'unknown';
+        await TeamDocumentCache.put(doc, hostId);
 
         return doc;
       } catch (e) {
@@ -359,6 +403,11 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         registry.setDocumentContent(doc.id, updatedDoc);
         registry.setSyncState(doc.id, 'synced');
 
+        // Update persistent offline cache
+        const connection = useConnectionStore.getState();
+        const hostId = connection.host?.address ?? 'unknown';
+        await TeamDocumentCache.put(updatedDoc, hostId);
+
         // Return result with proper optional property handling
         const result: { newVersion?: number } = {};
         if (newVersion !== undefined) {
@@ -394,6 +443,9 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
         // Remove from registry
         useDocumentRegistry.getState().removeDocument(docId);
+        
+        // Remove from persistent offline cache
+        await TeamDocumentCache.remove(docId);
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to delete document';
         set({ error });
@@ -532,6 +584,19 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
     getCachedDocument: (docId) => {
       return get().documentCache[docId];
+    },
+    
+    isAvailableOffline: (docId) => {
+      // Check in-memory cache first
+      if (get().documentCache[docId]) return true;
+      // Check registry cache
+      if (useDocumentRegistry.getState().getDocumentContent(docId)) return true;
+      // Check persistent cache
+      return TeamDocumentCache.has(docId);
+    },
+    
+    getOfflineDocumentIds: () => {
+      return TeamDocumentCache.getCachedIds();
     },
   })
 );
