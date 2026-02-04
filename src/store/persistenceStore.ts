@@ -14,6 +14,7 @@ import {
   STORAGE_KEYS,
   getDocumentMetadata,
 } from '../types/Document';
+import { validateDocumentJSON } from '../types/DocumentValidation';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
 import { useRichTextPagesStore } from './richTextPagesStore';
@@ -559,13 +560,27 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
       // Import document from JSON
       importJSON: (json: string): boolean => {
         try {
-          const doc = JSON.parse(json) as DiagramDocument;
+          // Validate document structure before importing
+          const validation = validateDocumentJSON(json);
 
-          // Validate basic structure
-          if (!doc.pages || !doc.pageOrder || !Array.isArray(doc.pageOrder)) {
-            console.error('Invalid document format');
+          if (!validation.valid) {
+            console.error('Invalid document format:', validation.errors);
+            // Try to show user-facing notification
+            import('./notificationStore').then(({ useNotificationStore }) => {
+              useNotificationStore.getState().error(
+                `Import failed: ${validation.errors[0] ?? 'Invalid document format'}`
+              );
+            });
             return false;
           }
+
+          // Log any warnings
+          if (validation.warnings.length > 0) {
+            console.warn('Document import warnings:', validation.warnings);
+          }
+
+          // Use validated and normalized document
+          const doc = validation.document!;
 
           // Generate new ID to avoid conflicts
           const newId = nanoid();
@@ -609,9 +624,19 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           // Save current document ID
           localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, newId);
 
+          // Show success notification
+          import('./notificationStore').then(({ useNotificationStore }) => {
+            useNotificationStore.getState().success(`Imported "${doc.name}"`);
+          });
+
           return true;
         } catch (error) {
           console.error('Failed to import document:', error);
+          // Show error notification
+          import('./notificationStore').then(({ useNotificationStore }) => {
+            const message = error instanceof Error ? error.message : 'Unknown error';
+            useNotificationStore.getState().error(`Import failed: ${message}`);
+          });
           return false;
         }
       },
