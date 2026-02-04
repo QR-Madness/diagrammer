@@ -63,6 +63,12 @@ export interface ERDEntityCustomProps {
   rowBackgroundColor?: string;
   /** Alternate background color for zebra-striping */
   rowAlternateColor?: string;
+  /** Horizontal padding for attribute text (default: 8) */
+  attributePaddingHorizontal?: number;
+  /** Vertical padding between attributes (default: 2) */
+  attributePaddingVertical?: number;
+  /** Inset for row separator lines from edges (default: 4) */
+  separatorInset?: number;
 }
 
 /**
@@ -174,6 +180,11 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
   const rowBgColor = customProps?.rowBackgroundColor;
   const rowAltColor = customProps?.rowAlternateColor;
 
+  // Padding options
+  const paddingH = customProps?.attributePaddingHorizontal ?? 8;
+  const paddingV = customProps?.attributePaddingVertical ?? 2;
+  const separatorInset = customProps?.separatorInset ?? 4;
+
   // Draw title in header
   const titleFontSize = Math.min(14, headerHeight * 0.6);
   ctx.font = `bold ${titleFontSize}px sans-serif`;
@@ -184,8 +195,8 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
 
   // Draw members in body
   if (members.length > 0) {
-    const bodyTop = -hh + headerHeight + 5;
-    const bodyHeight = height - headerHeight - 10;
+    const bodyTop = -hh + headerHeight + 5 + paddingV;
+    const bodyHeight = height - headerHeight - 10 - paddingV * 2;
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
     const lineHeight = memberFontSize * 1.4;
 
@@ -208,8 +219,8 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
       for (let i = 1; i < members.length; i++) {
         const y = bodyTop + i * lineHeight - lineHeight * 0.2;
         ctx.beginPath();
-        ctx.moveTo(-hw + 4, y);
-        ctx.lineTo(hw - 4, y);
+        ctx.moveTo(-hw + separatorInset, y);
+        ctx.lineTo(hw - separatorInset, y);
         ctx.stroke();
       }
     }
@@ -223,7 +234,7 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
       if (y > hh - 5) return; // Don't overflow
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
-      const x = -hw + 8;
+      const x = -hw + paddingH;
 
       ctx.fillStyle = shape.labelColor || stroke || '#000000';
 
@@ -267,6 +278,11 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
   const rowBgColor = customProps?.rowBackgroundColor;
   const rowAltColor = customProps?.rowAlternateColor;
 
+  // Padding options
+  const paddingH = customProps?.attributePaddingHorizontal ?? 8;
+  const paddingV = customProps?.attributePaddingVertical ?? 2;
+  const separatorInset = customProps?.separatorInset ?? 4;
+
   // Draw title in header (inside inner rectangle)
   const titleFontSize = Math.min(14, (headerHeight - gap) * 0.6);
   ctx.font = `bold ${titleFontSize}px sans-serif`;
@@ -277,8 +293,8 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
 
   // Draw members in body
   if (members.length > 0) {
-    const bodyTop = -hh + headerHeight + 5;
-    const bodyHeight = height - headerHeight - 10;
+    const bodyTop = -hh + headerHeight + 5 + paddingV;
+    const bodyHeight = height - headerHeight - 10 - paddingV * 2;
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
     const lineHeight = memberFontSize * 1.4;
 
@@ -301,8 +317,8 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
       for (let i = 1; i < members.length; i++) {
         const y = bodyTop + i * lineHeight - lineHeight * 0.2;
         ctx.beginPath();
-        ctx.moveTo(-hw + gap + 4, y);
-        ctx.lineTo(hw - gap - 4, y);
+        ctx.moveTo(-hw + gap + separatorInset, y);
+        ctx.lineTo(hw - gap - separatorInset, y);
         ctx.stroke();
       }
     }
@@ -316,7 +332,7 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
       if (y > hh - gap - 5) return; // Don't overflow
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
-      const x = -hw + gap + 8;
+      const x = -hw + gap + paddingH;
 
       ctx.fillStyle = shape.labelColor || stroke || '#000000';
 
@@ -348,6 +364,33 @@ const erdEntityProperties: PropertyDefinition[] = [
     label: 'Text Color',
     type: 'color',
     section: 'custom',
+  },
+  {
+    key: 'customProperties.attributePaddingHorizontal',
+    label: 'Horizontal Padding',
+    type: 'number',
+    section: 'custom',
+    min: 0,
+    max: 50,
+    step: 1,
+  },
+  {
+    key: 'customProperties.attributePaddingVertical',
+    label: 'Vertical Padding',
+    type: 'number',
+    section: 'custom',
+    min: 0,
+    max: 20,
+    step: 1,
+  },
+  {
+    key: 'customProperties.separatorInset',
+    label: 'Separator Inset',
+    type: 'number',
+    section: 'custom',
+    min: 0,
+    max: 30,
+    step: 1,
   },
 ];
 

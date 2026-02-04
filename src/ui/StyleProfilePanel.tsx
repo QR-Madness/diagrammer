@@ -9,7 +9,6 @@ import {
   getProfileUpdates,
 } from '../store/styleProfileStore';
 import { useSettingsStore } from '../store/settingsStore';
-import { Shape } from '../shapes/Shape';
 import './StyleProfilePanel.css';
 
 type ViewMode = 'grid' | 'list';
@@ -92,11 +91,7 @@ export function StyleProfilePanel() {
   const handleSaveProfile = useCallback(() => {
     if (!firstShape || !newProfileName.trim()) return;
 
-    const properties = extractStyleFromShape(firstShape as Shape & {
-      cornerRadius?: number;
-      labelFontSize?: number;
-      labelColor?: string;
-    });
+    const properties = extractStyleFromShape(firstShape);
 
     addProfile(newProfileName.trim(), properties);
     setNewProfileName('');
@@ -107,11 +102,7 @@ export function StyleProfilePanel() {
   const handleOverwriteProfile = useCallback((profileId: string) => {
     if (!firstShape) return;
 
-    const properties = extractStyleFromShape(firstShape as Shape & {
-      cornerRadius?: number;
-      labelFontSize?: number;
-      labelColor?: string;
-    });
+    const properties = extractStyleFromShape(firstShape);
 
     updateProfile(profileId, { properties });
     setConfirmOverwriteId(null);

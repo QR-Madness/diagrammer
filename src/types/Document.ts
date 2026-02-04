@@ -4,6 +4,7 @@
 
 import { Shape } from '../shapes/Shape';
 import { RichTextContent } from './RichText';
+import type { RichTextPage } from '../store/richTextPagesStore';
 
 /**
  * A single page within a document.
@@ -46,6 +47,12 @@ export interface DiagramDocument {
   version: number;
   /** Rich text document content (optional for backwards compatibility) */
   richTextContent?: RichTextContent;
+  /** Rich text pages (multi-page support) */
+  richTextPages?: {
+    pages: Record<string, RichTextPage>;
+    pageOrder: string[];
+    activePageId: string | null;
+  };
   /** Blob IDs referenced by this document (for garbage collection) */
   blobReferences?: string[];
 

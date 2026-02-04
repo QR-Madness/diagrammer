@@ -722,6 +722,28 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
   - Drag reorder tabs
   - Page content persistence on switch
 
+##### Phase 14.3.3: Fixes and Enhancements - COMPLETE
+
+- [x] Tab color persistence:
+  - Added `richTextPages` field to DiagramDocument type
+  - Integrated with persistenceStore save/load
+  - Pages persist across sessions
+- [x] Entity attribute padding:
+  - Horizontal padding (attributePaddingHorizontal)
+  - Vertical padding (attributePaddingVertical)
+  - Separator inset (separatorInset)
+  - Property panel controls for ERD entity shapes
+- [x] Style profiles for all shapes:
+  - Extended StyleProfileProperties with fontSize, fontFamily, arrows, lineStyle, group properties
+  - Shape-type-aware property mapping (SHAPE_CATEGORIES)
+  - getApplicablePropertyNames() utility for UI hints
+  - Works for: rectangle, ellipse, line, text, connector, group, all library shapes
+- [x] Icons/images over host connection:
+  - AssetBundler.ts for bundling/extracting assets
+  - bundleDocumentWithAssets() embeds blob:// as base64 data URLs
+  - extractAssetsFromBundle() converts back to local blob storage
+  - Integrated into teamDocumentStore saveToHost/loadTeamDocument
+
 ### Phase 14.9: AI Insights Improvements Checklist
 
 Replace this list with your own checklists of areas needed for improvement before we get-ready for release of v.1.0

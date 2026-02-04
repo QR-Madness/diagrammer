@@ -16,6 +16,7 @@ import {
 } from '../types/Document';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
 import { useRichTextStore } from './richTextStore';
+import { useRichTextPagesStore } from './richTextPagesStore';
 import { useUserStore } from './userStore';
 import { useTeamStore } from './teamStore';
 import { useTeamDocumentStore } from './teamDocumentStore';
@@ -187,6 +188,7 @@ function createDocumentFromPageStore(
 ): DiagramDocument {
   const pageSnapshot = usePageStore.getState().getSnapshot();
   const richTextContent = useRichTextStore.getState().getContent();
+  const richTextPages = useRichTextPagesStore.getState().serialize();
 
   const doc: DiagramDocument = {
     id,
@@ -198,6 +200,7 @@ function createDocumentFromPageStore(
     modifiedAt: Date.now(),
     version: 1,
     richTextContent,
+    richTextPages,
   };
 
   // Preserve team-related fields from existing document
@@ -247,6 +250,15 @@ function loadDocumentToPageStore(doc: DiagramDocument): void {
 
   // Load rich text content (or reset if not present for backwards compatibility)
   useRichTextStore.getState().loadContent(doc.richTextContent);
+
+  // Load rich text pages (or initialize with default if not present)
+  if (doc.richTextPages) {
+    useRichTextPagesStore.getState().loadPages(doc.richTextPages);
+  } else {
+    // Backwards compatibility: reset to default page
+    useRichTextPagesStore.setState({ pages: {}, pageOrder: [], activePageId: null });
+    useRichTextPagesStore.getState().initializeDefaultPage();
+  }
 }
 
 /**
@@ -285,6 +297,10 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         // Reset rich text store to empty
         useRichTextStore.getState().reset();
+
+        // Reset rich text pages and initialize with default page
+        useRichTextPagesStore.setState({ pages: {}, pageOrder: [], activePageId: null });
+        useRichTextPagesStore.getState().initializeDefaultPage();
 
         // Clear selection and history
         useSessionStore.getState().clearSelection();

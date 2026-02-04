@@ -18,6 +18,12 @@ import { useDocumentRegistry } from './documentRegistry';
 import { useConnectionStore } from './connectionStore';
 import { useUserStore } from './userStore';
 import type { Permission } from '../types/DocumentRegistry';
+import {
+  bundleDocumentWithAssets,
+  extractAssetsFromBundle,
+  hasBlobReferences,
+  hasEmbeddedAssets,
+} from '../storage/AssetBundler';
 
 /**
  * Calculate the effective permission for a user on a document.
@@ -241,7 +247,16 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       registry.setDocumentLoading(docId, true);
 
       try {
-        const doc = await docProvider.getDocument(docId);
+        let doc = await docProvider.getDocument(docId);
+
+        // Extract embedded assets from the document if present
+        // This converts data: URLs to local blob:// references
+        if (hasEmbeddedAssets(doc)) {
+          console.log('[teamDocumentStore] Extracting embedded assets from document:', docId);
+          const result = await extractAssetsFromBundle(doc);
+          doc = result.document;
+          console.log(`[teamDocumentStore] Extracted ${result.assetCount} assets`);
+        }
 
         // Cache the document
         set((state) => {
@@ -286,9 +301,20 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       registry.setSyncState(doc.id, 'syncing');
 
       try {
-        await docProvider.saveDocument(doc);
+        // Bundle assets as base64 data URLs before sending
+        // This ensures other clients can access the assets
+        let docToSave = doc;
+        if (hasBlobReferences(doc)) {
+          console.log('[teamDocumentStore] Bundling assets for document:', doc.id);
+          const result = await bundleDocumentWithAssets(doc);
+          docToSave = result.document;
+          console.log(`[teamDocumentStore] Bundled ${result.assetCount} assets (${result.totalSize} bytes)`);
+        }
 
-        // Update cache
+        await docProvider.saveDocument(docToSave);
+
+        // Update cache with the original doc (with blob:// references)
+        // The bundled version is only for transmission
         set((state) => ({
           documentCache: {
             ...state.documentCache,

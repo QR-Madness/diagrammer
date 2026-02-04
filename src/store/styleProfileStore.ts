@@ -7,16 +7,43 @@ import { nanoid } from 'nanoid';
  * These are the common style properties across all shape types.
  */
 export interface StyleProfileProperties {
+  // Universal properties
   fill: string | null;
   stroke: string | null;
   strokeWidth: number;
   opacity: number;
-  /** Optional - only applies to rectangles */
+
+  // Rectangle/Group properties
+  /** Optional - only applies to rectangles and groups */
   cornerRadius?: number;
+
+  // Label properties
   /** Optional - label font size for shapes with labels */
   labelFontSize?: number;
   /** Optional - label color for shapes with labels */
   labelColor?: string;
+
+  // Text shape properties
+  /** Optional - font size for text shapes */
+  fontSize?: number;
+  /** Optional - font family for text shapes */
+  fontFamily?: string;
+
+  // Line/Connector properties
+  /** Optional - start arrow style */
+  startArrow?: string;
+  /** Optional - end arrow style */
+  endArrow?: string;
+  /** Optional - line style (solid, dashed) */
+  lineStyle?: string;
+
+  // Group-specific properties
+  /** Optional - background color for groups */
+  backgroundColor?: string;
+  /** Optional - border color for groups */
+  borderColor?: string;
+  /** Optional - border width for groups */
+  borderWidth?: number;
 }
 
 /**
@@ -225,49 +252,93 @@ export const useStyleProfileStore = create<StyleProfileState & StyleProfileActio
 
 /**
  * Extract style properties from a shape for creating a profile.
+ * Extracts all applicable properties based on the shape type.
  */
-export function extractStyleFromShape(shape: {
-  fill: string | null;
-  stroke: string | null;
-  strokeWidth: number;
-  opacity: number;
-  cornerRadius?: number;
-  labelFontSize?: number;
-  labelColor?: string;
-}): StyleProfileProperties {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractStyleFromShape(shape: any): StyleProfileProperties {
   const properties: StyleProfileProperties = {
-    fill: shape.fill,
-    stroke: shape.stroke,
-    strokeWidth: shape.strokeWidth,
-    opacity: shape.opacity,
+    fill: shape.fill ?? null,
+    stroke: shape.stroke ?? null,
+    strokeWidth: shape.strokeWidth ?? 2,
+    opacity: shape.opacity ?? 1,
   };
 
-  if (shape.cornerRadius !== undefined) {
+  // Rectangle/Group properties
+  if (typeof shape.cornerRadius === 'number') {
     properties.cornerRadius = shape.cornerRadius;
   }
 
-  if (shape.labelFontSize !== undefined) {
+  // Label properties
+  if (typeof shape.labelFontSize === 'number') {
     properties.labelFontSize = shape.labelFontSize;
   }
-
-  if (shape.labelColor !== undefined) {
+  if (typeof shape.labelColor === 'string') {
     properties.labelColor = shape.labelColor;
+  }
+
+  // Text shape properties
+  if (typeof shape.fontSize === 'number') {
+    properties.fontSize = shape.fontSize;
+  }
+  if (typeof shape.fontFamily === 'string') {
+    properties.fontFamily = shape.fontFamily;
+  }
+
+  // Line/Connector properties
+  if (typeof shape.startArrow === 'string') {
+    properties.startArrow = shape.startArrow;
+  }
+  if (typeof shape.endArrow === 'string') {
+    properties.endArrow = shape.endArrow;
+  }
+  if (typeof shape.lineStyle === 'string') {
+    properties.lineStyle = shape.lineStyle;
+  }
+
+  // Group-specific properties
+  if (typeof shape.backgroundColor === 'string') {
+    properties.backgroundColor = shape.backgroundColor;
+  }
+  if (typeof shape.borderColor === 'string') {
+    properties.borderColor = shape.borderColor;
+  }
+  if (typeof shape.borderWidth === 'number') {
+    properties.borderWidth = shape.borderWidth;
   }
 
   return properties;
 }
 
 /**
- * Core shape types that don't support labels.
+ * Shape type categories for determining applicable properties.
  */
-const SHAPES_WITHOUT_LABELS = new Set(['line', 'text', 'group']);
+const SHAPE_CATEGORIES = {
+  /** Shapes that support labels */
+  withLabels: new Set(['rectangle', 'ellipse', 'connector']),
+  /** Shapes that support corner radius */
+  withCornerRadius: new Set(['rectangle', 'group']),
+  /** Shapes that are text-based */
+  textBased: new Set(['text']),
+  /** Shapes that support arrows */
+  withArrows: new Set(['line', 'connector']),
+  /** Shapes that support line style */
+  withLineStyle: new Set(['connector']),
+  /** Group shapes with background/border */
+  groups: new Set(['group']),
+} as const;
 
 /**
- * Check if a shape type supports labels.
- * Includes: rectangle, ellipse, connector, and all library shapes.
+ * Check if a shape type is a library shape (flowchart, ERD, UML, etc.)
  */
-function supportsLabels(shapeType: string): boolean {
-  return !SHAPES_WITHOUT_LABELS.has(shapeType);
+function isLibraryShape(shapeType: string): boolean {
+  return shapeType.includes('-') || shapeType.startsWith('flowchart') ||
+         shapeType.startsWith('erd') || shapeType.startsWith('uml') ||
+         shapeType === 'diamond' || shapeType === 'terminator' ||
+         shapeType === 'document' || shapeType === 'data' ||
+         shapeType === 'predefined-process' || shapeType === 'manual-input' ||
+         shapeType === 'preparation' || shapeType === 'connector-circle' ||
+         shapeType === 'off-page-connector' || shapeType === 'actor' ||
+         shapeType === 'use-case' || shapeType === 'system-boundary';
 }
 
 /**
@@ -278,28 +349,106 @@ export function getProfileUpdates(
   profile: StyleProfile,
   shapeType: string
 ): Partial<StyleProfileProperties> {
-  const updates: Partial<StyleProfileProperties> = {
-    fill: profile.properties.fill,
-    stroke: profile.properties.stroke,
-    strokeWidth: profile.properties.strokeWidth,
-    opacity: profile.properties.opacity,
-  };
+  const props = profile.properties;
+  const updates: Partial<StyleProfileProperties> = {};
 
-  // Only include cornerRadius for rectangles
-  if (shapeType === 'rectangle' && profile.properties.cornerRadius !== undefined) {
-    updates.cornerRadius = profile.properties.cornerRadius;
+  // Universal properties - apply to all shapes
+  updates.fill = props.fill;
+  updates.stroke = props.stroke;
+  updates.strokeWidth = props.strokeWidth;
+  updates.opacity = props.opacity;
+
+  // Corner radius - rectangles and groups
+  if (SHAPE_CATEGORIES.withCornerRadius.has(shapeType) && props.cornerRadius !== undefined) {
+    updates.cornerRadius = props.cornerRadius;
   }
 
-  // Include label properties for shapes that support labels
-  // (rectangle, ellipse, connector, and all library shapes)
-  if (supportsLabels(shapeType)) {
-    if (profile.properties.labelFontSize !== undefined) {
-      updates.labelFontSize = profile.properties.labelFontSize;
+  // Label properties - rectangles, ellipses, connectors, and all library shapes
+  const supportsLabels = SHAPE_CATEGORIES.withLabels.has(shapeType) || isLibraryShape(shapeType);
+  if (supportsLabels) {
+    if (props.labelFontSize !== undefined) {
+      updates.labelFontSize = props.labelFontSize;
     }
-    if (profile.properties.labelColor !== undefined) {
-      updates.labelColor = profile.properties.labelColor;
+    if (props.labelColor !== undefined) {
+      updates.labelColor = props.labelColor;
+    }
+  }
+
+  // Text shape properties
+  if (SHAPE_CATEGORIES.textBased.has(shapeType)) {
+    if (props.fontSize !== undefined) {
+      updates.fontSize = props.fontSize;
+    }
+    if (props.fontFamily !== undefined) {
+      updates.fontFamily = props.fontFamily;
+    }
+    // For text shapes, fill is the text color (already applied above)
+  }
+
+  // Arrow properties - lines and connectors
+  if (SHAPE_CATEGORIES.withArrows.has(shapeType)) {
+    if (props.startArrow !== undefined) {
+      updates.startArrow = props.startArrow;
+    }
+    if (props.endArrow !== undefined) {
+      updates.endArrow = props.endArrow;
+    }
+  }
+
+  // Line style - connectors
+  if (SHAPE_CATEGORIES.withLineStyle.has(shapeType)) {
+    if (props.lineStyle !== undefined) {
+      updates.lineStyle = props.lineStyle;
+    }
+  }
+
+  // Group-specific properties
+  if (SHAPE_CATEGORIES.groups.has(shapeType)) {
+    if (props.backgroundColor !== undefined) {
+      updates.backgroundColor = props.backgroundColor;
+    }
+    if (props.borderColor !== undefined) {
+      updates.borderColor = props.borderColor;
+    }
+    if (props.borderWidth !== undefined) {
+      updates.borderWidth = props.borderWidth;
     }
   }
 
   return updates;
+}
+
+/**
+ * Get human-readable list of properties that apply to a shape type.
+ * Useful for UI to show what a profile will change.
+ */
+export function getApplicablePropertyNames(shapeType: string): string[] {
+  const names: string[] = ['Fill', 'Stroke', 'Stroke Width', 'Opacity'];
+
+  if (SHAPE_CATEGORIES.withCornerRadius.has(shapeType)) {
+    names.push('Corner Radius');
+  }
+
+  const supportsLabels = SHAPE_CATEGORIES.withLabels.has(shapeType) || isLibraryShape(shapeType);
+  if (supportsLabels) {
+    names.push('Label Font Size', 'Label Color');
+  }
+
+  if (SHAPE_CATEGORIES.textBased.has(shapeType)) {
+    names.push('Font Size', 'Font Family');
+  }
+
+  if (SHAPE_CATEGORIES.withArrows.has(shapeType)) {
+    names.push('Start Arrow', 'End Arrow');
+  }
+
+  if (SHAPE_CATEGORIES.withLineStyle.has(shapeType)) {
+    names.push('Line Style');
+  }
+
+  if (SHAPE_CATEGORIES.groups.has(shapeType)) {
+    names.push('Background Color', 'Border Color', 'Border Width');
+  }
+
+  return names;
 }
