@@ -158,6 +158,9 @@ export class UnifiedSyncProvider {
   /** Flag for pending login request (prevents double auth handling) */
   private pendingLoginRequest = false;
 
+  /** Pending login cleanup function (for disconnect cleanup) */
+  private pendingLoginCleanup: (() => void) | null = null;
+
   constructor(doc: Y.Doc, options: UnifiedSyncProviderOptions) {
     this.doc = doc;
     this.options = {
@@ -239,6 +242,11 @@ export class UnifiedSyncProvider {
   /** Disconnect from the WebSocket server */
   disconnect(): void {
     this.clearReconnectTimeout();
+
+    // Clean up pending login request before nulling ws
+    if (this.pendingLoginCleanup) {
+      this.pendingLoginCleanup();
+    }
 
     if (this.ws) {
       this.ws.close();
@@ -476,7 +484,11 @@ export class UnifiedSyncProvider {
         }
         this.ws?.removeEventListener('message', handleAuth);
         this.pendingLoginRequest = false;
+        this.pendingLoginCleanup = null;
       };
+
+      // Register cleanup for disconnect handling
+      this.pendingLoginCleanup = cleanup;
 
       // Wrapper to ensure cleanup on all resolve paths
       const safeResolve = (result: {

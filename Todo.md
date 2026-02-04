@@ -1025,7 +1025,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Add bounds checking to prevent DoS from malformed messages.
   - Implement message size limits with configurable thresholds.
 
-- [ ] **WebSocket subscription cleanup**
+- [x] **WebSocket subscription cleanup**
   - `disconnect()` clears pending requests but may leak subscriptions.
   - Audit and ensure all event listeners are removed on disconnect.
   - Add connection lifecycle logging for debugging.
