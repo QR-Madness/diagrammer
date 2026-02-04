@@ -86,6 +86,8 @@ export interface UnifiedSyncProviderOptions {
   reconnectDelay?: number | undefined;
   /** Max reconnect attempts (default: 10) */
   maxReconnectAttempts?: number | undefined;
+  /** Whether to add jitter to reconnect delays (default: true, disable for testing) */
+  reconnectJitter?: boolean | undefined;
   /** Request timeout in ms (default: 30000) */
   requestTimeout?: number | undefined;
 
@@ -109,6 +111,7 @@ interface ResolvedSyncProviderOptions {
   autoReconnect: boolean;
   reconnectDelay: number;
   maxReconnectAttempts: number;
+  reconnectJitter: boolean;
   requestTimeout: number;
   onStatusChange: (status: ConnectionStatus, error?: string) => void;
   onSynced: () => void;
@@ -165,6 +168,7 @@ export class UnifiedSyncProvider {
       autoReconnect: options.autoReconnect ?? true,
       reconnectDelay: options.reconnectDelay ?? 1000,
       maxReconnectAttempts: options.maxReconnectAttempts ?? 10,
+      reconnectJitter: options.reconnectJitter ?? true,
       requestTimeout: options.requestTimeout ?? 30000,
       onStatusChange: options.onStatusChange ?? (() => {}),
       onSynced: options.onSynced ?? (() => {}),
@@ -826,6 +830,9 @@ export class UnifiedSyncProvider {
 
   // ============ Private: Reconnection ============
 
+  /** Maximum reconnect delay in ms (30 seconds) */
+  private static readonly MAX_RECONNECT_DELAY = 30000;
+
   private scheduleReconnect(): void {
     if (!this.options.autoReconnect) return;
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
@@ -835,8 +842,19 @@ export class UnifiedSyncProvider {
 
     this.clearReconnectTimeout();
 
-    // Exponential backoff
-    const delay = this.options.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+    // Exponential backoff with cap
+    const baseDelay = this.options.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+    const cappedDelay = Math.min(baseDelay, UnifiedSyncProvider.MAX_RECONNECT_DELAY);
+
+    // Add jitter (±20%) to prevent thundering herd (can be disabled for testing)
+    let delay: number;
+    if (this.options.reconnectJitter) {
+      const jitter = cappedDelay * (0.8 + Math.random() * 0.4);
+      delay = Math.round(jitter);
+    } else {
+      delay = cappedDelay;
+    }
+
     this.reconnectAttempts++;
     useConnectionStore.getState().incrementReconnectAttempts();
 

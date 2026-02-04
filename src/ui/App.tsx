@@ -10,6 +10,7 @@ import { DocumentEditorPanel } from './DocumentEditorPanel';
 import { UnifiedToolbar } from './UnifiedToolbar';
 import { StatusBar } from './StatusBar';
 import { PresenceIndicators } from './PresenceIndicators';
+import { NotificationToast } from './NotificationToast';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
@@ -122,6 +123,9 @@ function App() {
           isOpen={isSettingsOpen}
           onClose={handleCloseSettings}
         />
+
+        {/* Toast notifications */}
+        <NotificationToast />
       </div>
     </AuthGuard>
   );

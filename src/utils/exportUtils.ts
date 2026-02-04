@@ -269,9 +269,47 @@ function renderShapeForExport(
     ctx.save();
     ctx.globalAlpha = effectiveOpacity;
     const handler = shapeRegistry.getHandler(shape.type);
-    handler.render(ctx, shape);
+    if (handler) {
+      handler.render(ctx, shape);
+    } else {
+      // Fallback for unknown shape types: render placeholder box
+      renderUnknownShapeFallback(ctx, shape);
+    }
     ctx.restore();
   }
+}
+
+/**
+ * Render a placeholder for unknown shape types.
+ */
+function renderUnknownShapeFallback(ctx: CanvasRenderingContext2D, shape: Shape): void {
+  // Get bounds if available, otherwise use x,y with default size
+  const handler = shapeRegistry.getHandler(shape.type);
+  let bounds: Box;
+  if (handler) {
+    bounds = handler.getBounds(shape);
+  } else {
+    // Estimate bounds from shape properties
+    const width = 'width' in shape ? (shape as { width: number }).width : 100;
+    const height = 'height' in shape ? (shape as { height: number }).height : 60;
+    bounds = new Box(shape.x - width / 2, shape.y - height / 2, shape.x + width / 2, shape.y + height / 2);
+  }
+
+  // Draw dashed rectangle
+  ctx.strokeStyle = '#999999';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height);
+  ctx.setLineDash([]);
+
+  // Draw type label
+  ctx.fillStyle = '#666666';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`[${shape.type}]`, bounds.centerX, bounds.centerY);
+
+  console.warn(`[Export] Unknown shape type "${shape.type}" rendered as placeholder`);
 }
 
 // ============ SVG Export ============
@@ -349,7 +387,8 @@ function shapeToSvg(
     return connectorToSvg(shape, allShapes, offsetX, offsetY, effectiveOpacity);
   }
 
-  return '';
+  // Fallback for unknown shape types
+  return unknownShapeToSvg(shape, offsetX, offsetY, effectiveOpacity);
 }
 
 /**
@@ -781,4 +820,33 @@ function escapeXml(text: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+/**
+ * Convert unknown shape type to SVG placeholder.
+ */
+function unknownShapeToSvg(
+  shape: Shape,
+  offsetX: number,
+  offsetY: number,
+  opacity: number
+): string {
+  // Estimate bounds from shape properties
+  const width = 'width' in shape ? (shape as { width: number }).width : 100;
+  const height = 'height' in shape ? (shape as { height: number }).height : 60;
+  const x = shape.x + offsetX - width / 2;
+  const y = shape.y + offsetY - height / 2;
+  const cx = shape.x + offsetX;
+  const cy = shape.y + offsetY;
+
+  console.warn(`[Export] Unknown shape type "${shape.type}" exported as placeholder`);
+
+  const elements = [
+    // Dashed rectangle
+    `  <rect x="${x}" y="${y}" width="${width}" height="${height}" fill="none" stroke="#999999" stroke-width="1" stroke-dasharray="4,4"${opacity < 1 ? ` opacity="${opacity}"` : ''}/>`,
+    // Type label
+    `  <text x="${cx}" y="${cy}" font-family="sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central" fill="#666666"${opacity < 1 ? ` opacity="${opacity}"` : ''}>[${escapeXml(shape.type)}]</text>`,
+  ];
+
+  return elements.join('\n');
 }

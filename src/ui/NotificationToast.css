@@ -1,0 +1,163 @@
+/**
+ * Notification Toast Styles
+ *
+ * Phase 14.9.2 - Error Handling & Resilience
+ */
+
+.notification-container {
+  position: fixed;
+  bottom: 48px; /* Above status bar */
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+  pointer-events: none;
+}
+
+.notification-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  animation: toast-slide-in 0.2s ease-out;
+  background: var(--color-surface, #fff);
+  border-left: 4px solid;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Severity variants */
+.notification-toast--info {
+  border-left-color: var(--color-info, #3b82f6);
+}
+
+.notification-toast--info .notification-toast__icon {
+  color: var(--color-info, #3b82f6);
+}
+
+.notification-toast--success {
+  border-left-color: var(--color-success, #22c55e);
+}
+
+.notification-toast--success .notification-toast__icon {
+  color: var(--color-success, #22c55e);
+}
+
+.notification-toast--warning {
+  border-left-color: var(--color-warning, #f59e0b);
+}
+
+.notification-toast--warning .notification-toast__icon {
+  color: var(--color-warning, #f59e0b);
+}
+
+.notification-toast--error {
+  border-left-color: var(--color-error, #ef4444);
+}
+
+.notification-toast--error .notification-toast__icon {
+  color: var(--color-error, #ef4444);
+}
+
+/* Icon */
+.notification-toast__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Content */
+.notification-toast__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-toast__message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text, #1f2937);
+  word-wrap: break-word;
+}
+
+.notification-toast__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Actions */
+.notification-toast__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.notification-toast__action-btn {
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-primary, #3b82f6);
+  background: transparent;
+  border: 1px solid var(--color-primary, #3b82f6);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.notification-toast__action-btn:hover {
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+}
+
+.notification-toast__dismiss-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-secondary, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.notification-toast__dismiss-btn:hover {
+  background: var(--color-surface-hover, #f3f4f6);
+  color: var(--color-text, #1f2937);
+}
+
+/* Dark theme support */
+[data-theme='dark'] .notification-toast {
+  background: var(--color-surface, #1f2937);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .notification-toast__message {
+  color: var(--color-text, #f9fafb);
+}
+
+[data-theme='dark'] .notification-toast__dismiss-btn:hover {
+  background: var(--color-surface-hover, #374151);
+  color: var(--color-text, #f9fafb);
+}

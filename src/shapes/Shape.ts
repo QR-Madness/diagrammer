@@ -68,10 +68,39 @@ export type ShapeType = CoreShapeType | string;
 export type AnchorPosition = string;
 
 /**
+ * Standard anchor positions available on most shapes.
+ */
+export type StandardAnchorPosition = (typeof STANDARD_ANCHOR_POSITIONS)[number];
+
+/**
  * Well-known anchor positions.
  * These are the standard positions available on most shapes.
  */
 export const STANDARD_ANCHOR_POSITIONS = ['top', 'right', 'bottom', 'left', 'center'] as const;
+
+/**
+ * Check if a string is a valid standard anchor position.
+ */
+export function isStandardAnchorPosition(position: string): position is StandardAnchorPosition {
+  return STANDARD_ANCHOR_POSITIONS.includes(position as StandardAnchorPosition);
+}
+
+/**
+ * Validate an anchor position string.
+ * Returns true for standard positions and valid custom patterns (e.g., 'attr-0-left').
+ */
+export function isValidAnchorPosition(position: string): boolean {
+  if (isStandardAnchorPosition(position)) {
+    return true;
+  }
+  // Custom attribute anchors: 'attr-{index}-{side}'
+  const attrAnchorPattern = /^attr-\d+-(?:left|right|top|bottom)$/;
+  if (attrAnchorPattern.test(position)) {
+    return true;
+  }
+  // Allow any non-empty string for custom shapes (extensibility)
+  return position.length > 0;
+}
 
 /**
  * Anchor point on a shape.

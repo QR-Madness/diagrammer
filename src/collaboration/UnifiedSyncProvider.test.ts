@@ -169,6 +169,7 @@ describe('UnifiedSyncProvider', () => {
       url: 'ws://localhost:9876',
       documentId: 'test-doc',
       autoReconnect: false, // Disable for tests
+      reconnectJitter: false, // Disable jitter for deterministic tests
       requestTimeout: 1000, // Short timeout for tests
       onStatusChange,
       onSynced,
