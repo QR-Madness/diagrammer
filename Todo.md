@@ -939,10 +939,11 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Updated `FileSystemBackend` to use atomic writes.
   - Added temp file cleanup on initialization and recovery on load.
 
-- [ ] **Document transfer atomicity**
-  - Personal ↔ team document transfers aren't transactional.
-  - Document could be orphaned if transfer fails mid-operation.
-  - Implement two-phase commit or compensation logic.
+- [x] **Document transfer atomicity**
+  - Created `DocumentTransferService` with two-phase commit pattern.
+  - Implemented prepare → execute → commit/rollback workflow.
+  - Added crash recovery via localStorage persistence.
+  - 24 tests covering transfer, rollback, and recovery scenarios.
 
 - [ ] **Blob garbage collector performance**
   - Orphan detection iterates all documents: O(n*m) complexity.
@@ -1006,10 +1007,12 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Updated protocol, UnifiedSyncProvider, and teamDocumentStore with version support.
   - TODO: Conflict resolution UI and persistenceStore integration.
 
-- [ ] **Cache invalidation strategy**
-  - `teamDocumentStore` cache has no TTL or explicit invalidation.
-  - Add cache refresh on focus/visibility change.
-  - Implement subscription-based cache updates.
+- [x] **Cache invalidation strategy**
+  - Created `DocumentCacheManager` with TTL-based invalidation.
+  - Added window focus/visibility refresh with throttling.
+  - Implemented LRU eviction when max entries exceeded.
+  - Added event subscription for cache monitoring.
+  - 37 tests covering TTL, invalidation, eviction, and events.
 
 - [x] **Request deduplication and debouncing**
   - Multiple store subscribers can trigger simultaneous saves.

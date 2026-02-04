@@ -1,0 +1,465 @@
+/**
+ * Document Transfer Service Tests
+ *
+ * Tests for atomic document transfers between personal and team storage.
+ * Phase 14.9.2 - Data Integrity Improvements
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import {
+  DocumentTransferService,
+  TransferRecord,
+  TransferState,
+  TransferServiceDeps,
+  resetTransferService,
+} from './DocumentTransferService';
+import type { DiagramDocument } from '../types/Document';
+
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: vi.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+
+Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock });
+
+// ============ Test Fixtures ============
+
+function createTestDocument(overrides: Partial<DiagramDocument> = {}): DiagramDocument {
+  return {
+    id: 'doc-123',
+    name: 'Test Document',
+    pages: {},
+    pageOrder: ['page-1'],
+    activePageId: 'page-1',
+    createdAt: Date.now() - 10000,
+    modifiedAt: Date.now(),
+    isTeamDocument: false,
+    ...overrides,
+  } as DiagramDocument;
+}
+
+function createMockDeps(overrides: Partial<TransferServiceDeps> = {}): TransferServiceDeps {
+  const documents = new Map<string, DiagramDocument>();
+
+  return {
+    loadDocument: vi.fn((id: string) => documents.get(id) ?? null),
+    saveDocument: vi.fn((doc: DiagramDocument) => {
+      documents.set(doc.id, doc);
+    }),
+    getCurrentUser: vi.fn(() => ({ id: 'user-1', displayName: 'Test User' })),
+    saveToHost: vi.fn().mockResolvedValue(undefined),
+    deleteFromHost: vi.fn().mockResolvedValue(undefined),
+    isAuthenticated: vi.fn(() => true),
+    updateMetadata: vi.fn(),
+    ...overrides,
+  };
+}
+
+// ============ Tests ============
+
+describe('DocumentTransferService', () => {
+  let service: DocumentTransferService;
+  let deps: TransferServiceDeps;
+  let testDoc: DiagramDocument;
+
+  beforeEach(() => {
+    localStorageMock.clear();
+    resetTransferService();
+
+    testDoc = createTestDocument();
+    deps = createMockDeps({
+      loadDocument: vi.fn((id: string) => (id === testDoc.id ? testDoc : null)),
+      saveDocument: vi.fn((doc: DiagramDocument) => {
+        testDoc = doc;
+      }),
+    });
+
+    service = new DocumentTransferService(deps);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+    localStorageMock.clear();
+  });
+
+  describe('transferToTeam', () => {
+    it('successfully transfers a personal document to team', async () => {
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(true);
+      expect(result.document).toBeDefined();
+      expect(result.document?.isTeamDocument).toBe(true);
+      expect(result.document?.ownerId).toBe('user-1');
+      expect(result.document?.ownerName).toBe('Test User');
+    });
+
+    it('calls server sync when authenticated', async () => {
+      await service.transferToTeam(testDoc.id);
+
+      expect(deps.saveToHost).toHaveBeenCalledTimes(1);
+      expect(deps.saveToHost).toHaveBeenCalledWith(expect.objectContaining({
+        id: testDoc.id,
+        isTeamDocument: true,
+      }));
+    });
+
+    it('skips server sync when not authenticated', async () => {
+      deps.isAuthenticated = vi.fn(() => false);
+
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(true);
+      expect(deps.saveToHost).not.toHaveBeenCalled();
+    });
+
+    it('skips server sync when skipServerSync option is true', async () => {
+      const result = await service.transferToTeam(testDoc.id, { skipServerSync: true });
+
+      expect(result.success).toBe(true);
+      expect(deps.saveToHost).not.toHaveBeenCalled();
+    });
+
+    it('fails if document not found', async () => {
+      deps.loadDocument = vi.fn(() => null);
+
+      const result = await service.transferToTeam('non-existent');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('fails if document is already a team document', async () => {
+      testDoc.isTeamDocument = true;
+
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('already a team document');
+    });
+
+    it('rolls back on server sync failure', async () => {
+      const originalDoc = { ...testDoc };
+      deps.saveToHost = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(false);
+      expect(result.rolledBack).toBe(true);
+      expect(deps.saveDocument).toHaveBeenLastCalledWith(expect.objectContaining({
+        id: originalDoc.id,
+        isTeamDocument: false,
+      }));
+    });
+
+    it('calls onProgress callback with state updates', async () => {
+      const progressStates: TransferState[] = [];
+      const onProgress = (state: TransferState) => progressStates.push(state);
+
+      await service.transferToTeam(testDoc.id, { onProgress });
+
+      expect(progressStates).toEqual([
+        'preparing',
+        'prepared',
+        'executing',
+        'committing',
+        'committed',
+      ]);
+    });
+
+    it('updates document metadata after successful transfer', async () => {
+      await service.transferToTeam(testDoc.id);
+
+      expect(deps.updateMetadata).toHaveBeenCalledWith(
+        testDoc.id,
+        expect.objectContaining({
+          isTeamDocument: true,
+        })
+      );
+    });
+  });
+
+  describe('transferToPersonal', () => {
+    let teamDoc: DiagramDocument;
+
+    beforeEach(() => {
+      teamDoc = createTestDocument({
+        isTeamDocument: true,
+        ownerId: 'user-1',
+        ownerName: 'Test User',
+        lastModifiedBy: 'user-2',
+        lastModifiedByName: 'Other User',
+      });
+      deps.loadDocument = vi.fn((id: string) => (id === teamDoc.id ? teamDoc : null));
+      deps.saveDocument = vi.fn((doc: DiagramDocument) => {
+        teamDoc = doc;
+      });
+    });
+
+    it('successfully transfers a team document to personal', async () => {
+      const result = await service.transferToPersonal(teamDoc.id);
+
+      expect(result.success).toBe(true);
+      expect(result.document).toBeDefined();
+      expect(result.document?.isTeamDocument).toBe(false);
+      expect(result.document?.ownerId).toBeUndefined();
+      expect(result.document?.ownerName).toBeUndefined();
+    });
+
+    it('calls server delete when authenticated', async () => {
+      await service.transferToPersonal(teamDoc.id);
+
+      expect(deps.deleteFromHost).toHaveBeenCalledTimes(1);
+      expect(deps.deleteFromHost).toHaveBeenCalledWith(teamDoc.id);
+    });
+
+    it('removes team-specific fields', async () => {
+      const result = await service.transferToPersonal(teamDoc.id);
+
+      expect(result.document?.ownerId).toBeUndefined();
+      expect(result.document?.ownerName).toBeUndefined();
+      expect(result.document?.lastModifiedBy).toBeUndefined();
+      expect(result.document?.lastModifiedByName).toBeUndefined();
+      expect(result.document?.lockedBy).toBeUndefined();
+      expect(result.document?.sharedWith).toBeUndefined();
+    });
+
+    it('fails if document is already personal', async () => {
+      teamDoc.isTeamDocument = false;
+
+      const result = await service.transferToPersonal(teamDoc.id);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('already a personal document');
+    });
+
+    it('continues even if server delete fails', async () => {
+      deps.deleteFromHost = vi.fn().mockRejectedValue(new Error('Network error'));
+
+      const result = await service.transferToPersonal(teamDoc.id);
+
+      // Should still succeed - server delete is best effort
+      expect(result.success).toBe(true);
+      expect(result.document?.isTeamDocument).toBe(false);
+    });
+  });
+
+  describe('concurrent transfer prevention', () => {
+    it('prevents concurrent transfers', async () => {
+      // Start a slow transfer
+      let resolveFirst: () => void;
+      deps.saveToHost = vi.fn().mockImplementation(() => {
+        return new Promise<void>((resolve) => {
+          resolveFirst = resolve;
+        });
+      });
+
+      const firstPromise = service.transferToTeam(testDoc.id);
+
+      // Try to start another transfer
+      const secondResult = await service.transferToTeam(testDoc.id);
+
+      expect(secondResult.success).toBe(false);
+      expect(secondResult.error).toContain('Another transfer is in progress');
+
+      // Complete first transfer
+      resolveFirst!();
+      const firstResult = await firstPromise;
+      expect(firstResult.success).toBe(true);
+    });
+  });
+
+  describe('transfer recovery', () => {
+    it('recovers a preparing-state transfer by cleaning up', async () => {
+      // Simulate interrupted transfer in preparing state
+      const pendingRecord: TransferRecord = {
+        id: 'transfer_123',
+        documentId: testDoc.id,
+        direction: 'to-team',
+        state: 'preparing',
+        originalDocument: testDoc,
+        startedAt: Date.now() - 10000,
+      };
+      localStorageMock.setItem('diagrammer-pending-transfer', JSON.stringify(pendingRecord));
+
+      service = new DocumentTransferService(deps);
+      const result = await service.recoverPendingTransfer();
+
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(result?.document).toEqual(testDoc);
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('diagrammer-pending-transfer');
+    });
+
+    it('rolls back an executing-state transfer', async () => {
+      const pendingRecord: TransferRecord = {
+        id: 'transfer_123',
+        documentId: testDoc.id,
+        direction: 'to-team',
+        state: 'executing',
+        originalDocument: testDoc,
+        startedAt: Date.now() - 10000,
+      };
+      localStorageMock.setItem('diagrammer-pending-transfer', JSON.stringify(pendingRecord));
+
+      // Service should find the interrupted transfer
+      service = new DocumentTransferService(deps);
+      const result = await service.recoverPendingTransfer();
+
+      expect(result).not.toBeNull();
+      expect(result?.rolledBack).toBe(true);
+      // Original document should be restored
+      expect(deps.saveDocument).toHaveBeenCalledWith(expect.objectContaining({
+        id: testDoc.id,
+        isTeamDocument: false,
+      }));
+    });
+
+    it('returns null if no pending transfer', async () => {
+      const result = await service.recoverPendingTransfer();
+      expect(result).toBeNull();
+    });
+
+    it('cleans up committed transfers', async () => {
+      const pendingRecord: TransferRecord = {
+        id: 'transfer_123',
+        documentId: testDoc.id,
+        direction: 'to-team',
+        state: 'committed',
+        originalDocument: testDoc,
+        startedAt: Date.now() - 10000,
+        completedAt: Date.now() - 5000,
+      };
+      localStorageMock.setItem('diagrammer-pending-transfer', JSON.stringify(pendingRecord));
+
+      service = new DocumentTransferService(deps);
+      const result = await service.recoverPendingTransfer();
+
+      expect(result).toBeNull();
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('diagrammer-pending-transfer');
+    });
+  });
+
+  describe('timeout handling', () => {
+    it('times out slow server operations', async () => {
+      deps.saveToHost = vi.fn().mockImplementation(() => {
+        return new Promise(() => {
+          // Never resolves
+        });
+      });
+
+      const result = await service.transferToTeam(testDoc.id, { timeout: 50 });
+
+      expect(result.success).toBe(false);
+      expect(result.rolledBack).toBe(true);
+      // Error message from rollback
+      expect(result.error).toContain('rolled back');
+    });
+  });
+
+  describe('state inspection', () => {
+    it('reports transfer in progress correctly', async () => {
+      let resolveTransfer: () => void;
+      deps.saveToHost = vi.fn().mockImplementation(() => {
+        return new Promise<void>((resolve) => {
+          resolveTransfer = resolve;
+        });
+      });
+
+      expect(service.isTransferInProgress()).toBe(false);
+
+      const promise = service.transferToTeam(testDoc.id);
+
+      // Wait a tick for the transfer to start
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      expect(service.isTransferInProgress()).toBe(true);
+      expect(service.getCurrentTransfer()).not.toBeNull();
+      expect(service.getCurrentTransfer()?.documentId).toBe(testDoc.id);
+
+      resolveTransfer!();
+      await promise;
+
+      expect(service.isTransferInProgress()).toBe(false);
+      expect(service.getCurrentTransfer()).toBeNull();
+    });
+  });
+
+  describe('error handling', () => {
+    it('handles document disappearing during transfer', async () => {
+      let callCount = 0;
+      deps.loadDocument = vi.fn(() => {
+        callCount++;
+        // First call succeeds (prepare), second call fails (execute)
+        return callCount === 1 ? testDoc : null;
+      });
+
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(false);
+      // Rollback message when document disappeared during execute
+      expect(result.rolledBack).toBe(true);
+    });
+
+    it('handles saveDocument throwing during rollback', async () => {
+      deps.saveToHost = vi.fn().mockRejectedValue(new Error('Network error'));
+      deps.saveDocument = vi.fn().mockImplementation((doc: DiagramDocument) => {
+        if (doc.isTeamDocument === false) {
+          throw new Error('Storage full');
+        }
+      });
+
+      const result = await service.transferToTeam(testDoc.id);
+
+      expect(result.success).toBe(false);
+      expect(result.rolledBack).toBe(false);
+      expect(result.error).toContain('rollback both failed');
+    });
+  });
+
+  describe('localStorage persistence', () => {
+    it('persists transfer state for crash recovery', async () => {
+      let resolveTransfer: () => void;
+      deps.saveToHost = vi.fn().mockImplementation(() => {
+        return new Promise<void>((resolve) => {
+          resolveTransfer = resolve;
+        });
+      });
+
+      const promise = service.transferToTeam(testDoc.id);
+
+      // Wait for execute phase
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Check localStorage was written
+      expect(localStorageMock.setItem).toHaveBeenCalledWith(
+        'diagrammer-pending-transfer',
+        expect.stringContaining(testDoc.id)
+      );
+
+      const lastCallArgs = localStorageMock.setItem.mock.calls.slice(-1)[0];
+      expect(lastCallArgs).toBeDefined();
+      const savedState = JSON.parse(lastCallArgs![1]);
+      expect(savedState.documentId).toBe(testDoc.id);
+      expect(savedState.direction).toBe('to-team');
+      expect(savedState.originalDocument).toBeDefined();
+
+      resolveTransfer!();
+      await promise;
+
+      // Check localStorage was cleared after completion
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('diagrammer-pending-transfer');
+    });
+  });
+});
