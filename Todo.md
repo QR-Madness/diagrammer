@@ -964,7 +964,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Add warning indicators for disconnected connectors.
   - Provide UI to reconnect orphaned connector endpoints.
 
-- [ ] **Group nesting cycle detection**
+- [x] **Group nesting cycle detection**
   - No cycle detection when nesting groups.
   - Could create infinite hierarchies that crash rendering.
   - Validate group membership before allowing nesting.

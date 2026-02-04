@@ -4,6 +4,7 @@ import { Shape, GroupShape, ConnectorShape, isGroup } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { Box } from '../math/Box';
 import { calculateConnectorWaypoints } from '../engine/OrthogonalRouter';
+import { wouldCreateCycle, wouldExceedMaxDepth, findParentGroup } from '../shapes/GroupHierarchy';
 
 /**
  * Document state containing all shape data.
@@ -478,35 +479,24 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
           return;
         }
 
-        // Prevent moving a group into itself or its descendants
+        // Validate target group if specified
         if (targetGroupId) {
-          let checkId: string | null = targetGroupId;
-          while (checkId) {
-            if (checkId === shapeId) {
-              console.warn('Cannot move a group into itself or its descendants');
-              return;
-            }
-            // Check if checkId's parent is shapeId
-            let found = false;
-            for (const s of Object.values(state.shapes)) {
-              if (isGroup(s) && s.childIds.includes(checkId)) {
-                checkId = s.id;
-                found = true;
-                break;
-              }
-            }
-            if (!found) break;
+          // Check for cycles using utility function
+          if (wouldCreateCycle(shapeId, targetGroupId, state.shapes)) {
+            console.warn('Cannot move shape: would create cycle in group hierarchy');
+            return;
+          }
+
+          // Check for max depth
+          if (wouldExceedMaxDepth(shapeId, targetGroupId, state.shapes)) {
+            console.warn('Cannot move shape: would exceed maximum nesting depth');
+            return;
           }
         }
 
-        // Find current parent (null if top-level)
-        let currentParentId: string | null = null;
-        for (const s of Object.values(state.shapes)) {
-          if (isGroup(s) && s.childIds.includes(shapeId)) {
-            currentParentId = s.id;
-            break;
-          }
-        }
+        // Find current parent using utility function
+        const currentParent = findParentGroup(shapeId, state.shapes);
+        const currentParentId = currentParent?.id ?? null;
 
         // Remove from current location
         if (currentParentId) {

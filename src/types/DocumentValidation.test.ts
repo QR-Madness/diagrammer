@@ -8,7 +8,6 @@ import { describe, it, expect } from 'vitest';
 import {
   validateDocument,
   validateDocumentJSON,
-  type ValidationResult,
 } from './DocumentValidation';
 
 describe('DocumentValidation', () => {
