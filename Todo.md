@@ -746,9 +746,301 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 ### Phase 14.9: AI Insights Improvements Checklist
 
-Replace this list with your own checklists of areas needed for improvement before we get-ready for release of v.1.0
+This phase contains improvement recommendations from AI assistants to prepare for v1.0 release.
 
-- [ ] TBD
+#### Phase 14.9.1 (Claude Opus)
+
+##### Performance & Optimization
+
+- [ ] **Dirty region tracking for canvas rendering**
+  - Currently the entire canvas is redrawn on each frame. Implement a dirty region system that tracks which areas need redrawing.
+  - Track bounding boxes of modified shapes and only repaint affected regions.
+  - Potential 2-5x performance improvement for large canvases with localized edits.
+
+- [ ] **Shape render caching with OffscreenCanvas**
+  - Cache complex shapes (groups with many children, shapes with shadows/patterns) to OffscreenCanvas.
+  - Invalidate cache only when shape properties change.
+  - Particularly beneficial for groups with background patterns and shadow effects.
+
+- [ ] **Virtual scrolling for LayerPanel**
+  - LayerPanel renders all shapes in the DOM, which degrades with 100+ shapes.
+  - Implement windowed rendering (react-window or custom) to only render visible items.
+  - Include smooth scroll position restoration when collapsing/expanding groups.
+
+- [ ] **Lazy loading for shape libraries**
+  - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
+  - Use dynamic imports with loading states in ShapePicker.
+  - Reduces initial bundle size and memory footprint.
+
+- [ ] **Spatial index incremental updates**
+  - Currently rebuilds entire RBush index on shape changes. Implement incremental insert/remove/update.
+  - Track which shapes changed and update only those entries.
+  - Critical for smooth performance during drag operations on large canvases.
+
+##### User Experience
+
+- [ ] **Quick action palette (Cmd/Ctrl+K)**
+  - Fuzzy-searchable command palette for all actions: tools, alignment, export, settings, etc.
+  - Include recent commands and context-aware suggestions.
+  - Similar to VS Code's command palette or Linear's Cmd+K.
+
+- [ ] **Keyboard shortcut reference panel**
+  - Accessible via `?` key or Help menu.
+  - Categorized list of all shortcuts with search/filter.
+  - Consider printable cheat sheet export.
+
+- [ ] **Shape search in canvas**
+  - Ctrl+F to search shapes by label text, type, or custom properties.
+  - Highlight matches and provide navigation (next/previous).
+  - Integrate with existing layer view filtering.
+
+- [ ] **Zoom to fit selection**
+  - Button/shortcut to zoom and pan camera to frame selected shapes with padding.
+  - Also add "Zoom to fit all" for entire document.
+  - Smooth animated transition rather than instant jump.
+
+- [ ] **Smooth pan/zoom animations**
+  - Add easing to camera transitions (zoom to fit, minimap navigation, etc.).
+  - Use requestAnimationFrame-based interpolation.
+  - Configurable animation duration in settings.
+
+- [ ] **Multi-select property editing improvements**
+  - When multiple shapes selected, show "Mixed" for differing values.
+  - Allow editing to apply to all selected shapes.
+  - Show count of selected shapes in PropertyPanel header.
+
+- [ ] **Drag-and-drop shape creation**
+  - Drag shapes from ShapePicker directly onto canvas (not just click-to-place).
+  - Show ghost preview during drag.
+  - More intuitive than current tool selection workflow.
+
+- [ ] **Touch/tablet gesture refinements**
+  - Two-finger pinch zoom with proper anchor point.
+  - Three-finger pan gesture.
+  - Apple Pencil pressure sensitivity for line width (future).
+
+##### Stability & Quality
+
+- [ ] **React error boundaries for crash recovery**
+  - Wrap major UI sections (PropertyPanel, LayerPanel, DocumentEditor) in error boundaries.
+  - Display user-friendly error message with "Reload" option.
+  - Log errors to console with stack trace for debugging.
+
+- [ ] **Performance regression benchmarks**
+  - Automated benchmark: render 1000/5000/10000 shapes, measure FPS.
+  - Track metrics over time to catch regressions.
+  - Alert if performance drops below threshold.
+
+- [ ] **Accessibility audit and improvements**
+  - ARIA labels for all interactive elements.
+  - Keyboard navigation through all panels and menus.
+  - High contrast mode support.
+  - Screen reader announcements for state changes.
+
+- [ ] **Graceful WebSocket reconnection feedback**
+  - Clear UI indication when connection is lost/reconnecting.
+  - Queue indicator showing pending changes.
+  - Manual "Retry" button after max reconnection attempts.
+
+##### Developer Experience
+
+- [ ] **Debug overlay improvements**
+  - Toggle-able overlay showing: spatial index bounds, hit test regions, render stats.
+  - Shape inspector: click shape to see all properties in dev panel.
+  - Accessible via settings or keyboard shortcut (Ctrl+Shift+D).
+
+- [ ] **Shape handler development template**
+  - CLI command or template to scaffold new shape handlers.
+  - Include all required handler methods with TypeScript stubs.
+  - Auto-register in ShapeRegistry.
+
+- [ ] **Plugin development documentation**
+  - Document PanelExtensions registry API.
+  - Example plugins: custom shape library, property panel section, export format.
+  - Guidelines for state management and lifecycle.
+
+##### v1.0 Feature Completeness
+
+- [ ] **Template gallery**
+  - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
+  - New document dialog with template selection.
+  - Allow users to save documents as custom templates.
+
+- [ ] **Duplicate page functionality**
+  - Right-click page tab → "Duplicate Page".
+  - Deep-clone all shapes with new IDs.
+  - Useful for iterating on diagram variations.
+
+- [ ] **Shape locking visual indicator**
+  - Show lock icon overlay on locked shapes in canvas.
+  - Different indicators for position-locked vs fully-locked.
+  - Makes lock state discoverable without checking PropertyPanel.
+
+- [ ] **Undo/redo improvements**
+  - Show action description in tooltip ("Undo: Move Rectangle").
+  - Consider branching undo history for complex workflows.
+  - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
+
+#### Phase 14.9.2 (Copilot Opus)
+
+##### Error Handling & Resilience
+
+- [ ] **Centralized error notification system**
+  - Silent failures in async operations (sync, storage, export) only log to console.
+  - Create toast/notification system for user-facing error feedback.
+  - Distinguish between transient (retry-able) and permanent (user action needed) errors.
+
+- [ ] **Sync operation rollback mechanism**
+  - `SelectTool.ts` has TODO: "Revert any in-progress changes" with no implementation.
+  - Implement operation rollback for failed multi-step operations.
+  - Ensure partial failures don't leave document in inconsistent state.
+
+- [ ] **Exponential backoff for WebSocket reconnection**
+  - `UnifiedSyncProvider` reconnection logic could hammer server on failures.
+  - Implement adaptive backoff: 1s → 2s → 4s → 8s → max 30s.
+  - Add jitter to prevent thundering herd on server restart.
+
+- [ ] **Storage quota monitoring and prevention**
+  - Currently throws `QuotaExceededError` reactively on save failure.
+  - Proactively monitor storage usage and warn before quota exceeded.
+  - Implement cleanup suggestions when approaching limits.
+
+##### Testing Coverage
+
+- [ ] **Store layer test coverage**
+  - `documentStore.ts` - Complex shape manipulation logic untested.
+  - `connectionStore.ts` - Connection state transitions need tests.
+  - `teamDocumentStore.ts` - Permission logic and sync flow untested.
+  - `persistenceStore.ts` - Document lifecycle operations need coverage.
+
+- [ ] **Collaboration layer test coverage**
+  - `SyncStateManager.ts` - Queue processing and error recovery untested.
+  - `OfflineQueue.ts` - Queue persistence, overflow, and retry logic untested.
+  - `UnifiedSyncProvider.ts` - Connection state machine needs tests.
+
+- [ ] **Edge case test scenarios**
+  - Connection loss during active sync operations.
+  - Offline queue overflow (100+ pending operations).
+  - Concurrent edits on same shape from multiple clients.
+  - Shape deletion while connector references it.
+  - Group nesting cycle detection.
+
+- [ ] **Export functionality tests**
+  - PNG/SVG export with various shape types.
+  - Selection-based export with partial group selections.
+  - Export with missing shape handlers (graceful degradation).
+
+##### Data Integrity & Storage
+
+- [ ] **Atomic file system operations**
+  - `FileSystemBackend` writes directly; file corruption possible on crash.
+  - Implement write-to-temp-then-rename pattern for atomicity.
+  - Add file validation after write operations.
+
+- [ ] **Document transfer atomicity**
+  - Personal ↔ team document transfers aren't transactional.
+  - Document could be orphaned if transfer fails mid-operation.
+  - Implement two-phase commit or compensation logic.
+
+- [ ] **Blob garbage collector performance**
+  - Orphan detection iterates all documents: O(n*m) complexity.
+  - Implement incremental GC with reference counting.
+  - Add GC progress indicator for large document stores.
+
+- [ ] **Document import validation**
+  - `importJSON()` doesn't validate document structure before processing.
+  - Add schema validation for imported documents.
+  - Graceful handling of malformed or incompatible versions.
+
+- [ ] **Soft delete and document recovery**
+  - Deleting documents is currently permanent with no recovery.
+  - Implement trash/recycle bin with configurable retention.
+  - Allow recovery of recently deleted documents.
+
+##### Connector & Shape Reliability
+
+- [ ] **Anchor validation and error recovery**
+  - `getConnectorStartPoint/EndPoint()` returns fallback position silently if shape not found.
+  - Add warning indicators for disconnected connectors.
+  - Provide UI to reconnect orphaned connector endpoints.
+
+- [ ] **Group nesting cycle detection**
+  - No cycle detection when nesting groups.
+  - Could create infinite hierarchies that crash rendering.
+  - Validate group membership before allowing nesting.
+
+- [ ] **Lazy connector route rebuilding**
+  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
+  - Implement incremental updates for only affected connectors.
+  - Cache connector routes and invalidate on shape changes.
+
+- [ ] **Typed anchor positions**
+  - `AnchorPosition` is untyped string, prone to typos.
+  - Create enum or const type for valid anchor positions.
+  - Add validation at connector creation time.
+
+##### Export Improvements
+
+- [ ] **Unknown shape type fallback rendering**
+  - Export fails silently if `shapeRegistry.getHandler()` returns undefined.
+  - Render placeholder box with shape type label for unknown types.
+  - Log warning for unrenderable shapes.
+
+- [ ] **Canvas resource cleanup**
+  - Export operations don't clean up canvas resources on error.
+  - Implement proper cleanup in all code paths.
+  - Prevent memory leaks during batch exports.
+
+- [ ] **Group-aware selection export**
+  - Partial selections within groups not handled correctly.
+  - Either export entire group or individual selected members.
+  - Add option to flatten groups on export.
+
+##### State Management Improvements
+
+- [ ] **Document version tracking**
+  - No mechanism to detect stale writes from outdated client state.
+  - Add version/etag to documents for conflict detection.
+  - Implement "document changed externally" notification.
+
+- [ ] **Cache invalidation strategy**
+  - `teamDocumentStore` cache has no TTL or explicit invalidation.
+  - Add cache refresh on focus/visibility change.
+  - Implement subscription-based cache updates.
+
+- [ ] **Request deduplication and debouncing**
+  - Multiple store subscribers can trigger simultaneous saves.
+  - Deduplicate identical in-flight requests.
+  - Debounce rapid successive operations (typing, dragging).
+
+- [ ] **Token expiration handling**
+  - `isTokenValid()` doesn't trigger automatic re-authentication.
+  - Proactively refresh tokens before expiration.
+  - Queue operations during re-authentication flow.
+
+##### Protocol & Security
+
+- [ ] **Message size validation**
+  - WebSocket protocol lacks max message size validation.
+  - Add bounds checking to prevent DoS from malformed messages.
+  - Implement message size limits with configurable thresholds.
+
+- [ ] **WebSocket subscription cleanup**
+  - `disconnect()` clears pending requests but may leak subscriptions.
+  - Audit and ensure all event listeners are removed on disconnect.
+  - Add connection lifecycle logging for debugging.
+
+##### Developer Tooling
+
+- [ ] **Tool state machine tests**
+  - `ToolManager.ts` tool switching and state transitions untested.
+  - Add unit tests for tool lifecycle (activate, deactivate, transitions).
+  - Test edge cases: rapid tool switches, tool switch during operation.
+
+- [ ] **Integration test harness**
+  - No end-to-end tests for collaborative workflows.
+  - Create test utilities for multi-client scenarios.
+  - Add CI job for integration test suite.
 
 ### Phase 15: Version 1.0
 
