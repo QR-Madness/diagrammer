@@ -952,7 +952,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Add schema validation for imported documents.
   - Graceful handling of malformed or incompatible versions.
 
-- [ ] **Soft delete and document recovery**
+- [x] **Soft delete and document recovery**
   - Deleting documents is currently permanent with no recovery.
   - Implement trash/recycle bin with configurable retention.
   - Allow recovery of recently deleted documents.
