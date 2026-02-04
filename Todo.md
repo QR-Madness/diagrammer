@@ -986,7 +986,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Render placeholder box with shape type label for unknown types.
   - Log warning for unrenderable shapes.
 
-- [ ] **Canvas resource cleanup**
+- [x] **Canvas resource cleanup**
   - Export operations don't clean up canvas resources on error.
   - Implement proper cleanup in all code paths.
   - Prevent memory leaks during batch exports.

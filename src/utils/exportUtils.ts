@@ -170,6 +170,27 @@ export function getExportBounds(data: ExportData, scope: 'all' | 'selection'): B
 // ============ PNG Export ============
 
 /**
+ * Clean up canvas resources to free memory.
+ * This is especially important for large exports.
+ */
+function cleanupCanvas(canvas: HTMLCanvasElement): void {
+  // Clear canvas content
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Set dimensions to 0 to release memory
+  canvas.width = 0;
+  canvas.height = 0;
+
+  // Remove from DOM if attached (shouldn't be, but defensive)
+  if (canvas.parentNode) {
+    canvas.parentNode.removeChild(canvas);
+  }
+}
+
+/**
  * Export shapes to PNG.
  */
 export async function exportToPng(
@@ -194,43 +215,53 @@ export async function exportToPng(
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
+    cleanupCanvas(canvas);
     throw new Error('Could not get canvas context');
   }
 
-  // Apply scale
-  ctx.scale(scale, scale);
+  try {
+    // Apply scale
+    ctx.scale(scale, scale);
 
-  // Fill background
-  if (background) {
-    ctx.fillStyle = background;
-    ctx.fillRect(0, 0, width / scale, height / scale);
+    // Fill background
+    if (background) {
+      ctx.fillStyle = background;
+      ctx.fillRect(0, 0, width / scale, height / scale);
+    }
+
+    // Translate to account for bounds offset and padding
+    ctx.translate(padding - bounds.minX, padding - bounds.minY);
+
+    // Get shapes to render
+    const shapes = getShapesToExport(data, options.scope);
+
+    // Render shapes in z-order
+    for (const shape of shapes) {
+      renderShapeForExport(ctx, shape, data.shapes, 1);
+    }
+
+    // Convert to blob and cleanup
+    return await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (blob) => {
+          // Clean up canvas resources after blob is created
+          cleanupCanvas(canvas);
+
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error('Failed to create PNG blob'));
+          }
+        },
+        'image/png',
+        1.0
+      );
+    });
+  } catch (error) {
+    // Ensure cleanup on any error during rendering
+    cleanupCanvas(canvas);
+    throw error;
   }
-
-  // Translate to account for bounds offset and padding
-  ctx.translate(padding - bounds.minX, padding - bounds.minY);
-
-  // Get shapes to render
-  const shapes = getShapesToExport(data, options.scope);
-
-  // Render shapes in z-order
-  for (const shape of shapes) {
-    renderShapeForExport(ctx, shape, data.shapes, 1);
-  }
-
-  // Convert to blob
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          reject(new Error('Failed to create PNG blob'));
-        }
-      },
-      'image/png',
-      1.0
-    );
-  });
 }
 
 /**
