@@ -27,6 +27,8 @@ export function GeneralSettings() {
   const setShowMinimap = useSettingsStore((state) => state.setShowMinimap);
   const layerClickFocusShape = useSettingsStore((state) => state.layerClickFocusShape);
   const setLayerClickFocusShape = useSettingsStore((state) => state.setLayerClickFocusShape);
+  const gridOpacity = useSettingsStore((state) => state.gridOpacity);
+  const setGridOpacity = useSettingsStore((state) => state.setGridOpacity);
   const resetSettings = useSettingsStore((state) => state.resetSettings);
 
   const profiles = useStyleProfileStore((state) => state.profiles);
@@ -72,6 +74,27 @@ export function GeneralSettings() {
           </select>
           <span className="settings-hint">
             Choose your preferred color theme
+          </span>
+        </div>
+
+        <div className="settings-row">
+          <label className="settings-label" htmlFor="grid-opacity">
+            Grid Opacity
+          </label>
+          <div className="settings-slider-row">
+            <input
+              id="grid-opacity"
+              type="range"
+              className="styled-slider"
+              min={0}
+              max={100}
+              value={gridOpacity}
+              onChange={(e) => setGridOpacity(Number(e.target.value))}
+            />
+            <span className="settings-slider-value">{gridOpacity}%</span>
+          </div>
+          <span className="settings-hint">
+            Adjust the visibility of the canvas grid (0 = hidden)
           </span>
         </div>
       </div>

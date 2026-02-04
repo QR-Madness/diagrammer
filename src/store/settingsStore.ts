@@ -32,6 +32,8 @@ export interface SettingsState {
   showMinimap: boolean;
   /** Auto-focus camera on shape when clicking layer item */
   layerClickFocusShape: boolean;
+  /** Grid opacity (0-100, percentage) */
+  gridOpacity: number;
 }
 
 /**
@@ -66,6 +68,8 @@ export interface SettingsActions {
   toggleLayerClickFocusShape: () => void;
   /** Set layer click focus shape */
   setLayerClickFocusShape: (focus: boolean) => void;
+  /** Set grid opacity */
+  setGridOpacity: (opacity: number) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -82,6 +86,7 @@ const initialState: SettingsState = {
   saveLabelStyleToProfile: true,
   showMinimap: false,
   layerClickFocusShape: false,
+  gridOpacity: 100,
 };
 
 /**
@@ -163,6 +168,10 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         set({ layerClickFocusShape: focus });
       },
 
+      setGridOpacity: (opacity: number) => {
+        set({ gridOpacity: Math.max(0, Math.min(100, opacity)) });
+      },
+
       resetSettings: () => {
         set(initialState);
       },
@@ -178,6 +187,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         saveLabelStyleToProfile: state.saveLabelStyleToProfile,
         showMinimap: state.showMinimap,
         layerClickFocusShape: state.layerClickFocusShape,
+        gridOpacity: state.gridOpacity,
       }),
     }
   )

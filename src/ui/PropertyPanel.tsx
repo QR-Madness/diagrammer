@@ -551,13 +551,16 @@ function ERDEntityProperties({
               }}
             >
               <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
-              <input
-                type="checkbox"
-                checked={member.isPrimaryKey}
-                onChange={(e) => handleUpdateMember(index, { isPrimaryKey: e.target.checked })}
-                title="Primary Key"
-                className="erd-member-pk"
-              />
+              <button
+                type="button"
+                className={`toggle-icon-btn erd-member-pk ${member.isPrimaryKey ? 'active' : ''}`}
+                onClick={() => handleUpdateMember(index, { isPrimaryKey: !member.isPrimaryKey })}
+                title={member.isPrimaryKey ? 'Remove Primary Key' : 'Set as Primary Key'}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                </svg>
+              </button>
               <input
                 type="text"
                 value={member.name}
@@ -586,7 +589,7 @@ function ERDEntityProperties({
           + Add Attribute
         </button>
         <div className="property-hint">
-          Check box marks attribute as primary key (underlined). Drag to reorder.
+          Click key icon to mark as primary key (underlined). Drag to reorder.
         </div>
       </PropertySection>
 
@@ -627,7 +630,7 @@ function ERDEntityProperties({
             type="number"
             value={attributePaddingHorizontal}
             onChange={(e) => updateCustomProps({ attributePaddingHorizontal: Number(e.target.value) })}
-            className="property-number-input"
+            className="styled-number-input"
             min={0}
             max={50}
             step={1}
@@ -639,7 +642,7 @@ function ERDEntityProperties({
             type="number"
             value={attributePaddingVertical}
             onChange={(e) => updateCustomProps({ attributePaddingVertical: Number(e.target.value) })}
-            className="property-number-input"
+            className="styled-number-input"
             min={0}
             max={20}
             step={1}
@@ -813,13 +816,17 @@ function UMLClassProperties({
                 className="uml-member-type"
                 placeholder="type"
               />
-              <input
-                type="checkbox"
-                checked={attr.isStatic}
-                onChange={(e) => handleUpdateAttribute(index, { isStatic: e.target.checked })}
-                title="Static (underlined)"
-                className="uml-member-static"
-              />
+              <button
+                type="button"
+                className={`uml-member-static ${attr.isStatic ? 'active' : ''}`}
+                onClick={() => handleUpdateAttribute(index, { isStatic: !attr.isStatic })}
+                title={attr.isStatic ? 'Remove Static' : 'Set as Static (underlined)'}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="4" y1="20" x2="20" y2="20" />
+                  <text x="12" y="14" fontSize="10" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="bold">S</text>
+                </svg>
+              </button>
               <button
                 className="uml-member-remove"
                 onClick={() => handleRemoveAttribute(index)}
@@ -888,13 +895,17 @@ function UMLClassProperties({
                 className="uml-member-type"
                 placeholder="return"
               />
-              <input
-                type="checkbox"
-                checked={method.isStatic}
-                onChange={(e) => handleUpdateMethod(index, { isStatic: e.target.checked })}
-                title="Static (underlined)"
-                className="uml-member-static"
-              />
+              <button
+                type="button"
+                className={`uml-member-static ${method.isStatic ? 'active' : ''}`}
+                onClick={() => handleUpdateMethod(index, { isStatic: !method.isStatic })}
+                title={method.isStatic ? 'Remove Static' : 'Set as Static (underlined)'}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="4" y1="20" x2="20" y2="20" />
+                  <text x="12" y="14" fontSize="10" textAnchor="middle" fill="currentColor" stroke="none" fontWeight="bold">S</text>
+                </svg>
+              </button>
               <button
                 className="uml-member-remove"
                 onClick={() => handleRemoveMethod(index)}

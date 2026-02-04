@@ -33,6 +33,8 @@ export interface RendererOptions {
   handleStrokeColor?: string;
   /** Handle size in screen pixels. Default: 8 */
   handleSize?: number;
+  /** Grid opacity (0-100). Default: 100 */
+  gridOpacity?: number;
 }
 
 /**
@@ -66,6 +68,7 @@ const DEFAULT_OPTIONS: Required<RendererOptions> = {
   handleFillColor: '#ffffff',
   handleStrokeColor: '#2196f3',
   handleSize: 8,
+  gridOpacity: 100,
 };
 
 /**
@@ -393,8 +396,11 @@ export class Renderer {
    */
   private drawGrid(): void {
     const { ctx, options } = this;
-    const { gridSpacing, majorGridInterval, gridColor, majorGridColor } =
+    const { gridSpacing, majorGridInterval, gridColor, majorGridColor, gridOpacity } =
       options;
+
+    // Skip drawing if opacity is 0
+    if (gridOpacity <= 0) return;
 
     // Get visible bounds in world space
     const bounds = this.camera.getVisibleBounds();
@@ -417,6 +423,11 @@ export class Renderer {
     // Adaptive line width based on zoom
     const zoom = this.camera.zoom;
     const baseLineWidth = 1 / zoom; // Constant screen-space width
+
+    // Apply grid opacity
+    const opacity = gridOpacity / 100;
+    ctx.save();
+    ctx.globalAlpha = opacity;
 
     // Draw minor grid lines
     ctx.beginPath();
@@ -481,6 +492,9 @@ export class Renderer {
       ctx.lineTo(gridBounds.maxX, 0);
       ctx.stroke();
     }
+
+    // Restore context (opacity)
+    ctx.restore();
   }
 
   /**

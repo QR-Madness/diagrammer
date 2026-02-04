@@ -10,6 +10,7 @@ import { SelectionHighlight } from './SelectionHighlight';
 import { Minimap } from './Minimap';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
+import { useSettingsStore } from '../store/settingsStore';
 
 /**
  * Props for the CanvasContainer component.
@@ -126,6 +127,18 @@ export function CanvasContainer({
     engine.renderer.setOptions({ showGrid, showFps });
     engine.requestRender();
   }, [showGrid, showFps]);
+
+  /**
+   * Sync grid opacity from settings store.
+   */
+  const gridOpacity = useSettingsStore((state) => state.gridOpacity);
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    engine.renderer.setOptions({ gridOpacity });
+    engine.requestRender();
+  }, [gridOpacity]);
 
   /**
    * Subscribe to theme changes and update renderer colors.

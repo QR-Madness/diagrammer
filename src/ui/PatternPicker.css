@@ -96,25 +96,40 @@
 }
 
 .pattern-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
   width: 60px;
-  padding: 4px 8px;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color-input);
-  border-radius: 4px;
-  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.8125rem;
   color: var(--text-primary);
-  text-align: right;
+  text-align: center;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pattern-input::-webkit-outer-spin-button,
+.pattern-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pattern-input:hover {
+  border-color: var(--color-primary-light);
 }
 
 .pattern-input:focus {
   outline: none;
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-alpha);
 }
 
 .pattern-unit {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   min-width: 20px;
+  font-weight: 500;
 }
 
 /* Dark mode adjustments */
