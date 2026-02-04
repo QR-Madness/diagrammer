@@ -62,6 +62,109 @@ export function getConnectorEndPoint(
 }
 
 /**
+ * Connection health status for a connector endpoint.
+ */
+export type ConnectionStatus = 'connected' | 'orphaned' | 'missing-anchor' | 'floating';
+
+/**
+ * Connection health info for a connector.
+ */
+export interface ConnectorHealthInfo {
+  /** Status of the start connection */
+  startStatus: ConnectionStatus;
+  /** Status of the end connection */
+  endStatus: ConnectionStatus;
+  /** Whether the connector is fully healthy */
+  isHealthy: boolean;
+  /** Human-readable issues (if any) */
+  issues: string[];
+}
+
+/**
+ * Check the health of a connector's connections.
+ * Returns info about whether the connector is properly connected.
+ */
+export function checkConnectorHealth(
+  connector: ConnectorShape,
+  shapes: Record<string, Shape>
+): ConnectorHealthInfo {
+  const issues: string[] = [];
+
+  // Check start connection
+  let startStatus: ConnectionStatus = 'floating';
+  if (connector.startShapeId) {
+    const shape = shapes[connector.startShapeId];
+    if (!shape) {
+      startStatus = 'orphaned';
+      issues.push(`Start shape "${connector.startShapeId}" not found`);
+    } else {
+      const handler = shapeRegistry.getHandler(shape.type);
+      if (handler.getAnchors) {
+        const anchors = handler.getAnchors(shape);
+        const anchor = anchors.find((a) => a.position === connector.startAnchor);
+        if (anchor) {
+          startStatus = 'connected';
+        } else {
+          startStatus = 'missing-anchor';
+          issues.push(`Start anchor "${connector.startAnchor}" not found on shape`);
+        }
+      } else {
+        startStatus = 'connected'; // Shape exists but has no anchors (treat as connected)
+      }
+    }
+  }
+
+  // Check end connection
+  let endStatus: ConnectionStatus = 'floating';
+  if (connector.endShapeId) {
+    const shape = shapes[connector.endShapeId];
+    if (!shape) {
+      endStatus = 'orphaned';
+      issues.push(`End shape "${connector.endShapeId}" not found`);
+    } else {
+      const handler = shapeRegistry.getHandler(shape.type);
+      if (handler.getAnchors) {
+        const anchors = handler.getAnchors(shape);
+        const anchor = anchors.find((a) => a.position === connector.endAnchor);
+        if (anchor) {
+          endStatus = 'connected';
+        } else {
+          endStatus = 'missing-anchor';
+          issues.push(`End anchor "${connector.endAnchor}" not found on shape`);
+        }
+      } else {
+        endStatus = 'connected'; // Shape exists but has no anchors
+      }
+    }
+  }
+
+  const isHealthy = issues.length === 0;
+
+  return { startStatus, endStatus, isHealthy, issues };
+}
+
+/**
+ * Find all connectors with connection issues in a document.
+ */
+export function findOrphanedConnectors(
+  shapes: Record<string, Shape>
+): Array<{ connector: ConnectorShape; health: ConnectorHealthInfo }> {
+  const orphaned: Array<{ connector: ConnectorShape; health: ConnectorHealthInfo }> = [];
+
+  for (const shape of Object.values(shapes)) {
+    if (shape.type === 'connector') {
+      const connector = shape as ConnectorShape;
+      const health = checkConnectorHealth(connector, shapes);
+      if (!health.isHealthy) {
+        orphaned.push({ connector, health });
+      }
+    }
+  }
+
+  return orphaned;
+}
+
+/**
  * Draw an arrow head at the given point.
  */
 function drawArrowHead(

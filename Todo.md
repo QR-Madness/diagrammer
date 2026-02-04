@@ -885,7 +885,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Error Handling & Resilience
 
-- [ ] **Centralized error notification system**
+- [x] **Centralized error notification system**
   - Silent failures in async operations (sync, storage, export) only log to console.
   - Create toast/notification system for user-facing error feedback.
   - Distinguish between transient (retry-able) and permanent (user action needed) errors.
@@ -895,12 +895,12 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Implement operation rollback for failed multi-step operations.
   - Ensure partial failures don't leave document in inconsistent state.
 
-- [ ] **Exponential backoff for WebSocket reconnection**
+- [x] **Exponential backoff for WebSocket reconnection**
   - `UnifiedSyncProvider` reconnection logic could hammer server on failures.
   - Implement adaptive backoff: 1s → 2s → 4s → 8s → max 30s.
   - Add jitter to prevent thundering herd on server restart.
 
-- [ ] **Storage quota monitoring and prevention**
+- [x] **Storage quota monitoring and prevention**
   - Currently throws `QuotaExceededError` reactively on save failure.
   - Proactively monitor storage usage and warn before quota exceeded.
   - Implement cleanup suggestions when approaching limits.
@@ -947,7 +947,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Implement incremental GC with reference counting.
   - Add GC progress indicator for large document stores.
 
-- [ ] **Document import validation**
+- [x] **Document import validation**
   - `importJSON()` doesn't validate document structure before processing.
   - Add schema validation for imported documents.
   - Graceful handling of malformed or incompatible versions.
@@ -959,7 +959,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Connector & Shape Reliability
 
-- [ ] **Anchor validation and error recovery**
+- [x] **Anchor validation and error recovery**
   - `getConnectorStartPoint/EndPoint()` returns fallback position silently if shape not found.
   - Add warning indicators for disconnected connectors.
   - Provide UI to reconnect orphaned connector endpoints.
@@ -974,14 +974,14 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Implement incremental updates for only affected connectors.
   - Cache connector routes and invalidate on shape changes.
 
-- [ ] **Typed anchor positions**
+- [x] **Typed anchor positions**
   - `AnchorPosition` is untyped string, prone to typos.
   - Create enum or const type for valid anchor positions.
   - Add validation at connector creation time.
 
 ##### Export Improvements
 
-- [ ] **Unknown shape type fallback rendering**
+- [x] **Unknown shape type fallback rendering**
   - Export fails silently if `shapeRegistry.getHandler()` returns undefined.
   - Render placeholder box with shape type label for unknown types.
   - Log warning for unrenderable shapes.
