@@ -213,6 +213,118 @@ export function useAuthenticatedUser(): AuthenticatedUser | null {
 
 // ============ Notification Integration ============
 
+/** Token refresh buffer - refresh 5 minutes before expiry */
+const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+/** Token warning threshold - warn 10 minutes before expiry */
+const TOKEN_WARNING_THRESHOLD_MS = 10 * 60 * 1000;
+
+/** Minimum time between token checks */
+const TOKEN_CHECK_INTERVAL_MS = 60 * 1000;
+
+/**
+ * Token expiration monitoring state.
+ */
+interface TokenMonitorState {
+  checkInterval: ReturnType<typeof setInterval> | null;
+  warningShown: boolean;
+  onTokenExpiring: (() => void) | undefined;
+  onTokenExpired: (() => void) | undefined;
+}
+
+const tokenMonitorState: TokenMonitorState = {
+  checkInterval: null,
+  warningShown: false,
+  onTokenExpiring: undefined,
+  onTokenExpired: undefined,
+};
+
+/**
+ * Get time until token expires in milliseconds.
+ * Returns null if no expiration is set.
+ */
+export function getTokenTimeRemaining(): number | null {
+  const { tokenExpiresAt } = useConnectionStore.getState();
+  if (!tokenExpiresAt) return null;
+  return tokenExpiresAt - Date.now();
+}
+
+/**
+ * Check if token needs refresh (within buffer period).
+ */
+export function tokenNeedsRefresh(): boolean {
+  const remaining = getTokenTimeRemaining();
+  if (remaining === null) return false;
+  return remaining > 0 && remaining <= TOKEN_REFRESH_BUFFER_MS;
+}
+
+/**
+ * Check if token is about to expire (within warning period).
+ */
+export function tokenIsExpiringSoon(): boolean {
+  const remaining = getTokenTimeRemaining();
+  if (remaining === null) return false;
+  return remaining > 0 && remaining <= TOKEN_WARNING_THRESHOLD_MS;
+}
+
+/**
+ * Start monitoring token expiration.
+ * Calls callbacks when token is about to expire or has expired.
+ */
+export function startTokenExpirationMonitor(options: {
+  onTokenExpiring?: () => void;
+  onTokenExpired?: () => void;
+}): void {
+  stopTokenExpirationMonitor();
+
+  tokenMonitorState.onTokenExpiring = options.onTokenExpiring;
+  tokenMonitorState.onTokenExpired = options.onTokenExpired;
+  tokenMonitorState.warningShown = false;
+
+  const checkToken = (): void => {
+    const { token, tokenExpiresAt, status } = useConnectionStore.getState();
+
+    // Only check when authenticated with a token that has expiry
+    if (status !== 'authenticated' || !token || !tokenExpiresAt) return;
+
+    const remaining = tokenExpiresAt - Date.now();
+
+    if (remaining <= 0) {
+      // Token has expired
+      tokenMonitorState.onTokenExpired?.();
+      tokenMonitorState.warningShown = false;
+    } else if (remaining <= TOKEN_REFRESH_BUFFER_MS) {
+      // Token needs refresh - trigger callback
+      if (!tokenMonitorState.warningShown) {
+        tokenMonitorState.onTokenExpiring?.();
+        tokenMonitorState.warningShown = true;
+      }
+    } else if (remaining > TOKEN_WARNING_THRESHOLD_MS) {
+      // Token is healthy - reset warning state
+      tokenMonitorState.warningShown = false;
+    }
+  };
+
+  // Check immediately
+  checkToken();
+
+  // Set up periodic check
+  tokenMonitorState.checkInterval = setInterval(checkToken, TOKEN_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Stop monitoring token expiration.
+ */
+export function stopTokenExpirationMonitor(): void {
+  if (tokenMonitorState.checkInterval) {
+    clearInterval(tokenMonitorState.checkInterval);
+    tokenMonitorState.checkInterval = null;
+  }
+  tokenMonitorState.warningShown = false;
+  tokenMonitorState.onTokenExpiring = undefined;
+  tokenMonitorState.onTokenExpired = undefined;
+}
+
 /**
  * Set up notification integration for connection status changes.
  * Call this once at app startup to enable user-facing notifications.

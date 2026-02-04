@@ -1013,7 +1013,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Deduplicate identical in-flight requests.
   - Debounce rapid successive operations (typing, dragging).
 
-- [ ] **Token expiration handling**
+- [x] **Token expiration handling**
   - `isTokenValid()` doesn't trigger automatic re-authentication.
   - Proactively refresh tokens before expiration.
   - Queue operations during re-authentication flow.
