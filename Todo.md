@@ -909,14 +909,16 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 - [ ] **Store layer test coverage**
   - `documentStore.ts` - Complex shape manipulation logic untested.
-  - `connectionStore.ts` - Connection state transitions need tests.
+  - `connectionStore.ts` - Connection state transitions tested (26 tests).
   - `teamDocumentStore.ts` - Permission logic and sync flow untested.
   - `persistenceStore.ts` - Document lifecycle operations need coverage.
 
-- [ ] **Collaboration layer test coverage**
-  - `SyncStateManager.ts` - Queue processing and error recovery untested.
-  - `OfflineQueue.ts` - Queue persistence, overflow, and retry logic untested.
-  - `UnifiedSyncProvider.ts` - Connection state machine needs tests.
+- [x] **Collaboration layer test coverage**
+  - `SyncStateManager.ts` - Queue processing and error recovery tested (24 tests).
+  - `OfflineQueue.ts` - Queue persistence, operations, and retry logic tested (35 tests).
+  - `collaborationStore.ts` - Session management and sync operations tested (29 tests).
+  - `UnifiedSyncProvider.ts` - Connection state machine tested.
+  - `protocol.ts` - Message encoding/decoding and size validation tested (59+ tests).
 
 - [ ] **Edge case test scenarios**
   - Connection loss during active sync operations.
