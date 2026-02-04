@@ -1008,7 +1008,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Add cache refresh on focus/visibility change.
   - Implement subscription-based cache updates.
 
-- [ ] **Request deduplication and debouncing**
+- [x] **Request deduplication and debouncing**
   - Multiple store subscribers can trigger simultaneous saves.
   - Deduplicate identical in-flight requests.
   - Debounce rapid successive operations (typing, dragging).
