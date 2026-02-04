@@ -430,7 +430,7 @@ describe('UnifiedSyncProvider', () => {
         const response: DocListResponse = {
           requestId,
           documents: [
-            { id: 'doc-1', name: 'Doc 1', createdAt: 1000, modifiedAt: 2000, ownerId: 'user-1', ownerName: 'User' },
+            { id: 'doc-1', name: 'Doc 1', createdAt: 1000, modifiedAt: 2000, ownerId: 'user-1', ownerName: 'User', pageCount: 1 },
           ],
         };
         mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_LIST, response));
@@ -464,13 +464,21 @@ describe('UnifiedSyncProvider', () => {
           document: {
             id: 'target-doc',
             name: 'Target Doc',
-            shapes: {},
-            shapeOrder: [],
-            connections: {},
-            pages: [],
-            currentPageId: 'page-1',
+            pages: {
+              'page-1': {
+                id: 'page-1',
+                name: 'Page 1',
+                shapes: {},
+                shapeOrder: [],
+                createdAt: 1000,
+                modifiedAt: 2000,
+              },
+            },
+            pageOrder: ['page-1'],
+            activePageId: 'page-1',
             createdAt: 1000,
             modifiedAt: 2000,
+            version: 1,
           },
         };
         mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_GET, response));
@@ -640,6 +648,7 @@ describe('UnifiedSyncProvider', () => {
           modifiedAt: Date.now(),
           ownerId: 'user-2',
           ownerName: 'User 2',
+          pageCount: 1,
         },
       };
       mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_EVENT, event));

@@ -18,10 +18,6 @@ import {
   // Error codes
   ERR_ACCESS_DENIED,
   ERR_DOC_NOT_FOUND,
-  ERR_NOT_AUTHENTICATED,
-  ERR_DELETE_FORBIDDEN,
-  ERR_EDIT_FORBIDDEN,
-  ERR_VIEW_FORBIDDEN,
   // Functions
   encodeMessage,
   decodeMessageType,
@@ -42,13 +38,10 @@ import {
   type DocListResponse,
   type DocGetRequest,
   type DocSaveRequest,
-  type DocDeleteRequest,
   type DocEvent,
-  type JoinDocRequest,
   type ShareEntry,
   type DocShareRequest,
   type DocTransferRequest,
-  type ErrorResponse,
 } from './protocol';
 
 describe('Protocol Message Types', () => {
@@ -183,7 +176,7 @@ describe('decodeMessageType', () => {
 
   it('decodes message type from ArrayBuffer', () => {
     const data = encodeMessage(MESSAGE_AUTH_RESPONSE, { success: true });
-    expect(decodeMessageType(data.buffer)).toBe(MESSAGE_AUTH_RESPONSE);
+    expect(decodeMessageType(new Uint8Array(data.buffer))).toBe(MESSAGE_AUTH_RESPONSE);
   });
 
   it('returns null for empty data', () => {
@@ -246,7 +239,7 @@ describe('decodePayload', () => {
   it('decodes from ArrayBuffer', () => {
     const original: DocGetRequest = { requestId: 'req-1', docId: 'doc-1' };
     const data = encodeMessage(MESSAGE_DOC_GET, original);
-    const payload = decodePayload<DocGetRequest>(data.buffer);
+    const payload = decodePayload<DocGetRequest>(new Uint8Array(data.buffer));
 
     expect(payload.requestId).toBe('req-1');
     expect(payload.docId).toBe('doc-1');
@@ -256,8 +249,8 @@ describe('decodePayload', () => {
     const original: DocListResponse = {
       requestId: 'req-list',
       documents: [
-        { id: 'doc-1', name: 'Doc 1', createdAt: 1000, modifiedAt: 2000, ownerId: 'user-1', ownerName: 'User 1' },
-        { id: 'doc-2', name: 'Doc 2', createdAt: 3000, modifiedAt: 4000, ownerId: 'user-2', ownerName: 'User 2' },
+        { id: 'doc-1', name: 'Doc 1', createdAt: 1000, modifiedAt: 2000, ownerId: 'user-1', ownerName: 'User 1', pageCount: 1 },
+        { id: 'doc-2', name: 'Doc 2', createdAt: 3000, modifiedAt: 4000, ownerId: 'user-2', ownerName: 'User 2', pageCount: 2 },
       ],
     };
     const data = encodeMessage(MESSAGE_DOC_LIST, original);
@@ -273,7 +266,7 @@ describe('decodePayload', () => {
       eventType: 'updated',
       docId: 'doc-1',
       userId: 'user-1',
-      metadata: { id: 'doc-1', name: 'Updated Doc', createdAt: 1000, modifiedAt: 5000, ownerId: 'user-1', ownerName: 'User 1' },
+      metadata: { id: 'doc-1', name: 'Updated Doc', createdAt: 1000, modifiedAt: 5000, ownerId: 'user-1', ownerName: 'User 1', pageCount: 1 },
     };
     const data = encodeMessage(MESSAGE_DOC_EVENT, original);
     const payload = decodePayload<DocEvent>(data);

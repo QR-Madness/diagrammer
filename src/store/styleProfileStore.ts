@@ -44,6 +44,18 @@ export interface StyleProfileProperties {
   borderColor?: string;
   /** Optional - border width for groups */
   borderWidth?: number;
+
+  // ERD entity styling properties
+  /** Optional - row separator color */
+  rowSeparatorColor?: string;
+  /** Optional - row background color */
+  rowBackgroundColor?: string;
+  /** Optional - alternate row color for zebra striping */
+  rowAlternateColor?: string;
+  /** Optional - horizontal padding for attribute text */
+  attributePaddingHorizontal?: number;
+  /** Optional - vertical padding for attributes */
+  attributePaddingVertical?: number;
 }
 
 /**
@@ -306,6 +318,26 @@ export function extractStyleFromShape(shape: any): StyleProfileProperties {
     properties.borderWidth = shape.borderWidth;
   }
 
+  // ERD entity properties (from customProperties)
+  const customProps = shape.customProperties;
+  if (customProps && typeof customProps === 'object') {
+    if (typeof customProps.rowSeparatorColor === 'string') {
+      properties.rowSeparatorColor = customProps.rowSeparatorColor;
+    }
+    if (typeof customProps.rowBackgroundColor === 'string') {
+      properties.rowBackgroundColor = customProps.rowBackgroundColor;
+    }
+    if (typeof customProps.rowAlternateColor === 'string') {
+      properties.rowAlternateColor = customProps.rowAlternateColor;
+    }
+    if (typeof customProps.attributePaddingHorizontal === 'number') {
+      properties.attributePaddingHorizontal = customProps.attributePaddingHorizontal;
+    }
+    if (typeof customProps.attributePaddingVertical === 'number') {
+      properties.attributePaddingVertical = customProps.attributePaddingVertical;
+    }
+  }
+
   return properties;
 }
 
@@ -325,7 +357,16 @@ const SHAPE_CATEGORIES = {
   withLineStyle: new Set(['connector']),
   /** Group shapes with background/border */
   groups: new Set(['group']),
+  /** ERD entity shapes with table styling */
+  erdEntities: new Set(['erd-entity', 'erd-weak-entity']),
 } as const;
+
+/**
+ * Check if a shape type is an ERD entity shape.
+ */
+function isERDEntityShape(shapeType: string): boolean {
+  return SHAPE_CATEGORIES.erdEntities.has(shapeType);
+}
 
 /**
  * Check if a shape type is a library shape (flowchart, ERD, UML, etc.)
@@ -415,7 +456,63 @@ export function getProfileUpdates(
     }
   }
 
+  // ERD entity properties are applied via customProperties
+  // Note: These are included in the updates object but need special handling
+  // when applying to the shape (see getERDProfileCustomProperties)
+  if (isERDEntityShape(shapeType)) {
+    if (props.rowSeparatorColor !== undefined) {
+      updates.rowSeparatorColor = props.rowSeparatorColor;
+    }
+    if (props.rowBackgroundColor !== undefined) {
+      updates.rowBackgroundColor = props.rowBackgroundColor;
+    }
+    if (props.rowAlternateColor !== undefined) {
+      updates.rowAlternateColor = props.rowAlternateColor;
+    }
+    if (props.attributePaddingHorizontal !== undefined) {
+      updates.attributePaddingHorizontal = props.attributePaddingHorizontal;
+    }
+    if (props.attributePaddingVertical !== undefined) {
+      updates.attributePaddingVertical = props.attributePaddingVertical;
+    }
+  }
+
   return updates;
+}
+
+/**
+ * Get ERD-specific customProperties updates from a profile.
+ * These need to be merged with existing customProperties when applying.
+ */
+export function getERDProfileCustomProperties(
+  profile: StyleProfile
+): Record<string, unknown> | null {
+  const props = profile.properties;
+  const customProps: Record<string, unknown> = {};
+  let hasProps = false;
+
+  if (props.rowSeparatorColor !== undefined) {
+    customProps['rowSeparatorColor'] = props.rowSeparatorColor;
+    hasProps = true;
+  }
+  if (props.rowBackgroundColor !== undefined) {
+    customProps['rowBackgroundColor'] = props.rowBackgroundColor;
+    hasProps = true;
+  }
+  if (props.rowAlternateColor !== undefined) {
+    customProps['rowAlternateColor'] = props.rowAlternateColor;
+    hasProps = true;
+  }
+  if (props.attributePaddingHorizontal !== undefined) {
+    customProps['attributePaddingHorizontal'] = props.attributePaddingHorizontal;
+    hasProps = true;
+  }
+  if (props.attributePaddingVertical !== undefined) {
+    customProps['attributePaddingVertical'] = props.attributePaddingVertical;
+    hasProps = true;
+  }
+
+  return hasProps ? customProps : null;
 }
 
 /**
@@ -448,6 +545,10 @@ export function getApplicablePropertyNames(shapeType: string): string[] {
 
   if (SHAPE_CATEGORIES.groups.has(shapeType)) {
     names.push('Background Color', 'Border Color', 'Border Width');
+  }
+
+  if (isERDEntityShape(shapeType)) {
+    names.push('Row Colors', 'Padding', 'Separator Inset');
   }
 
   return names;

@@ -463,6 +463,8 @@ function ERDEntityProperties({
   const rowSeparatorColor = customProps.rowSeparatorColor || '';
   const rowBackgroundColor = customProps.rowBackgroundColor || '';
   const rowAlternateColor = customProps.rowAlternateColor || '';
+  const attributePaddingHorizontal = customProps.attributePaddingHorizontal ?? 8;
+  const attributePaddingVertical = customProps.attributePaddingVertical ?? 2;
 
   const updateCustomProps = useCallback((updates: Partial<ERDEntityCustomProps>) => {
     updateShape(shape.id, {
@@ -619,6 +621,30 @@ function ERDEntityProperties({
           onChange={(color) => updateCustomProps({ rowAlternateColor: color })}
           showNoFill
         />
+        <div className="compact-number-row">
+          <label className="compact-number-label">H Padding</label>
+          <input
+            type="number"
+            value={attributePaddingHorizontal}
+            onChange={(e) => updateCustomProps({ attributePaddingHorizontal: Number(e.target.value) })}
+            className="property-number-input"
+            min={0}
+            max={50}
+            step={1}
+          />
+        </div>
+        <div className="compact-number-row">
+          <label className="compact-number-label">V Padding</label>
+          <input
+            type="number"
+            value={attributePaddingVertical}
+            onChange={(e) => updateCustomProps({ attributePaddingVertical: Number(e.target.value) })}
+            className="property-number-input"
+            min={0}
+            max={20}
+            step={1}
+          />
+        </div>
       </PropertySection>
     </>
   );

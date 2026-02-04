@@ -7,6 +7,7 @@ import {
   StyleProfile,
   extractStyleFromShape,
   getProfileUpdates,
+  getERDProfileCustomProperties,
 } from '../store/styleProfileStore';
 import { useSettingsStore } from '../store/settingsStore';
 import './StyleProfilePanel.css';
@@ -81,6 +82,24 @@ export function StyleProfilePanel() {
 
       for (const shape of selectedShapes) {
         const updates = getProfileUpdates(profile, shape.type);
+
+        // For ERD entity shapes, also apply customProperties
+        if (shape.type === 'erd-entity' || shape.type === 'erd-weak-entity') {
+          const erdProps = getERDProfileCustomProperties(profile);
+          if (erdProps) {
+            // Merge with existing customProperties
+            const existingCustomProps = (shape as unknown as { customProperties?: Record<string, unknown> }).customProperties || {};
+            updateShape(shape.id, {
+              ...updates,
+              customProperties: {
+                ...existingCustomProps,
+                ...erdProps,
+              },
+            } as Record<string, unknown>);
+            continue;
+          }
+        }
+
         updateShape(shape.id, updates);
       }
     },

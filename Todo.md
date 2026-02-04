@@ -731,8 +731,8 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 - [x] Entity attribute padding:
   - Horizontal padding (attributePaddingHorizontal)
   - Vertical padding (attributePaddingVertical)
-  - Separator inset (separatorInset)
   - Property panel controls for ERD entity shapes
+  - Separator lines use horizontal padding for consistent inset
 - [x] Style profiles for all shapes:
   - Extended StyleProfileProperties with fontSize, fontFamily, arrows, lineStyle, group properties
   - Shape-type-aware property mapping (SHAPE_CATEGORIES)

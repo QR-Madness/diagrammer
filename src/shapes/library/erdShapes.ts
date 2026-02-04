@@ -67,8 +67,6 @@ export interface ERDEntityCustomProps {
   attributePaddingHorizontal?: number;
   /** Vertical padding between attributes (default: 2) */
   attributePaddingVertical?: number;
-  /** Inset for row separator lines from edges (default: 4) */
-  separatorInset?: number;
 }
 
 /**
@@ -183,7 +181,6 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
   // Padding options
   const paddingH = customProps?.attributePaddingHorizontal ?? 8;
   const paddingV = customProps?.attributePaddingVertical ?? 2;
-  const separatorInset = customProps?.separatorInset ?? 4;
 
   // Draw title in header
   const titleFontSize = Math.min(14, headerHeight * 0.6);
@@ -195,19 +192,21 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
 
   // Draw members in body
   if (members.length > 0) {
-    const bodyTop = -hh + headerHeight + 5 + paddingV;
-    const bodyHeight = height - headerHeight - 10 - paddingV * 2;
+    const bodyTop = -hh + headerHeight + 5;
+    const bodyHeight = height - headerHeight - 10;
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
-    const lineHeight = memberFontSize * 1.4;
+    // Add vertical padding to line height for spacing between rows
+    const baseLineHeight = memberFontSize * 1.4;
+    const lineHeight = baseLineHeight + paddingV * 2;
 
     // Draw row backgrounds (if configured)
     if (rowBgColor || rowAltColor) {
       members.forEach((_, index) => {
-        const rowTop = bodyTop + index * lineHeight - lineHeight * 0.2;
+        const rowTop = bodyTop + index * lineHeight;
         const bgColor = (index % 2 === 0) ? rowBgColor : (rowAltColor || rowBgColor);
         if (bgColor) {
           ctx.fillStyle = bgColor;
-          ctx.fillRect(-hw + 2, rowTop, width - 4, lineHeight);
+          ctx.fillRect(-hw + paddingH / 2, rowTop, width - paddingH, lineHeight);
         }
       });
     }
@@ -217,20 +216,21 @@ const renderERDEntity: CustomRenderFunction = (ctx, shape) => {
       ctx.strokeStyle = rowSeparatorColor;
       ctx.lineWidth = 0.5;
       for (let i = 1; i < members.length; i++) {
-        const y = bodyTop + i * lineHeight - lineHeight * 0.2;
+        const y = bodyTop + i * lineHeight;
         ctx.beginPath();
-        ctx.moveTo(-hw + separatorInset, y);
-        ctx.lineTo(hw - separatorInset, y);
+        ctx.moveTo(-hw + paddingH / 2, y);
+        ctx.lineTo(hw - paddingH / 2, y);
         ctx.stroke();
       }
     }
 
-    // Draw member text
+    // Draw member text - centered vertically in each row with padding
     ctx.font = `${memberFontSize}px sans-serif`;
     ctx.textAlign = 'left';
 
     members.forEach((member, index) => {
-      const y = bodyTop + (index + 0.5) * lineHeight;
+      // Position text in center of row
+      const y = bodyTop + index * lineHeight + lineHeight / 2 + memberFontSize * 0.1;
       if (y > hh - 5) return; // Don't overflow
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
@@ -281,7 +281,6 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
   // Padding options
   const paddingH = customProps?.attributePaddingHorizontal ?? 8;
   const paddingV = customProps?.attributePaddingVertical ?? 2;
-  const separatorInset = customProps?.separatorInset ?? 4;
 
   // Draw title in header (inside inner rectangle)
   const titleFontSize = Math.min(14, (headerHeight - gap) * 0.6);
@@ -293,19 +292,21 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
 
   // Draw members in body
   if (members.length > 0) {
-    const bodyTop = -hh + headerHeight + 5 + paddingV;
-    const bodyHeight = height - headerHeight - 10 - paddingV * 2;
+    const bodyTop = -hh + headerHeight + 5;
+    const bodyHeight = height - headerHeight - 10;
     const memberFontSize = Math.min(12, bodyHeight / members.length * 0.8);
-    const lineHeight = memberFontSize * 1.4;
+    // Add vertical padding to line height for spacing between rows
+    const baseLineHeight = memberFontSize * 1.4;
+    const lineHeight = baseLineHeight + paddingV * 2;
 
     // Draw row backgrounds (if configured)
     if (rowBgColor || rowAltColor) {
       members.forEach((_, index) => {
-        const rowTop = bodyTop + index * lineHeight - lineHeight * 0.2;
+        const rowTop = bodyTop + index * lineHeight;
         const bgColor = (index % 2 === 0) ? rowBgColor : (rowAltColor || rowBgColor);
         if (bgColor) {
           ctx.fillStyle = bgColor;
-          ctx.fillRect(-hw + gap + 2, rowTop, width - gap * 2 - 4, lineHeight);
+          ctx.fillRect(-hw + gap + paddingH / 2, rowTop, width - gap * 2 - paddingH, lineHeight);
         }
       });
     }
@@ -315,20 +316,21 @@ const renderERDWeakEntity: CustomRenderFunction = (ctx, shape) => {
       ctx.strokeStyle = rowSeparatorColor;
       ctx.lineWidth = 0.5;
       for (let i = 1; i < members.length; i++) {
-        const y = bodyTop + i * lineHeight - lineHeight * 0.2;
+        const y = bodyTop + i * lineHeight;
         ctx.beginPath();
-        ctx.moveTo(-hw + gap + separatorInset, y);
-        ctx.lineTo(hw - gap - separatorInset, y);
+        ctx.moveTo(-hw + gap + paddingH / 2, y);
+        ctx.lineTo(hw - gap - paddingH / 2, y);
         ctx.stroke();
       }
     }
 
-    // Draw member text
+    // Draw member text - centered vertically in each row with padding
     ctx.font = `${memberFontSize}px sans-serif`;
     ctx.textAlign = 'left';
 
     members.forEach((member, index) => {
-      const y = bodyTop + (index + 0.5) * lineHeight;
+      // Position text in center of row
+      const y = bodyTop + index * lineHeight + lineHeight / 2 + memberFontSize * 0.1;
       if (y > hh - gap - 5) return; // Don't overflow
 
       const text = member.type ? `${member.name}: ${member.type}` : member.name;
@@ -364,33 +366,6 @@ const erdEntityProperties: PropertyDefinition[] = [
     label: 'Text Color',
     type: 'color',
     section: 'custom',
-  },
-  {
-    key: 'customProperties.attributePaddingHorizontal',
-    label: 'Horizontal Padding',
-    type: 'number',
-    section: 'custom',
-    min: 0,
-    max: 50,
-    step: 1,
-  },
-  {
-    key: 'customProperties.attributePaddingVertical',
-    label: 'Vertical Padding',
-    type: 'number',
-    section: 'custom',
-    min: 0,
-    max: 20,
-    step: 1,
-  },
-  {
-    key: 'customProperties.separatorInset',
-    label: 'Separator Inset',
-    type: 'number',
-    section: 'custom',
-    min: 0,
-    max: 30,
-    step: 1,
   },
 ];
 
