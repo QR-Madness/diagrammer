@@ -169,6 +169,12 @@ interface TeamDocumentActions {
   
   /** Get list of document IDs available offline */
   getOfflineDocumentIds: () => string[];
+  
+  /** Refresh stale cached documents from server (call after reconnect) */
+  refreshStaleCachedDocuments: () => Promise<void>;
+  
+  /** Preload cached documents into memory (call on app start) */
+  warmupCache: () => Promise<void>;
 }
 
 /** Document provider instance (module-level singleton) */
@@ -545,9 +551,11 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     setAuthenticated: (authenticated) => {
       set({ authenticated });
 
-      // Fetch document list when authenticated
+      // Fetch document list when authenticated, then refresh any stale cached docs
       if (authenticated && docProvider) {
-        get().fetchDocumentList().catch(console.error);
+        get().fetchDocumentList()
+          .then(() => get().refreshStaleCachedDocuments())
+          .catch(console.error);
       }
     },
 
@@ -597,6 +605,96 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
     
     getOfflineDocumentIds: () => {
       return TeamDocumentCache.getCachedIds();
+    },
+    
+    refreshStaleCachedDocuments: async () => {
+      if (!docProvider) {
+        console.log('[teamDocumentStore] Cannot refresh: not connected');
+        return;
+      }
+      
+      const cachedIds = TeamDocumentCache.getCachedIds();
+      if (cachedIds.length === 0) {
+        return;
+      }
+      
+      console.log(`[teamDocumentStore] Checking ${cachedIds.length} cached documents for staleness`);
+      
+      // Get document list to check versions
+      const teamDocs = get().teamDocuments;
+      let refreshed = 0;
+      
+      for (const docId of cachedIds) {
+        const remoteMeta = teamDocs[docId];
+        if (!remoteMeta) {
+          // Document no longer exists on server - could remove from cache
+          console.log(`[teamDocumentStore] Cached doc ${docId} no longer on server`);
+          continue;
+        }
+        
+        const cachedMeta = TeamDocumentCache.getMeta(docId);
+        if (!cachedMeta) continue;
+        
+        // Check if cache is stale (compare modifiedAt timestamps)
+        const isStale = remoteMeta.modifiedAt > cachedMeta.cachedAt;
+        
+        if (isStale) {
+          console.log(`[teamDocumentStore] Refreshing stale cached document: ${docId}`);
+          try {
+            // Clear memory cache to force re-fetch
+            set((state) => {
+              const documentCache = { ...state.documentCache };
+              delete documentCache[docId];
+              return { documentCache };
+            });
+            useDocumentRegistry.getState().invalidateContent(docId);
+            
+            // Re-fetch from server (this will update the cache)
+            await get().loadTeamDocument(docId);
+            refreshed++;
+          } catch (error) {
+            console.warn(`[teamDocumentStore] Failed to refresh ${docId}:`, error);
+          }
+        }
+      }
+      
+      if (refreshed > 0) {
+        console.log(`[teamDocumentStore] Refreshed ${refreshed} stale cached documents`);
+      }
+    },
+    
+    warmupCache: async () => {
+      console.log('[teamDocumentStore] Warming up cache from IndexedDB...');
+      
+      try {
+        // Preload all cached documents into memory
+        const preloaded = await TeamDocumentCache.preloadAll();
+        
+        if (preloaded.size === 0) {
+          console.log('[teamDocumentStore] No cached documents to warm up');
+          return;
+        }
+        
+        // Add to in-memory cache and registry
+        const registry = useDocumentRegistry.getState();
+        const documentCache: Record<string, DiagramDocument> = {};
+        
+        for (const [docId, doc] of preloaded) {
+          documentCache[docId] = doc;
+          registry.setDocumentContent(docId, doc);
+        }
+        
+        set((state) => ({
+          documentCache: {
+            ...state.documentCache,
+            ...documentCache,
+          },
+        }));
+        
+        console.log(`[teamDocumentStore] Warmed up ${preloaded.size} documents`);
+      } catch (error) {
+        console.error('[teamDocumentStore] Cache warmup failed:', error);
+      }
     },
   })
 );

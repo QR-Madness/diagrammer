@@ -13,6 +13,8 @@ import './DocumentCard.css';
 interface DocumentCardProps {
   /** Document record to display */
   record: DocumentRecord;
+  /** Whether this document is available in offline cache */
+  isOfflineAvailable?: boolean | undefined;
   /** Whether this document is currently active/open */
   isActive?: boolean | undefined;
   /** Whether the document is currently selected */
@@ -88,6 +90,7 @@ export function DocumentCard({
   record,
   isActive = false,
   isSelected = false,
+  isOfflineAvailable = false,
   onOpen,
   onDelete,
   onRename,
@@ -205,6 +208,16 @@ export function DocumentCard({
           <span className={`document-card__type document-card__type--${record.type}`}>
             {getTypeLabel(record.type)}
           </span>
+
+          {/* Offline available indicator (for team docs cached locally) */}
+          {record.type === 'remote' && isOfflineAvailable && (
+            <span 
+              className="document-card__offline-badge" 
+              title="Available offline - cached locally"
+            >
+              📴
+            </span>
+          )}
 
           {/* Sync status */}
           <SyncStatusBadge state={syncState} size="small" />

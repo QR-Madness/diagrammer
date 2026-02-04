@@ -103,6 +103,12 @@
   background: rgba(245, 158, 11, 0.1);
 }
 
+.document-card__offline-badge {
+  font-size: 11px;
+  cursor: help;
+  opacity: 0.8;
+}
+
 .document-card__permission {
   font-size: 10px;
   color: var(--text-muted, #94a3b8);

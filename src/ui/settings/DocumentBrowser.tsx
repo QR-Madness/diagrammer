@@ -58,6 +58,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   const loadTeamDocument = useTeamDocumentStore((s) => s.loadTeamDocument);
   const deleteFromHost = useTeamDocumentStore((s) => s.deleteFromHost);
   const saveToHost = useTeamDocumentStore((s) => s.saveToHost);
+  const isAvailableOffline = useTeamDocumentStore((s) => s.isAvailableOffline);
 
   // User store
   const currentUser = useUserStore((s) => s.currentUser);
@@ -425,6 +426,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               key={record.id}
               record={record}
               isActive={record.id === currentDocumentId}
+              isOfflineAvailable={record.type === 'remote' && isAvailableOffline(record.id)}
               onOpen={handleOpen}
               onDelete={canDelete(record, currentUser?.id, currentUser?.role) ? handleDelete : undefined}
               onRename={canEdit(record, currentUser?.id, currentUser?.role) ? handleRename : undefined}

@@ -927,11 +927,6 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Shape deletion while connector references it.
   - Group nesting cycle detection.
 
-- [ ] **Export functionality tests**
-  - PNG/SVG export with various shape types.
-  - Selection-based export with partial group selections.
-  - Export with missing shape handlers (graceful degradation).
-
 ##### Data Integrity & Storage
 
 - [x] **Atomic file system operations**
@@ -944,11 +939,6 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Implemented prepare → execute → commit/rollback workflow.
   - Added crash recovery via localStorage persistence.
   - 24 tests covering transfer, rollback, and recovery scenarios.
-
-- [ ] **Blob garbage collector performance**
-  - Orphan detection iterates all documents: O(n*m) complexity.
-  - Implement incremental GC with reference counting.
-  - Add GC progress indicator for large document stores.
 
 - [x] **Document import validation**
   - `importJSON()` doesn't validate document structure before processing.
@@ -972,11 +962,6 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Could create infinite hierarchies that crash rendering.
   - Validate group membership before allowing nesting.
 
-- [ ] **Lazy connector route rebuilding**
-  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
-  - Implement incremental updates for only affected connectors.
-  - Cache connector routes and invalidate on shape changes.
-
 - [x] **Typed anchor positions**
   - `AnchorPosition` is untyped string, prone to typos.
   - Create enum or const type for valid anchor positions.
@@ -994,11 +979,6 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Implement proper cleanup in all code paths.
   - Prevent memory leaks during batch exports.
 
-- [ ] **Group-aware selection export**
-  - Partial selections within groups not handled correctly.
-  - Either export entire group or individual selected members.
-  - Add option to flatten groups on export.
-
 ##### State Management Improvements
 
 - [x] **Document version tracking** (partial - core infrastructure complete)
@@ -1013,6 +993,9 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - `loadTeamDocument` checks cache tiers: memory → registry → IndexedDB.
   - LRU eviction (max 50 entries, 50MB) prevents unbounded growth.
   - Cache automatically updates on save and clears on delete.
+  - Added "Available Offline" indicator (📴) in document list for team docs.
+  - Implemented cache warmup on app start (preloads IndexedDB into memory).
+  - Added stale cache refresh on reconnect (compares modifiedAt timestamps).
 
 - [x] **Cache invalidation strategy**
   - Created `DocumentCacheManager` with TTL-based invalidation.
@@ -1043,18 +1026,6 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Audit and ensure all event listeners are removed on disconnect.
   - Add connection lifecycle logging for debugging.
 
-##### Developer Tooling
-
-- [ ] **Tool state machine tests**
-  - `ToolManager.ts` tool switching and state transitions untested.
-  - Add unit tests for tool lifecycle (activate, deactivate, transitions).
-  - Test edge cases: rapid tool switches, tool switch during operation.
-
-- [ ] **Integration test harness**
-  - No end-to-end tests for collaborative workflows.
-  - Create test utilities for multi-client scenarios.
-  - Add CI job for integration test suite.
-
 ### Phase 15: Version 1.0
 
 #### Phase 15.1: Local Help System with GitHub Docs Capability
@@ -1074,7 +1045,54 @@ This phase contains improvement recommendations from AI assistants to prepare fo
       in README)
 - [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
 
-### Phase 16: Advanced Diagram Patterns (Version 1.1)
+### Phase 16: Engine Improvements (Post-Release)
+
+Performance and reliability improvements deferred from Phase 14.9.
+
+#### Data Integrity & Storage
+
+- [ ] **Blob garbage collector performance**
+  - Orphan detection iterates all documents: O(n*m) complexity.
+  - Implement incremental GC with reference counting.
+  - Add GC progress indicator for large document stores.
+
+- [ ] **Document version tracking UI** (infrastructure complete in 14.9.2)
+  - Add conflict resolution UI (merge/overwrite/reload options).
+  - Add "document changed externally" notification.
+  - Integrate version tracking into persistenceStore for local docs.
+
+#### Connector & Shape Improvements
+
+- [ ] **Lazy connector route rebuilding**
+  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
+  - Implement incremental updates for only affected connectors.
+  - Cache connector routes and invalidate on shape changes.
+
+#### Export Improvements
+
+- [ ] **Group-aware selection export**
+  - Partial selections within groups not handled correctly.
+  - Either export entire group or individual selected members.
+  - Add option to flatten groups on export.
+
+#### Developer Tooling
+
+- [ ] **Tool state machine tests**
+  - `ToolManager.ts` tool switching and state transitions untested.
+  - Add unit tests for tool lifecycle (activate, deactivate, transitions).
+  - Test edge cases: rapid tool switches, tool switch during operation.
+
+- [ ] **Integration test harness**
+  - No end-to-end tests for collaborative workflows.
+  - Create test utilities for multi-client scenarios.
+  - Add CI job for integration test suite.
+
+- [ ] **Export functionality tests**
+  - PNG/SVG export with various shape types.
+  - Selection-based export with partial group selections.
+  - Export with missing shape handlers (graceful degradation).
+
+### Phase 17: Advanced Diagram Patterns (Version 1.1)
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns

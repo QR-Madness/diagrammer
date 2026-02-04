@@ -16,6 +16,7 @@ import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
 import { useDocumentStore } from '../store/documentStore';
 import { initConnectionNotifications } from '../store/connectionStore';
+import { useTeamDocumentStore } from '../store/teamDocumentStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCollaborationSync } from '../collaboration';
 
@@ -70,6 +71,9 @@ function App() {
   useEffect(() => {
     if (persistenceInitializedRef.current) return;
     persistenceInitializedRef.current = true;
+
+    // Warmup team document cache from IndexedDB (async, non-blocking)
+    useTeamDocumentStore.getState().warmupCache().catch(console.error);
 
     // Check if we have any saved documents
     const documents = usePersistenceStore.getState().documents;
