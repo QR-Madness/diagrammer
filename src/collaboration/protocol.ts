@@ -95,12 +95,16 @@ export interface DocGetResponse {
   requestId: string;
   document?: DiagramDocument;
   error?: string;
+  /** Current server version of the document */
+  serverVersion?: number;
 }
 
 /** Document save request */
 export interface DocSaveRequest {
   requestId: string;
   document: DiagramDocument;
+  /** Expected server version for optimistic locking (optional for backwards compatibility) */
+  expectedVersion?: number;
 }
 
 /** Document save response */
@@ -108,6 +112,12 @@ export interface DocSaveResponse {
   requestId: string;
   success: boolean;
   error?: string;
+  /** New version number after successful save */
+  newVersion?: number;
+  /** Error code for programmatic handling */
+  errorCode?: 'VERSION_CONFLICT' | 'PERMISSION_DENIED' | 'NOT_FOUND' | 'SERVER_ERROR';
+  /** Server's current version (returned on VERSION_CONFLICT) */
+  serverVersion?: number;
 }
 
 /** Document delete request */

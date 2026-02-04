@@ -75,6 +75,10 @@ export interface DiagramDocument {
   lastModifiedBy?: string;
   /** Display name of user who last modified */
   lastModifiedByName?: string;
+
+  // Version tracking fields (Phase 14.9.2)
+  /** Server-confirmed version for conflict detection */
+  serverVersion?: number;
 }
 
 /**

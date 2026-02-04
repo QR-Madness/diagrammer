@@ -340,7 +340,7 @@ export class UnifiedSyncProvider {
   }
 
   /** Get a document by ID from host */
-  async getDocument(docId: string): Promise<DiagramDocument> {
+  async getDocument(docId: string): Promise<{ document: DiagramDocument; serverVersion?: number }> {
     const requestId = generateRequestId();
     const request: DocGetRequest = { requestId, docId };
 
@@ -354,13 +354,31 @@ export class UnifiedSyncProvider {
       throw new Error(response.error ?? 'Document not found');
     }
 
-    return response.document;
+    const result: { document: DiagramDocument; serverVersion?: number } = {
+      document: response.document,
+    };
+    if (response.serverVersion !== undefined) {
+      result.serverVersion = response.serverVersion;
+    }
+    return result;
   }
 
-  /** Save a document to host */
-  async saveDocument(document: DiagramDocument): Promise<void> {
+  /** 
+   * Save a document to host with optional version checking.
+   * @param document - The document to save
+   * @param expectedVersion - If provided, server will reject if version doesn't match (optimistic locking)
+   * @returns The new version number after save, or throws on conflict
+   */
+  async saveDocument(
+    document: DiagramDocument,
+    expectedVersion?: number
+  ): Promise<{ newVersion?: number }> {
     const requestId = generateRequestId();
-    const request: DocSaveRequest = { requestId, document };
+    const request: DocSaveRequest = {
+      requestId,
+      document,
+      ...(expectedVersion !== undefined ? { expectedVersion } : {}),
+    };
 
     const response = await this.sendRequest<DocSaveResponse>(
       MESSAGE_DOC_SAVE,
@@ -369,8 +387,25 @@ export class UnifiedSyncProvider {
     );
 
     if (!response.success) {
+      // Create detailed error for version conflicts
+      if (response.errorCode === 'VERSION_CONFLICT') {
+        const error: Error & { code: string; serverVersion?: number } = new Error(
+          `Version conflict: expected ${expectedVersion}, server has ${response.serverVersion}`
+        ) as Error & { code: string; serverVersion?: number };
+        error.code = 'VERSION_CONFLICT';
+        if (response.serverVersion !== undefined) {
+          error.serverVersion = response.serverVersion;
+        }
+        throw error;
+      }
       throw new Error(response.error ?? 'Failed to save document');
     }
+
+    const result: { newVersion?: number } = {};
+    if (response.newVersion !== undefined) {
+      result.newVersion = response.newVersion;
+    }
+    return result;
   }
 
   /** Delete a document from host */

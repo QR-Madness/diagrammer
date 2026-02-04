@@ -484,9 +484,9 @@ describe('UnifiedSyncProvider', () => {
         };
         mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_GET, response));
 
-        const doc = await getPromise;
-        expect(doc.id).toBe('target-doc');
-        expect(doc.name).toBe('Target Doc');
+        const result = await getPromise;
+        expect(result.document.id).toBe('target-doc');
+        expect(result.document.name).toBe('Target Doc');
       });
 
       it('rejects on error response', async () => {
@@ -528,10 +528,25 @@ describe('UnifiedSyncProvider', () => {
         expect((saveMsg?.payload as { document: { id: string } }).document.id).toBe('save-doc');
 
         const requestId = (saveMsg?.payload as { requestId: string }).requestId;
+        const response: DocSaveResponse = { requestId, success: true, newVersion: 2 };
+        mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_SAVE, response));
+
+        const result = await savePromise;
+        expect(result.newVersion).toBe(2);
+      });
+
+      it('returns empty object when no version returned', async () => {
+        mockWebSocket?.clearSentMessages();
+        const savePromise = provider.saveDocument({ id: 'save-doc' } as any);
+
+        const saveMsg = mockWebSocket?.findSentMessage(MESSAGE_DOC_SAVE);
+        const requestId = (saveMsg?.payload as { requestId: string }).requestId;
+
         const response: DocSaveResponse = { requestId, success: true };
         mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_SAVE, response));
 
-        await expect(savePromise).resolves.toBeUndefined();
+        const result = await savePromise;
+        expect(result).toEqual({});
       });
 
       it('rejects on save failure', async () => {
@@ -545,6 +560,32 @@ describe('UnifiedSyncProvider', () => {
         mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_SAVE, response));
 
         await expect(savePromise).rejects.toThrow('Permission denied');
+      });
+
+      it('throws VersionConflictError on version conflict', async () => {
+        mockWebSocket?.clearSentMessages();
+        const savePromise = provider.saveDocument({ id: 'conflict-doc' } as any, 5);
+
+        const saveMsg = mockWebSocket?.findSentMessage(MESSAGE_DOC_SAVE);
+        const requestId = (saveMsg?.payload as { requestId: string }).requestId;
+
+        const response: DocSaveResponse = {
+          requestId,
+          success: false,
+          errorCode: 'VERSION_CONFLICT',
+          error: 'Version mismatch',
+          serverVersion: 7,
+        };
+        mockWebSocket?.simulateMessage(encodeMessage(MESSAGE_DOC_SAVE, response));
+
+        try {
+          await savePromise;
+          expect.fail('Should have thrown');
+        } catch (e) {
+          expect((e as Error).message).toContain('Version conflict');
+          expect((e as Error & { code?: string }).code).toBe('VERSION_CONFLICT');
+          expect((e as Error & { serverVersion?: number }).serverVersion).toBe(7);
+        }
       });
     });
 

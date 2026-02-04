@@ -90,8 +90,8 @@ interface TeamDocumentState {
  */
 interface DocumentProvider {
   listDocuments(): Promise<DocumentMetadata[]>;
-  getDocument(docId: string): Promise<DiagramDocument>;
-  saveDocument(doc: DiagramDocument): Promise<void>;
+  getDocument(docId: string): Promise<DiagramDocument | { document: DiagramDocument; serverVersion?: number }>;
+  saveDocument(doc: DiagramDocument, expectedVersion?: number): Promise<void | { newVersion?: number }>;
   deleteDocument(docId: string): Promise<void>;
   updateDocumentShares?(
     docId: string,
@@ -115,8 +115,12 @@ interface TeamDocumentActions {
   /** Load a team document's content */
   loadTeamDocument: (docId: string) => Promise<DiagramDocument>;
 
-  /** Save a document to host as team document */
-  saveToHost: (doc: DiagramDocument) => Promise<void>;
+  /** 
+   * Save a document to host as team document.
+   * Uses optimistic locking if expectedVersion is provided.
+   * @throws VersionConflictError if version mismatch detected
+   */
+  saveToHost: (doc: DiagramDocument, expectedVersion?: number) => Promise<{ newVersion?: number }>;
 
   /** Delete a team document from host */
   deleteFromHost: (docId: string) => Promise<void>;
@@ -247,15 +251,35 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       registry.setDocumentLoading(docId, true);
 
       try {
-        let doc = await docProvider.getDocument(docId);
+        const result = await docProvider.getDocument(docId);
+        
+        // Handle both old format (DiagramDocument) and new format ({ document, serverVersion })
+        let doc: DiagramDocument;
+        let serverVersion: number | undefined;
+        
+        if ('document' in result && result.document) {
+          doc = result.document;
+          serverVersion = result.serverVersion;
+        } else {
+          doc = result as DiagramDocument;
+        }
+
+        // Store serverVersion on document for version tracking
+        if (serverVersion !== undefined) {
+          doc = { ...doc, serverVersion };
+        }
 
         // Extract embedded assets from the document if present
         // This converts data: URLs to local blob:// references
         if (hasEmbeddedAssets(doc)) {
           console.log('[teamDocumentStore] Extracting embedded assets from document:', docId);
-          const result = await extractAssetsFromBundle(doc);
-          doc = result.document;
-          console.log(`[teamDocumentStore] Extracted ${result.assetCount} assets`);
+          const assetResult = await extractAssetsFromBundle(doc);
+          doc = assetResult.document;
+          // Preserve serverVersion after extraction
+          if (serverVersion !== undefined) {
+            doc = { ...doc, serverVersion };
+          }
+          console.log(`[teamDocumentStore] Extracted ${assetResult.assetCount} assets`);
         }
 
         // Cache the document
@@ -290,7 +314,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
     },
 
-    saveToHost: async (doc) => {
+    saveToHost: async (doc, expectedVersion) => {
       if (!docProvider) {
         throw new Error('Not connected to host');
       }
@@ -306,25 +330,41 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         let docToSave = doc;
         if (hasBlobReferences(doc)) {
           console.log('[teamDocumentStore] Bundling assets for document:', doc.id);
-          const result = await bundleDocumentWithAssets(doc);
-          docToSave = result.document;
-          console.log(`[teamDocumentStore] Bundled ${result.assetCount} assets (${result.totalSize} bytes)`);
+          const bundleResult = await bundleDocumentWithAssets(doc);
+          docToSave = bundleResult.document;
+          console.log(`[teamDocumentStore] Bundled ${bundleResult.assetCount} assets (${bundleResult.totalSize} bytes)`);
         }
 
-        await docProvider.saveDocument(docToSave);
+        // Save with optional version check
+        const saveResult = await docProvider.saveDocument(docToSave, expectedVersion);
+        const newVersion = saveResult && typeof saveResult === 'object' && 'newVersion' in saveResult
+          ? saveResult.newVersion
+          : undefined;
 
         // Update cache with the original doc (with blob:// references)
         // The bundled version is only for transmission
+        // Also update serverVersion if returned
+        const updatedDoc = newVersion !== undefined
+          ? { ...doc, serverVersion: newVersion }
+          : doc;
+        
         set((state) => ({
           documentCache: {
             ...state.documentCache,
-            [doc.id]: doc,
+            [doc.id]: updatedDoc,
           },
         }));
 
         // Update registry
-        registry.setDocumentContent(doc.id, doc);
+        registry.setDocumentContent(doc.id, updatedDoc);
         registry.setSyncState(doc.id, 'synced');
+
+        // Return result with proper optional property handling
+        const result: { newVersion?: number } = {};
+        if (newVersion !== undefined) {
+          result.newVersion = newVersion;
+        }
+        return result;
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to save document';
         set({ error });

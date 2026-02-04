@@ -1000,10 +1000,11 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### State Management Improvements
 
-- [ ] **Document version tracking**
-  - No mechanism to detect stale writes from outdated client state.
-  - Add version/etag to documents for conflict detection.
-  - Implement "document changed externally" notification.
+- [x] **Document version tracking** (partial - core infrastructure complete)
+  - Added serverVersion field to Document type.
+  - Created VersionConflict utilities with optimistic locking (23 tests).
+  - Updated protocol, UnifiedSyncProvider, and teamDocumentStore with version support.
+  - TODO: Conflict resolution UI and persistenceStore integration.
 
 - [ ] **Cache invalidation strategy**
   - `teamDocumentStore` cache has no TTL or explicit invalidation.
@@ -1049,7 +1050,7 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 #### Phase 15.1: Local Help System with GitHub Docs Capability
 
 - [ ] Implement a local help system (consider a markdown server of some sort)
-- [ ] Migrate Completed Todo.md tasks into Roadmap.md, leave future phases for the architect to author.
+- [ ] Migrate Completed Todo.md phases/milestones into Roadmap.md, leave future phases for the architect to author.
 - [ ] Transform Readme.md into a professional GitHub repo homepage with build status, link to the roadmap
 
 #### Phase 15.2: Release Build
