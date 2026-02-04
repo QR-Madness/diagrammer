@@ -211,4 +211,57 @@ export function useAuthenticatedUser(): AuthenticatedUser | null {
   return useConnectionStore((state) => state.user);
 }
 
+// ============ Notification Integration ============
+
+/**
+ * Set up notification integration for connection status changes.
+ * Call this once at app startup to enable user-facing notifications.
+ */
+export function initConnectionNotifications(): () => void {
+  // Dynamic import to avoid circular dependencies
+  let notifyError: ((message: string, options?: { category?: 'transient' | 'permanent' }) => void) | null = null;
+  let notifyWarning: ((message: string) => void) | null = null;
+  let notifySuccess: ((message: string) => void) | null = null;
+
+  import('../store/notificationStore').then((module) => {
+    const store = module.useNotificationStore.getState();
+    notifyError = (msg, opts) => store.error(msg, opts);
+    notifyWarning = store.warning.bind(store);
+    notifySuccess = store.success.bind(store);
+  });
+
+  let previousStatus: ConnectionStatus = 'disconnected';
+  let wasAuthenticated = false;
+
+  return useConnectionStore.subscribe((state) => {
+    const { status, error, reconnectAttempts } = state;
+
+    // Skip if status hasn't changed
+    if (status === previousStatus) return;
+
+    // Show notifications based on status transitions
+    if (status === 'error' && error) {
+      notifyError?.(error, { category: 'permanent' });
+    } else if (status === 'disconnected' && wasAuthenticated) {
+      // Only notify if we were previously connected
+      if (reconnectAttempts > 0) {
+        notifyWarning?.(`Connection lost. Reconnecting (attempt ${reconnectAttempts})...`);
+      } else {
+        notifyWarning?.('Disconnected from server');
+      }
+    } else if (status === 'authenticated' && previousStatus !== 'authenticated') {
+      // Only show success on reconnection, not initial connection
+      if (wasAuthenticated || reconnectAttempts > 0) {
+        notifySuccess?.('Reconnected to server');
+      }
+    }
+
+    // Track state for next comparison
+    previousStatus = status;
+    if (status === 'authenticated') {
+      wasAuthenticated = true;
+    }
+  });
+}
+
 export default useConnectionStore;

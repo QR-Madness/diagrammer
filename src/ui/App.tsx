@@ -15,8 +15,12 @@ import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
 import { useDocumentStore } from '../store/documentStore';
+import { initConnectionNotifications } from '../store/connectionStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCollaborationSync } from '../collaboration';
+
+// Initialize connection notifications (runs once at module load)
+initConnectionNotifications();
 
 function App() {
   const initializeDefault = usePageStore((state) => state.initializeDefault);
