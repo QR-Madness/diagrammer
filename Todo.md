@@ -937,9 +937,9 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Local Help Integration
 
-- [ ] Add "Help" menu/button in Diagrammer UI
+- [x] Add "Help" menu/button in Diagrammer UI
   - Opens documentation in system browser (simplest approach)
-  - Alternative: Tauri webview window for embedded help
+  - F1 keyboard shortcut added
 - [ ] Configure Tauri to bundle built docs (optional)
   - Include `/docs-dist/` in Tauri resources
   - Serve locally for offline access

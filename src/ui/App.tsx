@@ -67,6 +67,20 @@ function App() {
     setIsEditorCollapsed(collapsed);
   }, []);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F1 - Open documentation
+      if (e.key === 'F1') {
+        e.preventDefault();
+        window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Initialize persistence on mount
   useEffect(() => {
     if (persistenceInitializedRef.current) return;

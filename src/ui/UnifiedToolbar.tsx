@@ -394,6 +394,16 @@ interface UnifiedToolbarProps {
   onRebuildConnectors?: () => void;
 }
 
+/** Documentation URL - points to GitHub Pages when deployed */
+const DOCS_URL = 'https://your-username.github.io/diagrammer/';
+
+/**
+ * Open documentation in system browser
+ */
+function openDocs() {
+  window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+}
+
 /**
  * UnifiedToolbar component.
  */
@@ -436,10 +446,17 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedT
         <DocumentInfo />
       </div>
 
-      {/* Right Section: Page Tabs + Settings */}
+      {/* Right Section: Page Tabs + Help + Settings */}
       <div className="unified-toolbar-right">
         <InlinePageTabs />
         <div className="toolbar-divider" />
+        <button
+          className="toolbar-help-btn"
+          onClick={openDocs}
+          title="Open documentation (F1)"
+        >
+          <HelpIcon />
+        </button>
         {onOpenSettings && (
           <button
             className="toolbar-settings-btn"
@@ -456,6 +473,17 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedT
 }
 
 export default UnifiedToolbar;
+
+// Icon component for help button
+function HelpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M6 6a2 2 0 1 1 2.5 1.94V9" strokeLinecap="round" />
+      <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 // Icon component for settings button
 function SettingsIcon() {
