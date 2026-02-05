@@ -3,10 +3,13 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightClientMermaid from '@pasqal-io/starlight-client-mermaid';
 
+// Check if building for offline/local use (no base path needed)
+const isOffline = process.env.DOCS_OFFLINE === 'true';
+
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://your-username.github.io',
-	base: '/diagrammer',
+	site: isOffline ? undefined : 'https://QR-Madness.github.io',
+	base: isOffline ? '/' : '/diagrammer',
 	integrations: [
 		starlight({
 			title: 'Diagrammer',
@@ -16,7 +19,7 @@ export default defineConfig({
 				replacesTitle: false,
 			},
 			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/your-username/diagrammer' },
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/QR-Madness/diagrammer' },
 			],
 			customCss: ['./src/styles/custom.css'],
 			plugins: [starlightClientMermaid()],

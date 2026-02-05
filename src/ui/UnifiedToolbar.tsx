@@ -395,7 +395,7 @@ interface UnifiedToolbarProps {
 }
 
 /** Documentation URL - points to GitHub Pages when deployed */
-const DOCS_URL = 'https://your-username.github.io/diagrammer/';
+const DOCS_URL = 'https://QR-Madness.github.io/diagrammer/';
 
 /**
  * Open documentation in system browser

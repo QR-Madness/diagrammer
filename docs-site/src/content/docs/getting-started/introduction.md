@@ -59,4 +59,4 @@ Plus, create and share your own **custom shape libraries**.
 
 ## Next Steps
 
-Ready to get started? Head to the [Installation](/diagrammer/getting-started/installation/) guide.
+Ready to get started? Head to the [Installation](./installation/) guide.

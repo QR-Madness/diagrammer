@@ -15,7 +15,8 @@ tasks:
   dev:
     desc: Start Vite development server (web only)
     cmds:
-      - '{{.BUN}} run dev'
+      - echo "Running Diagrammer in Developer Mode"
+      - task: dev:tauri
 
   dev:tauri:
     desc: Start Tauri development mode (desktop app)
@@ -149,8 +150,16 @@ tasks:
       - '{{.BUN}} run dev'
 
   docs:build:
-    desc: Build documentation for production
+    desc: Build documentation for production (GitHub Pages)
     dir: docs-site
+    cmds:
+      - '{{.BUN}} run build'
+
+  docs:build:offline:
+    desc: Build documentation for offline/local use (no base path)
+    dir: docs-site
+    env:
+      DOCS_OFFLINE: 'true'
     cmds:
       - '{{.BUN}} run build'
 

@@ -168,7 +168,7 @@ These features are under consideration for future versions:
 
 ## Contributing
 
-We welcome contributions! See the [GitHub repository](https://github.com/your-username/diagrammer) for:
+We welcome contributions! See the [GitHub repository](https://github.com/QR-Madness/diagrammer) for:
 
 - Issue tracker
 - Contributing guidelines

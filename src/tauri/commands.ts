@@ -165,7 +165,7 @@ export async function getLanAddresses(): Promise<string[]> {
 export async function openDocs(): Promise<void> {
   if (!isTauri()) {
     // In browser, just open online docs
-    window.open('https://your-username.github.io/diagrammer/', '_blank');
+    window.open('https://QR-Madness.github.io/diagrammer/', '_blank');
     return;
   }
   return invoke<void>('open_docs');

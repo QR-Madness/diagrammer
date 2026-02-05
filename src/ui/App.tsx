@@ -84,10 +84,10 @@ function App() {
             await openDocs();
           } catch (error) {
             console.error('Failed to open docs via Tauri:', error);
-            window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+            window.open('https://QR-Madness.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
           }
         } else {
-          window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+          window.open('https://QR-Madness.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
         }
       }
     };

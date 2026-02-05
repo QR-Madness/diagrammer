@@ -457,27 +457,38 @@ async fn delete_team_document(
 /// Falls back to online docs if bundled docs aren't available
 #[tauri::command]
 async fn open_docs(app: tauri::AppHandle) -> Result<(), String> {
-    // Try to find bundled docs
-    let resource_path = app.path().resource_dir()
-        .map_err(|e| format!("Failed to get resource directory: {}", e))?;
+    let online_url = "https://QR-Madness.github.io/diagrammer/";
     
-    let docs_index = resource_path.join("docs").join("index.html");
+    // Try multiple locations for docs
+    let possible_paths: Vec<std::path::PathBuf> = vec![
+        // Production: bundled resources
+        app.path().resource_dir()
+            .map(|p| p.join("docs").join("index.html"))
+            .unwrap_or_default(),
+        // Dev mode: relative to project root (src-tauri is one level down)
+        std::env::current_dir()
+            .map(|p| p.join("docs-site").join("dist").join("index.html"))
+            .unwrap_or_default(),
+        // Dev mode: if running from src-tauri directory
+        std::env::current_dir()
+            .map(|p| p.parent().map(|parent| parent.join("docs-site").join("dist").join("index.html")).unwrap_or_default())
+            .unwrap_or_default(),
+    ];
     
-    if docs_index.exists() {
-        // Open local docs
-        let docs_url = format!("file://{}", docs_index.display());
-        log::info!("Opening bundled docs: {}", docs_url);
-        
-        tauri_plugin_opener::open_url(&docs_url, None::<&str>)
-            .map_err(|e| format!("Failed to open docs: {}", e))
-    } else {
-        // Fall back to online docs
-        let online_url = "https://your-username.github.io/diagrammer/";
-        log::info!("Bundled docs not found, opening online: {}", online_url);
-        
-        tauri_plugin_opener::open_url(online_url, None::<&str>)
-            .map_err(|e| format!("Failed to open docs: {}", e))
+    for docs_path in possible_paths {
+        if docs_path.exists() {
+            let docs_url = format!("file://{}", docs_path.display());
+            log::info!("Opening local docs: {}", docs_url);
+            
+            return tauri_plugin_opener::open_url(&docs_url, None::<&str>)
+                .map_err(|e| format!("Failed to open docs: {}", e));
+        }
     }
+    
+    // Fall back to online docs
+    log::info!("Local docs not found, opening online: {}", online_url);
+    tauri_plugin_opener::open_url(online_url, None::<&str>)
+        .map_err(|e| format!("Failed to open docs: {}", e))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

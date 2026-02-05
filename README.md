@@ -1,6 +1,6 @@
 # Diagrammer
 
-[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://your-username.github.io/diagrammer/)
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://QR-Madness.github.io/diagrammer/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A high-performance diagramming and whiteboard application that handles **10,000+ shapes at 60fps**. Built with TypeScript, React, and Canvas 2D API. Runs as a desktop app (Tauri) or in your browser.
@@ -20,12 +20,12 @@ A high-performance diagramming and whiteboard application that handles **10,000+
 
 ## 📖 Documentation
 
-**[View the full documentation →](https://your-username.github.io/diagrammer/)**
+**[View the full documentation →](https://QR-Madness.github.io/diagrammer/)**
 
-- [Getting Started](https://your-username.github.io/diagrammer/getting-started/introduction/)
-- [Installation](https://your-username.github.io/diagrammer/getting-started/installation/)
-- [Keyboard Shortcuts](https://your-username.github.io/diagrammer/reference/keyboard-shortcuts/)
-- [Architecture](https://your-username.github.io/diagrammer/development/architecture/)
+- [Getting Started](https://QR-Madness.github.io/diagrammer/getting-started/introduction/)
+- [Installation](https://QR-Madness.github.io/diagrammer/getting-started/installation/)
+- [Keyboard Shortcuts](https://QR-Madness.github.io/diagrammer/reference/keyboard-shortcuts/)
+- [Architecture](https://QR-Madness.github.io/diagrammer/development/architecture/)
 
 ## 🚀 Quick Start
 
@@ -79,7 +79,7 @@ bun run tauri:build    # Desktop
 
 ## 🤝 Contributing
 
-Contributions are welcome! See the [Roadmap](https://your-username.github.io/diagrammer/development/roadmap/) for planned features.
+Contributions are welcome! See the [Roadmap](https://QR-Madness.github.io/diagrammer/development/roadmap/) for planned features.
 
 ## 📄 License
 
