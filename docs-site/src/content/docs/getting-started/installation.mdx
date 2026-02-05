@@ -3,7 +3,7 @@ title: Installation
 description: How to install Diagrammer on your system
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 Diagrammer can be installed as a desktop application or run directly in your browser.
 
@@ -16,11 +16,6 @@ The desktop version provides the best performance and full feature access includ
     1. Download the latest `.msi` installer from the [releases page](https://github.com/QR-Madness/diagrammer/releases)
     2. Run the installer and follow the prompts
     3. Launch Diagrammer from the Start menu
-  </TabItem>
-  <TabItem label="macOS">
-    1. Download the latest `.dmg` file from the [releases page](https://github.com/QR-Madness/diagrammer/releases)
-    2. Open the `.dmg` and drag Diagrammer to your Applications folder
-    3. Launch from Applications (you may need to right-click → Open on first launch)
   </TabItem>
   <TabItem label="Linux">
     **AppImage (Universal)**
@@ -38,6 +33,10 @@ The desktop version provides the best performance and full feature access includ
     ```bash
     sudo rpm -i diagrammer-*.rpm
     ```
+
+  </TabItem>
+  <TabItem label="macOS (Must Build from Source)">
+    Though your welcome to build from source following the instructions below, we do not yet provide official macOS installers yet.
   </TabItem>
 </Tabs>
 
@@ -51,10 +50,11 @@ https://QR-Madness.github.io/diagrammer/app
 
 :::note
 The web version has some limitations compared to the desktop app:
+
 - No native file system access (uses browser storage)
 - Cannot host collaboration sessions (can only join)
 - Storage limited by browser quotas
-:::
+  :::
 
 ## Building from Source
 
@@ -64,6 +64,7 @@ For developers who want to build from source:
 
 - [Bun](https://bun.sh) (package manager and runtime)
 - [Rust](https://rustup.rs) (for Tauri backend)
+- [Taskfile](https://taskfile.dev/#/installation) (optional but highly recommended; for task automation)
 - Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
 
 ### Build Steps
@@ -87,12 +88,12 @@ bun run tauri:build  # Desktop installer
 
 ## System Requirements
 
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| OS | Windows 10, macOS 10.15, Ubuntu 20.04 | Latest versions |
-| RAM | 4 GB | 8 GB+ |
-| Display | 1280×720 | 1920×1080+ |
-| Storage | 200 MB | 500 MB+ |
+| Component | Minimum                               | Recommended     |
+| --------- | ------------------------------------- | --------------- |
+| OS        | Windows 10, macOS 10.15, Ubuntu 20.04 | Latest versions |
+| RAM       | 4 GB                                  | 8 GB+           |
+| Display   | 1280×720                              | 1920×1080+      |
+| Storage   | 200 MB                                | 500 MB+         |
 
 ## Next Steps
 

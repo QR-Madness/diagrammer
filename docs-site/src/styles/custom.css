@@ -18,6 +18,7 @@
   --sl-color-accent-low: hsl(210, 50%, 20%);
   --sl-color-accent: hsl(210, 100%, 55%);
   --sl-color-accent-high: hsl(210, 100%, 78%);
+  --sl-color-text-accent: hsl(213, 100%, 9%);
 
   /* Gray scale (dark mode - lightest to darkest) */
   --sl-color-white: hsl(210, 25%, 98%);    /* #f6f8fa - Headings, emphasized */
@@ -31,7 +32,7 @@
 
   /* Semantic color mappings */
   --sl-color-text: var(--sl-color-gray-1);
-  --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-accent: var(--sl-color-text-accent);
   --sl-color-text-invert: var(--sl-color-black);  /* Text on accent backgrounds */
   --sl-color-bg: var(--sl-color-black);
   --sl-color-bg-nav: var(--sl-color-gray-6);
