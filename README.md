@@ -1,57 +1,86 @@
-# Diagrammer – Whiteboard Foundation
+# Diagrammer
 
-A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API.
+[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://your-username.github.io/diagrammer/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-> **Note:** This project is currently in development.
-> See the complete roadmap [here](Todo.md).
+A high-performance diagramming and whiteboard application that handles **10,000+ shapes at 60fps**. Built with TypeScript, React, and Canvas 2D API. Runs as a desktop app (Tauri) or in your browser.
 
-## Quick Start
+![Diagrammer Screenshot](Diagrammer.png)
+
+## ✨ Features
+
+- **🚀 High Performance** – Canvas 2D rendering with spatial indexing (R-tree) for buttery-smooth editing
+- **👥 Real-time Collaboration** – Work together via Protected Local mode with CRDT-based sync (Yjs)
+- **📦 Rich Shape Libraries** – Flowchart, UML, ERD shapes built-in, plus custom shape libraries
+- **📄 Multi-page Documents** – Organize complex projects across multiple pages
+- **✏️ Rich Text Editor** – Add formatted documentation alongside your diagrams
+- **💾 Offline-first** – Full offline support with automatic sync when reconnected
+- **🖥️ Desktop & Web** – Native desktop app (Windows, macOS, Linux) or browser-based
+- **📤 Export** – PNG, SVG, JSON export with clipboard support
+
+## 📖 Documentation
+
+**[View the full documentation →](https://your-username.github.io/diagrammer/)**
+
+- [Getting Started](https://your-username.github.io/diagrammer/getting-started/introduction/)
+- [Installation](https://your-username.github.io/diagrammer/getting-started/installation/)
+- [Keyboard Shortcuts](https://your-username.github.io/diagrammer/reference/keyboard-shortcuts/)
+- [Architecture](https://your-username.github.io/diagrammer/development/architecture/)
+
+## 🚀 Quick Start
 
 ```bash
 # Install dependencies
 bun install
 
-# Start development server
+# Start development server (web)
 bun run dev
 
-# Type checking
-bun run typecheck
+# Start desktop app development
+bun run tauri:dev
 
 # Run tests
 bun run test
 
 # Build for production
-bun run build
+bun run build          # Web
+bun run tauri:build    # Desktop
 ```
 
-## Project Structure
+## 🏗️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Desktop | Tauri v2 (Rust backend) |
+| Runtime | Bun |
+| Language | TypeScript (strict), Rust |
+| UI | React 18 |
+| Canvas | Canvas 2D API |
+| State | Zustand + Immer |
+| Collaboration | Yjs CRDTs |
+| Rich Text | Tiptap |
+| Spatial Index | RBush |
+| Build | Vite, Cargo |
+
+## 📁 Project Structure
 
 ```
 /src
-├── /engine          # Core canvas engine (Camera, Renderer, InputHandler, Tools)
+├── /engine          # Core canvas engine (Camera, Renderer, Tools)
 ├── /shapes          # Shape types and registry
 ├── /store           # Zustand stores (Document, Session, History)
+├── /collaboration   # Yjs sync, WebSocket protocol
 ├── /ui              # React components
-├── /math            # Vector and matrix math utilities
+├── /math            # Vector and matrix utilities
 └── /utils           # General utilities
+/src-tauri           # Rust backend (Tauri)
+/docs-site           # Documentation (Starlight)
 ```
 
-## Development
+## 🤝 Contributing
 
-See `Todo.md` for the implementation roadmap.
+Contributions are welcome! See the [Roadmap](https://your-username.github.io/diagrammer/development/roadmap/) for planned features.
 
-See `Specification.Readme.md` for detailed architecture and specifications.
+## 📄 License
 
-See `CLAUDE.md` for Claude Code guidance.
-
-## Tech Stack
-
-- **Desktop Application Packaging**: Tauri + bundled Vite
-- **Runtime**: Bun (fast JavaScript runtime)
-- **Language**: TypeScript (strict mode)
-- **UI Framework**: React 18
-- **State Management**: Zustand + Immer
-- **Rendering**: Canvas 2D API
-- **Spatial Indexing**: RBush
-- **Build Tool**: Vite
-- **Testing**: Vitest
+MIT

@@ -1,0 +1,62 @@
+---
+title: Introduction
+description: Learn what Diagrammer is and why you should use it
+---
+
+Diagrammer is a high-performance diagramming and whiteboard application built for professionals who need to create complex diagrams without sacrificing speed or collaboration.
+
+## Why Diagrammer?
+
+### Performance First
+
+Unlike browser-based diagramming tools that slow down with complex diagrams, Diagrammer uses Canvas 2D rendering with spatial indexing (R-tree) to maintain **60fps with 10,000+ shapes**. This means:
+
+- Smooth pan and zoom regardless of diagram complexity
+- Instant shape selection and manipulation
+- No lag when working with large enterprise diagrams
+
+### Desktop & Web
+
+Diagrammer runs as a **native desktop application** using Tauri (Rust backend), giving you:
+
+- Native file system access
+- System-level performance
+- Offline-first architecture
+
+It also works in your browser for quick access without installation.
+
+### Real-time Collaboration
+
+Work together with your team using **Protected Local mode**:
+
+- One user hosts, others connect via WebSocket
+- CRDT-based sync (Yjs) ensures conflict-free editing
+- See collaborators' cursors and selections in real-time
+- Automatic reconnection with offline queue
+
+### Rich Shape Libraries
+
+Create any diagram type with built-in shape libraries:
+
+- **Basic shapes**: Rectangle, Ellipse, Line, Text, Connector, Group
+- **Flowchart**: Process, Decision, Terminator, Data, and more
+- **UML**: Class, Interface, Use Case, Actor, etc.
+- **ERD**: Entity, Relationship, Attribute
+
+Plus, create and share your own **custom shape libraries**.
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| Multi-page documents | Organize complex projects across multiple pages |
+| Smart connectors | Auto-routing connectors that follow shapes |
+| Rich text | Embedded Tiptap editor for formatted text |
+| Undo/redo | Full history with snapshot-based undo |
+| Export | PNG, SVG, JSON, clipboard support |
+| Themes | Dark theme with customizable style profiles |
+| Keyboard shortcuts | Full keyboard navigation and shortcuts |
+
+## Next Steps
+
+Ready to get started? Head to the [Installation](/diagrammer/getting-started/installation/) guide.

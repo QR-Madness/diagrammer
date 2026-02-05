@@ -1,0 +1,215 @@
+---
+title: Export & Import
+description: Export diagrams and import from various formats
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Diagrammer supports multiple export formats and can import diagrams from various sources.
+
+## Export Formats
+
+### PNG (Raster Image)
+
+Best for: Presentations, documents, web pages, quick sharing
+
+<Tabs>
+  <TabItem label="Export Steps">
+    1. Go to **File → Export → PNG** or press `Ctrl+Shift+E`
+    2. Configure options:
+       - **Scale**: 1x, 2x, 3x, or custom
+       - **Background**: Transparent, white, or canvas color
+       - **Selection only**: Export just selected shapes
+    3. Click **Export** and choose save location
+  </TabItem>
+  <TabItem label="Options">
+    | Option | Description |
+    |--------|-------------|
+    | Scale | Output resolution multiplier |
+    | Background | Transparency or solid color |
+    | Padding | Extra space around content |
+    | Selection | Export entire document or selection |
+  </TabItem>
+</Tabs>
+
+### SVG (Vector Graphics)
+
+Best for: Scalable graphics, web integration, further editing
+
+SVG export preserves:
+- Vector shapes (infinite scaling)
+- Text as actual text (searchable)
+- Styles and colors
+- Grouping hierarchy
+
+<Aside type="tip">
+  SVG is ideal when you need to scale the diagram to any size without quality loss, or when you want to edit the output in tools like Inkscape or Illustrator.
+</Aside>
+
+**Export steps:**
+1. Go to **File → Export → SVG**
+2. Choose options (same as PNG)
+3. Click **Export**
+
+### JSON (Native Format)
+
+Best for: Backups, programmatic access, version control
+
+The JSON format is Diagrammer's native document format:
+
+```json
+{
+  "version": 2,
+  "id": "doc-uuid",
+  "name": "My Diagram",
+  "pages": [
+    {
+      "id": "page-uuid",
+      "name": "Page 1",
+      "shapes": [...],
+      "shapeOrder": [...]
+    }
+  ],
+  "metadata": {
+    "created": "2024-01-01T00:00:00Z",
+    "modified": "2024-01-15T12:30:00Z"
+  }
+}
+```
+
+Use JSON export for:
+- **Backups**: Full document state
+- **Version control**: Store in Git
+- **Migration**: Move between instances
+- **Automation**: Process with scripts
+
+### Clipboard
+
+Copy diagrams directly to clipboard:
+
+| Shortcut | Format |
+|----------|--------|
+| `Ctrl+C` | Internal format (paste in Diagrammer) |
+| `Ctrl+Shift+C` | PNG image (paste in other apps) |
+| `Ctrl+Alt+C` | SVG (paste as vector) |
+
+## Batch Export
+
+Export multiple pages at once:
+
+1. Go to **File → Export → Batch Export**
+2. Select pages to export
+3. Choose format and options
+4. Select output folder
+5. Click **Export All**
+
+Files are named: `{document-name}-{page-name}.{format}`
+
+## Import Formats
+
+### JSON (Diagrammer Documents)
+
+Import existing Diagrammer documents:
+
+1. Go to **File → Import → JSON**
+2. Select the `.json` file
+3. Choose import mode:
+   - **Replace**: Replace current document
+   - **Merge**: Add to current document as new pages
+
+### Image Import
+
+Drag and drop images onto the canvas, or use **File → Import → Image**.
+
+Supported formats:
+- PNG, JPG, GIF, WebP
+- SVG (as image, not editable shapes)
+
+Images become shapes you can resize, rotate, and position.
+
+### SVG Import (Experimental)
+
+<Aside type="caution">
+  SVG import is experimental. Complex SVGs may not import correctly.
+</Aside>
+
+Import SVG files as editable shapes:
+
+1. Go to **File → Import → SVG**
+2. Select the SVG file
+3. Shapes are converted to Diagrammer primitives
+
+**Limitations:**
+- Gradients simplified to solid colors
+- Text converted to paths
+- Complex paths may lose detail
+- Filters not supported
+
+### Paste from Clipboard
+
+Paste content from other applications:
+
+- **Images**: Paste as image shapes
+- **Text**: Creates text shape
+- **Diagrammer content**: Pastes shapes
+
+## Export Settings
+
+Configure default export behavior in **Settings → Export**:
+
+| Setting | Description |
+|---------|-------------|
+| Default format | PNG, SVG, or JSON |
+| Default scale | Resolution multiplier |
+| Default background | Transparent or colored |
+| Include hidden | Export hidden layers |
+| Auto-open | Open file after export |
+
+## API Export
+
+For automation, use the command-line or JavaScript API:
+
+### Command Line
+
+```bash
+diagrammer export document.json --format png --scale 2 --output diagram.png
+```
+
+### JavaScript (in browser console)
+
+```javascript
+// Get current document as JSON
+const json = diagrammer.exportJSON();
+
+// Export as PNG blob
+const blob = await diagrammer.exportPNG({ scale: 2 });
+
+// Export as SVG string
+const svg = diagrammer.exportSVG();
+```
+
+## Tips
+
+### High-Quality Exports
+
+For print or large displays:
+- Use **SVG** when possible (infinite scaling)
+- For PNG, use **3x or 4x scale**
+- Enable **transparent background** for flexibility
+
+### Optimizing File Size
+
+- PNG: Lower scale, enable compression
+- SVG: Simpler shapes export smaller
+- JSON: Minify for storage (auto-done on export)
+
+### Sharing Diagrams
+
+| Use Case | Recommended Format |
+|----------|-------------------|
+| Email attachment | PNG (2x scale) |
+| Documentation | SVG or PNG |
+| Backup | JSON |
+| Web embedding | SVG |
+| Printing | SVG or PNG (3x+) |
+| Collaboration | Share document directly |

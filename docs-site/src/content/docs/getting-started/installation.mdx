@@ -1,0 +1,99 @@
+---
+title: Installation
+description: How to install Diagrammer on your system
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Diagrammer can be installed as a desktop application or run directly in your browser.
+
+## Desktop Application (Recommended)
+
+The desktop version provides the best performance and full feature access including native file system integration.
+
+<Tabs>
+  <TabItem label="Windows">
+    1. Download the latest `.msi` installer from the [releases page](https://github.com/your-username/diagrammer/releases)
+    2. Run the installer and follow the prompts
+    3. Launch Diagrammer from the Start menu
+  </TabItem>
+  <TabItem label="macOS">
+    1. Download the latest `.dmg` file from the [releases page](https://github.com/your-username/diagrammer/releases)
+    2. Open the `.dmg` and drag Diagrammer to your Applications folder
+    3. Launch from Applications (you may need to right-click → Open on first launch)
+  </TabItem>
+  <TabItem label="Linux">
+    **AppImage (Universal)**
+    ```bash
+    chmod +x Diagrammer-*.AppImage
+    ./Diagrammer-*.AppImage
+    ```
+
+    **Debian/Ubuntu (.deb)**
+    ```bash
+    sudo dpkg -i diagrammer_*.deb
+    ```
+
+    **Fedora/RHEL (.rpm)**
+    ```bash
+    sudo rpm -i diagrammer-*.rpm
+    ```
+  </TabItem>
+</Tabs>
+
+## Web Version
+
+For quick access without installation, use the web version at:
+
+```
+https://your-username.github.io/diagrammer/app
+```
+
+:::note
+The web version has some limitations compared to the desktop app:
+- No native file system access (uses browser storage)
+- Cannot host collaboration sessions (can only join)
+- Storage limited by browser quotas
+:::
+
+## Building from Source
+
+For developers who want to build from source:
+
+### Prerequisites
+
+- [Bun](https://bun.sh) (package manager and runtime)
+- [Rust](https://rustup.rs) (for Tauri backend)
+- Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
+
+### Build Steps
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/diagrammer.git
+cd diagrammer
+
+# Install dependencies
+bun install
+
+# Run in development mode
+bun run dev          # Web only
+bun run tauri:dev    # Desktop app
+
+# Build for production
+bun run build        # Web build
+bun run tauri:build  # Desktop installer
+```
+
+## System Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| OS | Windows 10, macOS 10.15, Ubuntu 20.04 | Latest versions |
+| RAM | 4 GB | 8 GB+ |
+| Display | 1280×720 | 1920×1080+ |
+| Storage | 200 MB | 500 MB+ |
+
+## Next Steps
+
+Once installed, proceed to the [Quick Start](/diagrammer/getting-started/quick-start/) guide to create your first diagram.

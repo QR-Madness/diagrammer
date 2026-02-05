@@ -1,2 +1,0 @@
-This is looking amazing! I'm going to be going through and look at areas which are abrasive, there's going to be a lot here, so I'd suggest a plan. 1. [BUG]) Tab colors are not persistent. 2.
-  [FEAT.] Entity attributes need padding customization, the seperators are intersecting with the contained attribute; also see what other customizations you can add here.

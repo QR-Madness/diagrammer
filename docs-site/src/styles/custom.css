@@ -1,0 +1,65 @@
+/* Custom theme for Diagrammer docs - matches app's dark theme */
+
+:root {
+  /* Accent colors - blue tones matching Diagrammer UI */
+  --sl-color-accent-low: #1a365d;
+  --sl-color-accent: #3182ce;
+  --sl-color-accent-high: #63b3ed;
+
+  /* Background tones */
+  --sl-color-black: #0d1117;
+  --sl-color-gray-1: #161b22;
+  --sl-color-gray-2: #21262d;
+  --sl-color-gray-3: #30363d;
+  --sl-color-gray-4: #484f58;
+  --sl-color-gray-5: #6e7681;
+  --sl-color-gray-6: #8b949e;
+  --sl-color-white: #f0f6fc;
+
+  /* Text colors */
+  --sl-color-text: #c9d1d9;
+  --sl-color-text-accent: #58a6ff;
+}
+
+/* Dark mode specific (Starlight defaults to dark) */
+:root[data-theme='dark'] {
+  --sl-color-bg: #0d1117;
+  --sl-color-bg-nav: #161b22;
+  --sl-color-bg-sidebar: #161b22;
+  --sl-color-hairline-light: #21262d;
+  --sl-color-hairline: #30363d;
+}
+
+/* Light mode adjustments */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #2563eb;
+  --sl-color-accent-high: #1e40af;
+}
+
+/* Hero section styling */
+.hero {
+  background: linear-gradient(135deg, var(--sl-color-gray-1) 0%, var(--sl-color-black) 100%);
+}
+
+/* Code block styling */
+pre {
+  border: 1px solid var(--sl-color-gray-3);
+}
+
+/* Sidebar active link */
+nav[aria-label='Main'] a[aria-current='page'] {
+  background-color: var(--sl-color-accent-low);
+  border-left: 3px solid var(--sl-color-accent);
+}
+
+/* Smooth transitions */
+a,
+button {
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Card hover effects */
+.card:hover {
+  border-color: var(--sl-color-accent);
+}
