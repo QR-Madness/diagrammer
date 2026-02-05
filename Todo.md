@@ -901,13 +901,13 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Setup & Configuration
 
-- [ ] Initialize Starlight site in `/docs-site/` directory
+- [x] Initialize Starlight site in `/docs-site/` directory
   - Astro + Starlight with Bun as package manager
   - Configure `astro.config.mjs` with site metadata and navigation
-- [ ] Configure custom dark theme
+- [x] Configure custom dark theme
   - Customize CSS variables to match Diagrammer's color palette
   - Ensure theme toggle works seamlessly
-- [ ] Set up content structure in `/docs-site/src/content/docs/`
+- [x] Set up content structure in `/docs-site/src/content/docs/`
   - Getting Started guide
   - Features overview (canvas, collaboration, export, etc.)
   - Keyboard shortcuts reference
@@ -916,20 +916,20 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Content Migration
 
-- [ ] Migrate completed Todo.md phases into `/docs-site/src/content/docs/roadmap.md`
+- [x] Migrate completed Todo.md phases into `/docs-site/src/content/docs/roadmap.md`
   - Format as release history/changelog
   - Leave future phases in Todo.md for planning
-- [ ] Create initial documentation pages
+- [x] Create initial documentation pages
   - Installation & setup
   - Quick start tutorial
   - Feature guides (one per major feature area)
 
 ##### GitHub Pages Deployment
 
-- [ ] Configure GitHub Actions workflow for docs deployment
+- [x] Configure GitHub Actions workflow for docs deployment
   - Build Starlight site on push to main
   - Deploy to GitHub Pages (`gh-pages` branch or `/docs` folder)
-- [ ] Transform README.md into professional repo homepage
+- [x] Transform README.md into professional repo homepage
   - Build status badges
   - Feature highlights with screenshots
   - Links to live documentation site
@@ -937,16 +937,16 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ##### Local Help Integration
 
-- [ ] Add "Help" menu/button in Diagrammer UI
+- [x] Add "Help" menu/button in Diagrammer UI
   - Opens documentation in system browser (simplest approach)
-  - Alternative: Tauri webview window for embedded help
-- [ ] Configure Tauri to bundle built docs (optional)
-  - Include `/docs-dist/` in Tauri resources
-  - Serve locally for offline access
+  - F1 keyboard shortcut added
+- [x] Configure Tauri to bundle built docs
+  - Include docs-site/dist in Tauri resources
+  - Added tauri-plugin-opener for opening docs
+  - Rust command `open_docs` serves bundled or falls back to online
+  - TypeScript wrapper in `src/tauri/commands.ts`
 
 #### Phase 15.2: Release Build
-
-- [ ] Create a rollup utility (consider future auto-update feature) and GitHub action to generate a GitHub release with the application.
 
 #### Phase 15.3: Release Pipeline
 

@@ -394,6 +394,34 @@ interface UnifiedToolbarProps {
   onRebuildConnectors?: () => void;
 }
 
+/** Documentation URL - points to GitHub Pages when deployed */
+const DOCS_URL = 'https://QR-Madness.github.io/diagrammer/';
+
+/**
+ * Open documentation in system browser
+ * Uses Tauri command for bundled docs when available
+ */
+async function openDocsHandler() {
+  // Check if we're in Tauri environment
+  const isTauri = typeof window !== 'undefined' && 
+    '__TAURI_INTERNALS__' in window;
+  
+  if (isTauri) {
+    try {
+      // Use Tauri command for bundled/offline docs
+      const { openDocs } = await import('@/tauri/commands');
+      await openDocs();
+    } catch (error) {
+      console.error('Failed to open docs via Tauri:', error);
+      // Fall back to online docs
+      window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+    }
+  } else {
+    // Browser environment - open online docs
+    window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+  }
+}
+
 /**
  * UnifiedToolbar component.
  */
@@ -436,10 +464,17 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedT
         <DocumentInfo />
       </div>
 
-      {/* Right Section: Page Tabs + Settings */}
+      {/* Right Section: Page Tabs + Help + Settings */}
       <div className="unified-toolbar-right">
         <InlinePageTabs />
         <div className="toolbar-divider" />
+        <button
+          className="toolbar-help-btn"
+          onClick={() => void openDocsHandler()}
+          title="Open documentation (F1)"
+        >
+          <HelpIcon />
+        </button>
         {onOpenSettings && (
           <button
             className="toolbar-settings-btn"
@@ -456,6 +491,17 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedT
 }
 
 export default UnifiedToolbar;
+
+// Icon component for help button
+function HelpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="6.5" />
+      <path d="M6 6a2 2 0 1 1 2.5 1.94V9" strokeLinecap="round" />
+      <circle cx="8" cy="11.5" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
 // Icon component for settings button
 function SettingsIcon() {

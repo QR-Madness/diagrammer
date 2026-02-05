@@ -1,0 +1,149 @@
+/* Custom theme for Diagrammer docs - matches app's dark theme */
+
+/*
+ * Starlight color scale in dark mode:
+ * - gray-1: Lightest (used for main text)
+ * - gray-2: Secondary text
+ * - gray-3: Muted text
+ * - gray-4: Borders, dividers
+ * - gray-5: Subtle backgrounds
+ * - gray-6: Navigation/sidebar backgrounds
+ * - black: Main page background
+ * - white: Headings and emphasized text
+ */
+
+:root {
+  /* Accent colors - blue tones matching Diagrammer UI */
+  --sl-hue-accent: 210;
+  --sl-color-accent-low: hsl(210, 50%, 20%);
+  --sl-color-accent: hsl(210, 100%, 55%);
+  --sl-color-accent-high: hsl(210, 100%, 78%);
+  --sl-color-text-accent: hsl(213, 100%, 9%);
+
+  /* Gray scale (dark mode - lightest to darkest) */
+  --sl-color-white: hsl(210, 25%, 98%);    /* #f6f8fa - Headings, emphasized */
+  --sl-color-gray-1: hsl(210, 14%, 83%);   /* #c9d1d9 - Primary text */
+  --sl-color-gray-2: hsl(210, 9%, 65%);    /* #9ca3af - Secondary text */
+  --sl-color-gray-3: hsl(210, 8%, 50%);    /* #768390 - Muted text, borders */
+  --sl-color-gray-4: hsl(210, 9%, 35%);    /* #525a66 - Dividers */
+  --sl-color-gray-5: hsl(210, 12%, 22%);   /* #30363d - Subtle backgrounds, inline code */
+  --sl-color-gray-6: hsl(210, 14%, 14%);   /* #1c2128 - Sidebar/nav backgrounds */
+  --sl-color-black: hsl(210, 15%, 8%);     /* #0d1117 - Main background */
+
+  /* Semantic color mappings */
+  --sl-color-text: var(--sl-color-gray-1);
+  --sl-color-text-accent: var(--sl-color-text-accent);
+  --sl-color-text-invert: var(--sl-color-black);  /* Text on accent backgrounds */
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-6);
+  --sl-color-bg-sidebar: var(--sl-color-gray-6);
+  --sl-color-bg-inline-code: var(--sl-color-gray-5);
+  --sl-color-bg-accent: var(--sl-color-accent);   /* Accent button background */
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline: var(--sl-color-gray-4);
+}
+
+/* Dark mode specific overrides */
+:root[data-theme='dark'] {
+  --sl-color-bg: var(--sl-color-black);
+  --sl-color-bg-nav: var(--sl-color-gray-6);
+  --sl-color-bg-sidebar: var(--sl-color-gray-6);
+}
+
+/* Light mode - inverted scale with proper contrast */
+:root[data-theme='light'] {
+  --sl-color-white: hsl(210, 15%, 8%);     /* Dark text for headings */
+  --sl-color-gray-1: hsl(210, 14%, 14%);   /* Primary text */
+  --sl-color-gray-2: hsl(210, 9%, 30%);    /* Secondary text */
+  --sl-color-gray-3: hsl(210, 8%, 45%);    /* Muted text */
+  --sl-color-gray-4: hsl(210, 9%, 70%);    /* Dividers */
+  --sl-color-gray-5: hsl(210, 12%, 88%);   /* Subtle backgrounds */
+  --sl-color-gray-6: hsl(210, 20%, 96%);   /* Nav backgrounds */
+  --sl-color-black: hsl(0, 0%, 100%);      /* Main background (white) */
+  
+  --sl-color-accent-low: hsl(210, 88%, 92%);
+  --sl-color-accent: hsl(210, 90%, 50%);
+  --sl-color-accent-high: hsl(210, 80%, 30%);
+  
+  --sl-color-text-accent: var(--sl-color-accent);
+  --sl-color-bg-inline-code: var(--sl-color-gray-5);
+}
+
+/* Hero section styling */
+.hero {
+  background: linear-gradient(135deg, var(--sl-color-gray-6) 0%, var(--sl-color-black) 100%);
+}
+
+/* Code block styling - ensure visibility */
+pre {
+  border: 1px solid var(--sl-color-gray-4);
+  background: var(--sl-color-gray-6) !important;
+}
+
+code {
+  color: var(--sl-color-gray-1);
+}
+
+/* Inline code in paragraphs */
+:not(pre) > code {
+  background: var(--sl-color-bg-inline-code);
+  color: var(--sl-color-accent-high);
+  padding: 0.125em 0.375em;
+  border-radius: 0.25em;
+}
+
+/* Sidebar active link */
+nav[aria-label='Main'] a[aria-current='page'] {
+  background-color: var(--sl-color-accent-low);
+  border-left: 3px solid var(--sl-color-accent);
+}
+
+/* Links - ensure good visibility */
+a {
+  color: var(--sl-color-accent-high);
+}
+
+a:hover {
+  color: var(--sl-color-accent);
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--sl-color-white);
+}
+
+/* Table styling */
+table {
+  border-color: var(--sl-color-gray-4);
+}
+
+th {
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-white);
+}
+
+td {
+  border-color: var(--sl-color-gray-5);
+}
+
+/* Blockquotes */
+blockquote {
+  border-left-color: var(--sl-color-accent);
+  color: var(--sl-color-gray-2);
+}
+
+/* Asides/callouts */
+.starlight-aside {
+  border-color: var(--sl-color-accent);
+}
+
+/* Smooth transitions */
+a,
+button {
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+/* Card hover effects */
+.card:hover {
+  border-color: var(--sl-color-accent);
+}

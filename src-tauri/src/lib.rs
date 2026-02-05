@@ -453,11 +453,95 @@ async fn delete_team_document(
     Ok(deleted)
 }
 
+use std::sync::atomic::AtomicU16;
+
+/// Port for the local documentation server
+static DOCS_SERVER_PORT: AtomicU16 = AtomicU16::new(0);
+
+/// Start a simple HTTP server to serve documentation
+async fn start_docs_server(docs_dir: std::path::PathBuf) -> Result<u16, String> {
+    use axum::{Router, routing::get_service};
+    use tower_http::services::ServeDir;
+    use std::net::SocketAddr;
+    
+    // Check if already running
+    let current_port = DOCS_SERVER_PORT.load(std::sync::atomic::Ordering::Relaxed);
+    if current_port != 0 {
+        return Ok(current_port);
+    }
+    
+    // Find an available port
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .map_err(|e| format!("Failed to bind docs server: {}", e))?;
+    
+    let port = listener.local_addr()
+        .map_err(|e| format!("Failed to get local address: {}", e))?
+        .port();
+    
+    DOCS_SERVER_PORT.store(port, std::sync::atomic::Ordering::Relaxed);
+    
+    let app = Router::new()
+        .fallback_service(get_service(ServeDir::new(docs_dir)));
+    
+    // Spawn the server in the background
+    tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, app).await {
+            log::error!("Docs server error: {}", e);
+        }
+    });
+    
+    log::info!("Documentation server started on port {}", port);
+    Ok(port)
+}
+
+/// Open the bundled documentation in the default browser
+/// Starts a local HTTP server to properly serve static assets
+#[tauri::command]
+async fn open_docs(app: tauri::AppHandle) -> Result<(), String> {
+    let online_url = "https://QR-Madness.github.io/diagrammer/";
+    
+    // Try multiple locations for docs directory
+    let possible_paths: Vec<std::path::PathBuf> = vec![
+        // Production: bundled resources
+        app.path().resource_dir()
+            .map(|p| p.join("docs"))
+            .unwrap_or_default(),
+        // Dev mode: relative to project root
+        std::env::current_dir()
+            .map(|p| p.join("docs-site").join("dist"))
+            .unwrap_or_default(),
+        // Dev mode: if running from src-tauri directory
+        std::env::current_dir()
+            .map(|p| p.parent().map(|parent| parent.join("docs-site").join("dist")).unwrap_or_default())
+            .unwrap_or_default(),
+    ];
+    
+    for docs_dir in possible_paths {
+        let index_path = docs_dir.join("index.html");
+        if index_path.exists() {
+            // Start local HTTP server for docs
+            let port = start_docs_server(docs_dir).await?;
+            let docs_url = format!("http://127.0.0.1:{}/", port);
+            log::info!("Opening local docs at: {}", docs_url);
+            
+            return tauri_plugin_opener::open_url(&docs_url, None::<&str>)
+                .map_err(|e| format!("Failed to open docs: {}", e));
+        }
+    }
+    
+    // Fall back to online docs
+    log::info!("Local docs not found, opening online: {}", online_url);
+    tauri_plugin_opener::open_url(online_url, None::<&str>)
+        .map_err(|e| format!("Failed to open docs: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Initialize logging in debug mode
             if cfg!(debug_assertions) {
@@ -559,6 +643,8 @@ pub fn run() {
             save_team_document,
             get_team_document,
             delete_team_document,
+            // Documentation
+            open_docs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Diagrammer");

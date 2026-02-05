@@ -67,6 +67,35 @@ function App() {
     setIsEditorCollapsed(collapsed);
   }, []);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // F1 - Open documentation
+      if (e.key === 'F1') {
+        e.preventDefault();
+        
+        // Check if we're in Tauri environment
+        const isTauri = typeof window !== 'undefined' && 
+          '__TAURI_INTERNALS__' in window;
+        
+        if (isTauri) {
+          try {
+            const { openDocs } = await import('@/tauri/commands');
+            await openDocs();
+          } catch (error) {
+            console.error('Failed to open docs via Tauri:', error);
+            window.open('https://QR-Madness.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+          }
+        } else {
+          window.open('https://QR-Madness.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Initialize persistence on mount
   useEffect(() => {
     if (persistenceInitializedRef.current) return;
