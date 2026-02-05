@@ -138,6 +138,34 @@ tasks:
       - '{{.BUN}} run preview'
 
   # ============================================
+  # Documentation
+  # ============================================
+
+  docs:dev:
+    desc: Start documentation dev server
+    dir: docs-site
+    cmds:
+      - '{{.BUN}} run dev'
+
+  docs:build:
+    desc: Build documentation for production
+    dir: docs-site
+    cmds:
+      - '{{.BUN}} run build'
+
+  docs:preview:
+    desc: Preview built documentation
+    dir: docs-site
+    cmds:
+      - '{{.BUN}} run preview'
+
+  docs:install:
+    desc: Install documentation dependencies
+    dir: docs-site
+    cmds:
+      - '{{.BUN}} install'
+
+  # ============================================
   # Git Shortcuts
   # ============================================
 
