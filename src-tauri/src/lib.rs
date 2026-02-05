@@ -453,11 +453,39 @@ async fn delete_team_document(
     Ok(deleted)
 }
 
+/// Open the bundled documentation in the default browser
+/// Falls back to online docs if bundled docs aren't available
+#[tauri::command]
+async fn open_docs(app: tauri::AppHandle) -> Result<(), String> {
+    // Try to find bundled docs
+    let resource_path = app.path().resource_dir()
+        .map_err(|e| format!("Failed to get resource directory: {}", e))?;
+    
+    let docs_index = resource_path.join("docs").join("index.html");
+    
+    if docs_index.exists() {
+        // Open local docs
+        let docs_url = format!("file://{}", docs_index.display());
+        log::info!("Opening bundled docs: {}", docs_url);
+        
+        tauri_plugin_opener::open_url(&docs_url, None::<&str>)
+            .map_err(|e| format!("Failed to open docs: {}", e))
+    } else {
+        // Fall back to online docs
+        let online_url = "https://your-username.github.io/diagrammer/";
+        log::info!("Bundled docs not found, opening online: {}", online_url);
+        
+        tauri_plugin_opener::open_url(online_url, None::<&str>)
+            .map_err(|e| format!("Failed to open docs: {}", e))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // Initialize logging in debug mode
             if cfg!(debug_assertions) {
@@ -559,6 +587,8 @@ pub fn run() {
             save_team_document,
             get_team_document,
             delete_team_document,
+            // Documentation
+            open_docs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Diagrammer");

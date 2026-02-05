@@ -399,9 +399,27 @@ const DOCS_URL = 'https://your-username.github.io/diagrammer/';
 
 /**
  * Open documentation in system browser
+ * Uses Tauri command for bundled docs when available
  */
-function openDocs() {
-  window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+async function openDocsHandler() {
+  // Check if we're in Tauri environment
+  const isTauri = typeof window !== 'undefined' && 
+    '__TAURI_INTERNALS__' in window;
+  
+  if (isTauri) {
+    try {
+      // Use Tauri command for bundled/offline docs
+      const { openDocs } = await import('@/tauri/commands');
+      await openDocs();
+    } catch (error) {
+      console.error('Failed to open docs via Tauri:', error);
+      // Fall back to online docs
+      window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+    }
+  } else {
+    // Browser environment - open online docs
+    window.open(DOCS_URL, '_blank', 'noopener,noreferrer');
+  }
 }
 
 /**
@@ -452,7 +470,7 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors }: UnifiedT
         <div className="toolbar-divider" />
         <button
           className="toolbar-help-btn"
-          onClick={openDocs}
+          onClick={() => void openDocsHandler()}
           title="Open documentation (F1)"
         >
           <HelpIcon />

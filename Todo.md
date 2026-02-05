@@ -940,9 +940,11 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 - [x] Add "Help" menu/button in Diagrammer UI
   - Opens documentation in system browser (simplest approach)
   - F1 keyboard shortcut added
-- [ ] Configure Tauri to bundle built docs (optional)
-  - Include `/docs-dist/` in Tauri resources
-  - Serve locally for offline access
+- [x] Configure Tauri to bundle built docs
+  - Include docs-site/dist in Tauri resources
+  - Added tauri-plugin-opener for opening docs
+  - Rust command `open_docs` serves bundled or falls back to online
+  - TypeScript wrapper in `src/tauri/commands.ts`
 
 #### Phase 15.2: Release Build
 

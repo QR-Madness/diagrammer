@@ -69,11 +69,26 @@ function App() {
 
   // Global keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       // F1 - Open documentation
       if (e.key === 'F1') {
         e.preventDefault();
-        window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+        
+        // Check if we're in Tauri environment
+        const isTauri = typeof window !== 'undefined' && 
+          '__TAURI_INTERNALS__' in window;
+        
+        if (isTauri) {
+          try {
+            const { openDocs } = await import('@/tauri/commands');
+            await openDocs();
+          } catch (error) {
+            console.error('Failed to open docs via Tauri:', error);
+            window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+          }
+        } else {
+          window.open('https://your-username.github.io/diagrammer/', '_blank', 'noopener,noreferrer');
+        }
       }
     };
 

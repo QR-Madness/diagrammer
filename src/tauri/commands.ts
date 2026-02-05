@@ -157,3 +157,16 @@ export async function getLanAddresses(): Promise<string[]> {
   }
   return invoke<string[]>('get_lan_addresses');
 }
+
+/**
+ * Open the documentation in the system browser
+ * Uses bundled docs if available, otherwise falls back to online docs
+ */
+export async function openDocs(): Promise<void> {
+  if (!isTauri()) {
+    // In browser, just open online docs
+    window.open('https://your-username.github.io/diagrammer/', '_blank');
+    return;
+  }
+  return invoke<void>('open_docs');
+}

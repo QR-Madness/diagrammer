@@ -131,6 +131,7 @@ tasks:
       - rm -rf dist
       - rm -rf src-tauri/target
       - rm -rf node_modules/.vite
+      - rm -rf docs-site/dist
 
   preview:
     desc: Preview production build
