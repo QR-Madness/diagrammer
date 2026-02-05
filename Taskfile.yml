@@ -152,6 +152,8 @@ tasks:
   docs:build:
     desc: Build documentation for production (GitHub Pages)
     dir: docs-site
+    env:
+      DOCS_OFFLINE: 'true'
     cmds:
       - '{{.BUN}} run build'
 
