@@ -29,17 +29,19 @@ This guide walks you through creating your first diagram with Diagrammer.
 
 Once your document opens, you'll see:
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Toolbar (tools, page tabs, settings)               │
-├──────────────────┬──────────────────────────────────┤
-│  Document Editor │  Canvas Area          Property   │
-│  (rich text)     │                        Panel     │
-│                  │                       Layer      │
-│                  │                        Panel     │
-├──────────────────┴──────────────────────────────────┤
-│  Status Bar (coordinates, zoom, shape count)        │
-└─────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+  columns 3
+  block:toolbar["Toolbar (tools, page tabs, settings)"]:3
+  end
+  block:editor["Document Editor<br/>(rich text)"]:1
+  end
+  block:canvas["Canvas Area"]:1
+  end
+  block:panels["Property Panel<br/>Layer Panel"]:1
+  end
+  block:status["Status Bar (coordinates, zoom, shape count)"]:3
+  end
 ```
 
 - **Toolbar**: Select tools, switch pages, access settings

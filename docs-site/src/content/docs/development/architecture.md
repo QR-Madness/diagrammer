@@ -24,28 +24,27 @@ This document describes Diagrammer's technical architecture for developers who w
 
 ## Architecture Layers
 
-```
-┌─────────────────────────────────────────────────────┐
-│           React UI Layer                            │
-│   (Toolbar, PropertyPanel, LayerPanel, Modals)      │
-├─────────────────────────────────────────────────────┤
-│           Bridge Layer                              │
-│   (CanvasContainer - mounts canvas, forwards events)│
-├─────────────────────────────────────────────────────┤
-│           Engine Core                               │
-│   (Camera, Renderer, InputHandler, ToolManager,     │
-│    SpatialIndex, ShapeRegistry, HitTester)          │
-├─────────────────────────────────────────────────────┤
-│           Store Layer (Zustand)                     │
-│   (DocumentStore, SessionStore, HistoryStore,       │
-│    PageStore, PersistenceStore)                     │
-├─────────────────────────────────────────────────────┤
-│           Storage Layer                             │
-│   (localStorage, IndexedDB via BlobStorage)         │
-├─────────────────────────────────────────────────────┤
-│           Tauri Backend (Rust)                      │
-│   (File system, WebSocket server, Authentication)   │
-└─────────────────────────────────────────────────────┘
+```mermaid
+block-beta
+  columns 1
+  block:ui["React UI Layer"]
+    ui_desc["Toolbar, PropertyPanel, LayerPanel, Modals"]
+  end
+  block:bridge["Bridge Layer"]
+    bridge_desc["CanvasContainer - mounts canvas, forwards events"]
+  end
+  block:engine["Engine Core"]
+    engine_desc["Camera, Renderer, InputHandler, ToolManager, SpatialIndex, ShapeRegistry, HitTester"]
+  end
+  block:store["Store Layer (Zustand)"]
+    store_desc["DocumentStore, SessionStore, HistoryStore, PageStore, PersistenceStore"]
+  end
+  block:storage["Storage Layer"]
+    storage_desc["localStorage, IndexedDB via BlobStorage"]
+  end
+  block:tauri["Tauri Backend (Rust)"]
+    tauri_desc["File system, WebSocket server, Authentication"]
+  end
 ```
 
 ### React UI Layer
@@ -95,12 +94,10 @@ Hybrid storage approach:
 
 All coordinate transforms flow through the Camera class:
 
-```
-Screen Space (canvas pixels)
-    ↓ camera.screenToWorld(point)
-World Space (infinite 2D plane)
-    ↓ shape.worldToLocal(point)
-Local Space (for rotated shapes)
+```mermaid
+flowchart TD
+  A["Screen Space<br/>(canvas pixels)"] -->|camera.screenToWorld| B["World Space<br/>(infinite 2D plane)"]
+  B -->|shape.worldToLocal| C["Local Space<br/>(for rotated shapes)"]
 ```
 
 <Aside type="caution">
