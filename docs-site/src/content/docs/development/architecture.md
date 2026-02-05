@@ -25,26 +25,27 @@ This document describes Diagrammer's technical architecture for developers who w
 ## Architecture Layers
 
 ```mermaid
-block-beta
-  columns 1
-  block:ui["React UI Layer"]
-    ui_desc["Toolbar, PropertyPanel, LayerPanel, Modals"]
-  end
-  block:bridge["Bridge Layer"]
-    bridge_desc["CanvasContainer - mounts canvas, forwards events"]
-  end
-  block:engine["Engine Core"]
-    engine_desc["Camera, Renderer, InputHandler, ToolManager, SpatialIndex, ShapeRegistry, HitTester"]
-  end
-  block:store["Store Layer (Zustand)"]
-    store_desc["DocumentStore, SessionStore, HistoryStore, PageStore, PersistenceStore"]
-  end
-  block:storage["Storage Layer"]
-    storage_desc["localStorage, IndexedDB via BlobStorage"]
-  end
-  block:tauri["Tauri Backend (Rust)"]
-    tauri_desc["File system, WebSocket server, Authentication"]
-  end
+flowchart TB
+    subgraph ui["React UI Layer"]
+        ui_desc["Toolbar, PropertyPanel, LayerPanel, Modals"]
+    end
+    subgraph bridge["Bridge Layer"]
+        bridge_desc["CanvasContainer - mounts canvas, forwards events"]
+    end
+    subgraph engine["Engine Core"]
+        engine_desc["Camera, Renderer, InputHandler, ToolManager,<br/>SpatialIndex, ShapeRegistry, HitTester"]
+    end
+    subgraph store["Store Layer (Zustand)"]
+        store_desc["DocumentStore, SessionStore, HistoryStore,<br/>PageStore, PersistenceStore"]
+    end
+    subgraph storage["Storage Layer"]
+        storage_desc["localStorage, IndexedDB via BlobStorage"]
+    end
+    subgraph tauri["Tauri Backend (Rust)"]
+        tauri_desc["File system, WebSocket server, Authentication"]
+    end
+    
+    ui --> bridge --> engine --> store --> storage --> tauri
 ```
 
 ### React UI Layer

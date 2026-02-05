@@ -32,10 +32,12 @@
   /* Semantic color mappings */
   --sl-color-text: var(--sl-color-gray-1);
   --sl-color-text-accent: var(--sl-color-accent-high);
+  --sl-color-text-invert: var(--sl-color-black);  /* Text on accent backgrounds */
   --sl-color-bg: var(--sl-color-black);
   --sl-color-bg-nav: var(--sl-color-gray-6);
   --sl-color-bg-sidebar: var(--sl-color-gray-6);
   --sl-color-bg-inline-code: var(--sl-color-gray-5);
+  --sl-color-bg-accent: var(--sl-color-accent);   /* Accent button background */
   --sl-color-hairline-light: var(--sl-color-gray-5);
   --sl-color-hairline: var(--sl-color-gray-4);
 }

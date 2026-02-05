@@ -30,18 +30,19 @@ This guide walks you through creating your first diagram with Diagrammer.
 Once your document opens, you'll see:
 
 ```mermaid
-block-beta
-  columns 3
-  block:toolbar["Toolbar (tools, page tabs, settings)"]:3
-  end
-  block:editor["Document Editor<br/>(rich text)"]:1
-  end
-  block:canvas["Canvas Area"]:1
-  end
-  block:panels["Property Panel<br/>Layer Panel"]:1
-  end
-  block:status["Status Bar (coordinates, zoom, shape count)"]:3
-  end
+flowchart TB
+    subgraph layout["Application Layout"]
+        direction TB
+        toolbar["🔧 Toolbar<br/>Tools, page tabs, settings"]
+        subgraph middle["Main Area"]
+            direction LR
+            editor["📝 Document Editor<br/>Rich text notes"]
+            canvas["🎨 Canvas<br/>Infinite drawing surface"]
+            panels["⚙️ Panels<br/>Properties & Layers"]
+        end
+        status["📊 Status Bar<br/>Coordinates, zoom, shape count"]
+    end
+    toolbar --> middle --> status
 ```
 
 - **Toolbar**: Select tools, switch pages, access settings
