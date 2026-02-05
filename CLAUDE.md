@@ -75,11 +75,14 @@ Desktop development requires Rust toolchain (via [rustup](https://rustup.rs/)) a
 
 Tests use Vitest with jsdom environment. Config is inline in `vite.config.ts` (no separate vitest config file). Test globals (`describe`, `it`, `expect`) are available without imports.
 
-Test files live alongside source code with `.test.ts` suffix:
+Test files live alongside source code with `.test.ts` suffix (1045 tests across 32 files):
 - `/src/math/` — Vec2, Mat3, Box, geometry (204 tests)
 - `/src/engine/` — Camera, InputHandler, Renderer, SpatialIndex, HitTester
-- `/src/store/` — DocumentStore, SessionStore, PageStore, HistoryStore
+- `/src/store/` — DocumentStore, SessionStore, PageStore, HistoryStore, connectionStore
 - `/src/shapes/` — Shape handlers and utilities (bounds, transforms)
+- `/src/collaboration/` — Protocol, UnifiedSyncProvider, OfflineQueue, SyncStateManager
+- `/src/storage/` — TeamDocumentCache, TrashStorage
+- `/src/types/` — VersionConflict utilities
 
 ## Architecture Layers
 
@@ -111,9 +114,11 @@ Zustand stores are split by responsibility:
 **Collaboration stores** (`/src/store/` and `/src/collaboration/`):
 - **connectionStore**: WebSocket connection state, auth status, reconnection
 - **collaborationStore**: Session management, remote users
+- **presenceStore**: Real-time cursor and selection state from other users
 - **teamStore / teamDocumentStore / userStore**: Server mode, team documents, authentication
+- **documentRegistry**: Unified document index for local/remote/cached documents
 
-**Feature stores**: Theme, style profiles, color palettes, icon library, shape libraries, UI preferences — each in its own file under `/src/store/`.
+**Feature stores**: Theme, style profiles, color palettes, icon library, shape libraries, settings, notifications, UI preferences — each in its own file under `/src/store/`.
 
 ### Storage Layer
 
@@ -121,11 +126,23 @@ Hybrid storage: localStorage for document metadata and preferences, IndexedDB fo
 
 `/src/storage/BlobStorage.ts` provides content-addressed storage using SHA-256 hashing with automatic deduplication and reference counting. `BlobGarbageCollector` cleans up orphaned blobs.
 
+Additional storage utilities:
+- **TeamDocumentCache**: IndexedDB cache for offline access to team documents with LRU eviction
+- **TrashStorage**: Soft-delete with configurable retention for document recovery
+- **AtomicFileWriter**: Write-to-temp-then-rename pattern for crash-safe file operations
+- **StorageQuotaMonitor**: Proactive storage usage monitoring with warnings
+- **AssetBundler**: Embeds blob:// references as base64 for document transfer over network
+
 ### Collaboration Architecture
 
 Real-time multi-user editing via "Protected Local" mode. The Tauri host runs a WebSocket server (`src-tauri/src/server/`); clients connect via `UnifiedSyncProvider` which multiplexes CRDT sync (Yjs), document CRUD, and JWT auth over a single WebSocket.
 
 **Critical**: The TypeScript protocol (`/src/collaboration/protocol.ts`) must stay in sync with the Rust protocol (`src-tauri/src/server/protocol.rs`). Message types include: SYNC (0), AWARENESS (1), AUTH (2), DOC_LIST/GET/SAVE/DELETE (3-6), DOC_EVENT (7), JOIN_DOC (10), AUTH_LOGIN (11).
+
+**Offline-first architecture**:
+- **OfflineQueue**: Queues save/delete operations when disconnected, processes on reconnect
+- **SyncStateManager**: Coordinates queue, storage, and connection state with auto-retry
+- **SyncQueueStorage**: IndexedDB persistence for durability across app restarts
 
 ### Coordinate System
 
@@ -180,7 +197,7 @@ See `Todo.md` for detailed phase tracking and current tasks.
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Unified Toolbar (~44px)                            │
-│  [File][Tools][PageTabs...][Theme][Settings]        │
+│  [Tools][PageTabs...][Rebuild][Settings]            │
 ├──────────────────┬──────────────────────────────────┤
 │  Document Editor │  Canvas Area                     │
 │  (resizable)     │                      PropertyPanel│

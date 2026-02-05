@@ -748,139 +748,6 @@ The Diagrammer desktop app (packaged via **Tauri**) operates in two modes:
 
 This phase contains improvement recommendations from AI assistants to prepare for v1.0 release.
 
-#### Phase 14.9.1 (Claude Opus)
-
-##### Performance & Optimization
-
-- [ ] **Dirty region tracking for canvas rendering**
-  - Currently the entire canvas is redrawn on each frame. Implement a dirty region system that tracks which areas need redrawing.
-  - Track bounding boxes of modified shapes and only repaint affected regions.
-  - Potential 2-5x performance improvement for large canvases with localized edits.
-
-- [ ] **Shape render caching with OffscreenCanvas**
-  - Cache complex shapes (groups with many children, shapes with shadows/patterns) to OffscreenCanvas.
-  - Invalidate cache only when shape properties change.
-  - Particularly beneficial for groups with background patterns and shadow effects.
-
-- [ ] **Virtual scrolling for LayerPanel**
-  - LayerPanel renders all shapes in the DOM, which degrades with 100+ shapes.
-  - Implement windowed rendering (react-window or custom) to only render visible items.
-  - Include smooth scroll position restoration when collapsing/expanding groups.
-
-- [ ] **Lazy loading for shape libraries**
-  - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
-  - Use dynamic imports with loading states in ShapePicker.
-  - Reduces initial bundle size and memory footprint.
-
-- [ ] **Spatial index incremental updates**
-  - Currently rebuilds entire RBush index on shape changes. Implement incremental insert/remove/update.
-  - Track which shapes changed and update only those entries.
-  - Critical for smooth performance during drag operations on large canvases.
-
-##### User Experience
-
-- [ ] **Quick action palette (Cmd/Ctrl+K)**
-  - Fuzzy-searchable command palette for all actions: tools, alignment, export, settings, etc.
-  - Include recent commands and context-aware suggestions.
-  - Similar to VS Code's command palette or Linear's Cmd+K.
-
-- [ ] **Keyboard shortcut reference panel**
-  - Accessible via `?` key or Help menu.
-  - Categorized list of all shortcuts with search/filter.
-  - Consider printable cheat sheet export.
-
-- [ ] **Shape search in canvas**
-  - Ctrl+F to search shapes by label text, type, or custom properties.
-  - Highlight matches and provide navigation (next/previous).
-  - Integrate with existing layer view filtering.
-
-- [ ] **Zoom to fit selection**
-  - Button/shortcut to zoom and pan camera to frame selected shapes with padding.
-  - Also add "Zoom to fit all" for entire document.
-  - Smooth animated transition rather than instant jump.
-
-- [ ] **Smooth pan/zoom animations**
-  - Add easing to camera transitions (zoom to fit, minimap navigation, etc.).
-  - Use requestAnimationFrame-based interpolation.
-  - Configurable animation duration in settings.
-
-- [ ] **Multi-select property editing improvements**
-  - When multiple shapes selected, show "Mixed" for differing values.
-  - Allow editing to apply to all selected shapes.
-  - Show count of selected shapes in PropertyPanel header.
-
-- [ ] **Drag-and-drop shape creation**
-  - Drag shapes from ShapePicker directly onto canvas (not just click-to-place).
-  - Show ghost preview during drag.
-  - More intuitive than current tool selection workflow.
-
-- [ ] **Touch/tablet gesture refinements**
-  - Two-finger pinch zoom with proper anchor point.
-  - Three-finger pan gesture.
-  - Apple Pencil pressure sensitivity for line width (future).
-
-##### Stability & Quality
-
-- [ ] **React error boundaries for crash recovery**
-  - Wrap major UI sections (PropertyPanel, LayerPanel, DocumentEditor) in error boundaries.
-  - Display user-friendly error message with "Reload" option.
-  - Log errors to console with stack trace for debugging.
-
-- [ ] **Performance regression benchmarks**
-  - Automated benchmark: render 1000/5000/10000 shapes, measure FPS.
-  - Track metrics over time to catch regressions.
-  - Alert if performance drops below threshold.
-
-- [ ] **Accessibility audit and improvements**
-  - ARIA labels for all interactive elements.
-  - Keyboard navigation through all panels and menus.
-  - High contrast mode support.
-  - Screen reader announcements for state changes.
-
-- [ ] **Graceful WebSocket reconnection feedback**
-  - Clear UI indication when connection is lost/reconnecting.
-  - Queue indicator showing pending changes.
-  - Manual "Retry" button after max reconnection attempts.
-
-##### Developer Experience
-
-- [ ] **Debug overlay improvements**
-  - Toggle-able overlay showing: spatial index bounds, hit test regions, render stats.
-  - Shape inspector: click shape to see all properties in dev panel.
-  - Accessible via settings or keyboard shortcut (Ctrl+Shift+D).
-
-- [ ] **Shape handler development template**
-  - CLI command or template to scaffold new shape handlers.
-  - Include all required handler methods with TypeScript stubs.
-  - Auto-register in ShapeRegistry.
-
-- [ ] **Plugin development documentation**
-  - Document PanelExtensions registry API.
-  - Example plugins: custom shape library, property panel section, export format.
-  - Guidelines for state management and lifecycle.
-
-##### v1.0 Feature Completeness
-
-- [ ] **Template gallery**
-  - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
-  - New document dialog with template selection.
-  - Allow users to save documents as custom templates.
-
-- [ ] **Duplicate page functionality**
-  - Right-click page tab → "Duplicate Page".
-  - Deep-clone all shapes with new IDs.
-  - Useful for iterating on diagram variations.
-
-- [ ] **Shape locking visual indicator**
-  - Show lock icon overlay on locked shapes in canvas.
-  - Different indicators for position-locked vs fully-locked.
-  - Makes lock state discoverable without checking PropertyPanel.
-
-- [ ] **Undo/redo improvements**
-  - Show action description in tooltip ("Undo: Move Rectangle").
-  - Consider branching undo history for complex workflows.
-  - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
-
 #### Phase 14.9.2 (Copilot Opus)
 
 ##### Error Handling & Resilience
@@ -1028,11 +895,54 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 ### Phase 15: Version 1.0
 
-#### Phase 15.1: Local Help System with GitHub Docs Capability
+#### Phase 15.1: Documentation Site with Starlight (Astro)
 
-- [ ] Implement a local help system (consider a markdown server of some sort)
-- [ ] Migrate Completed Todo.md phases/milestones into Roadmap.md, leave future phases for the architect to author.
-- [ ] Transform Readme.md into a professional GitHub repo homepage with build status, link to the roadmap
+**Architecture Decision**: Use Starlight (Astro-based SSG) for unified documentation that serves both GitHub Pages and local help. Starlight provides built-in dark theme, search, and fast static output.
+
+##### Setup & Configuration
+
+- [ ] Initialize Starlight site in `/docs-site/` directory
+  - Astro + Starlight with Bun as package manager
+  - Configure `astro.config.mjs` with site metadata and navigation
+- [ ] Configure custom dark theme
+  - Customize CSS variables to match Diagrammer's color palette
+  - Ensure theme toggle works seamlessly
+- [ ] Set up content structure in `/docs-site/src/content/docs/`
+  - Getting Started guide
+  - Features overview (canvas, collaboration, export, etc.)
+  - Keyboard shortcuts reference
+  - Shape libraries documentation
+  - Settings & configuration
+
+##### Content Migration
+
+- [ ] Migrate completed Todo.md phases into `/docs-site/src/content/docs/roadmap.md`
+  - Format as release history/changelog
+  - Leave future phases in Todo.md for planning
+- [ ] Create initial documentation pages
+  - Installation & setup
+  - Quick start tutorial
+  - Feature guides (one per major feature area)
+
+##### GitHub Pages Deployment
+
+- [ ] Configure GitHub Actions workflow for docs deployment
+  - Build Starlight site on push to main
+  - Deploy to GitHub Pages (`gh-pages` branch or `/docs` folder)
+- [ ] Transform README.md into professional repo homepage
+  - Build status badges
+  - Feature highlights with screenshots
+  - Links to live documentation site
+  - Quick install instructions
+
+##### Local Help Integration
+
+- [ ] Add "Help" menu/button in Diagrammer UI
+  - Opens documentation in system browser (simplest approach)
+  - Alternative: Tauri webview window for embedded help
+- [ ] Configure Tauri to bundle built docs (optional)
+  - Include `/docs-dist/` in Tauri resources
+  - Serve locally for offline access
 
 #### Phase 15.2: Release Build
 
@@ -1092,6 +1002,141 @@ Performance and reliability improvements deferred from Phase 14.9.
   - Selection-based export with partial group selections.
   - Export with missing shape handlers (graceful degradation).
 
+### Phase 16.5: AI Recommendations (Claude Opus)
+
+Improvement recommendations from Claude Opus to prepare for v1.0 release.
+
+#### Performance & Optimization
+
+- [ ] **Dirty region tracking for canvas rendering**
+  - Currently the entire canvas is redrawn on each frame. Implement a dirty region system that tracks which areas need redrawing.
+  - Track bounding boxes of modified shapes and only repaint affected regions.
+  - Potential 2-5x performance improvement for large canvases with localized edits.
+
+- [ ] **Shape render caching with OffscreenCanvas**
+  - Cache complex shapes (groups with many children, shapes with shadows/patterns) to OffscreenCanvas.
+  - Invalidate cache only when shape properties change.
+  - Particularly beneficial for groups with background patterns and shadow effects.
+
+- [ ] **Virtual scrolling for LayerPanel**
+  - LayerPanel renders all shapes in the DOM, which degrades with 100+ shapes.
+  - Implement windowed rendering (react-window or custom) to only render visible items.
+  - Include smooth scroll position restoration when collapsing/expanding groups.
+
+- [ ] **Lazy loading for shape libraries**
+  - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
+  - Use dynamic imports with loading states in ShapePicker.
+  - Reduces initial bundle size and memory footprint.
+
+- [ ] **Spatial index incremental updates**
+  - Currently rebuilds entire RBush index on shape changes. Implement incremental insert/remove/update.
+  - Track which shapes changed and update only those entries.
+  - Critical for smooth performance during drag operations on large canvases.
+
+#### User Experience
+
+- [ ] **Quick action palette (Cmd/Ctrl+K)**
+  - Fuzzy-searchable command palette for all actions: tools, alignment, export, settings, etc.
+  - Include recent commands and context-aware suggestions.
+  - Similar to VS Code's command palette or Linear's Cmd+K.
+
+- [ ] **Keyboard shortcut reference panel**
+  - Accessible via `?` key or Help menu.
+  - Categorized list of all shortcuts with search/filter.
+  - Consider printable cheat sheet export.
+
+- [ ] **Shape search in canvas**
+  - Ctrl+F to search shapes by label text, type, or custom properties.
+  - Highlight matches and provide navigation (next/previous).
+  - Integrate with existing layer view filtering.
+
+- [ ] **Zoom to fit selection**
+  - Button/shortcut to zoom and pan camera to frame selected shapes with padding.
+  - Also add "Zoom to fit all" for entire document.
+  - Smooth animated transition rather than instant jump.
+
+- [ ] **Smooth pan/zoom animations**
+  - Add easing to camera transitions (zoom to fit, minimap navigation, etc.).
+  - Use requestAnimationFrame-based interpolation.
+  - Configurable animation duration in settings.
+
+- [ ] **Multi-select property editing improvements**
+  - When multiple shapes selected, show "Mixed" for differing values.
+  - Allow editing to apply to all selected shapes.
+  - Show count of selected shapes in PropertyPanel header.
+
+- [ ] **Drag-and-drop shape creation**
+  - Drag shapes from ShapePicker directly onto canvas (not just click-to-place).
+  - Show ghost preview during drag.
+  - More intuitive than current tool selection workflow.
+
+- [ ] **Touch/tablet gesture refinements**
+  - Two-finger pinch zoom with proper anchor point.
+  - Three-finger pan gesture.
+  - Apple Pencil pressure sensitivity for line width (future).
+
+#### Stability & Quality
+
+- [ ] **React error boundaries for crash recovery**
+  - Wrap major UI sections (PropertyPanel, LayerPanel, DocumentEditor) in error boundaries.
+  - Display user-friendly error message with "Reload" option.
+  - Log errors to console with stack trace for debugging.
+
+- [ ] **Performance regression benchmarks**
+  - Automated benchmark: render 1000/5000/10000 shapes, measure FPS.
+  - Track metrics over time to catch regressions.
+  - Alert if performance drops below threshold.
+
+- [ ] **Accessibility audit and improvements**
+  - ARIA labels for all interactive elements.
+  - Keyboard navigation through all panels and menus.
+  - High contrast mode support.
+  - Screen reader announcements for state changes.
+
+- [ ] **Graceful WebSocket reconnection feedback**
+  - Clear UI indication when connection is lost/reconnecting.
+  - Queue indicator showing pending changes.
+  - Manual "Retry" button after max reconnection attempts.
+
+#### Developer Experience
+
+- [ ] **Debug overlay improvements**
+  - Toggle-able overlay showing: spatial index bounds, hit test regions, render stats.
+  - Shape inspector: click shape to see all properties in dev panel.
+  - Accessible via settings or keyboard shortcut (Ctrl+Shift+D).
+
+- [ ] **Shape handler development template**
+  - CLI command or template to scaffold new shape handlers.
+  - Include all required handler methods with TypeScript stubs.
+  - Auto-register in ShapeRegistry.
+
+- [ ] **Plugin development documentation**
+  - Document PanelExtensions registry API.
+  - Example plugins: custom shape library, property panel section, export format.
+  - Guidelines for state management and lifecycle.
+
+#### v1.0 Feature Completeness
+
+- [ ] **Template gallery**
+  - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
+  - New document dialog with template selection.
+  - Allow users to save documents as custom templates.
+
+- [ ] **Duplicate page functionality**
+  - Right-click page tab → "Duplicate Page".
+  - Deep-clone all shapes with new IDs.
+  - Useful for iterating on diagram variations.
+
+- [ ] **Shape locking visual indicator**
+  - Show lock icon overlay on locked shapes in canvas.
+  - Different indicators for position-locked vs fully-locked.
+  - Makes lock state discoverable without checking PropertyPanel.
+
+- [ ] **Undo/redo improvements**
+  - Show action description in tooltip ("Undo: Move Rectangle").
+  - Consider branching undo history for complex workflows.
+  - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
+
 ### Phase 17: Advanced Diagram Patterns (Version 1.1)
 
 - [ ] Sequence diagram patterns
@@ -1146,7 +1191,7 @@ Performance and reliability improvements deferred from Phase 14.9.
 - Update this file as new tasks are discovered
 - Each task should be small enough to complete in one session
 - Test each component before moving to the next phase
-- Total tests: 633 passing (18 test files)
+- Total tests: 1045 passing (32 test files)
 
 ## Test Coverage by Module
 
@@ -1167,6 +1212,9 @@ Performance and reliability improvements deferred from Phase 14.9.
 | Line                             | 23      |
 | Shape transforms                 | 31      |
 | Shape bounds                     | 24      |
+| Collaboration (protocol, sync)   | 200+    |
+| Storage (cache, trash, versions) | 80+     |
+| connectionStore                  | 26      |
 |                                  |         |
-| **Total**                        | **633** |
+| **Total**                        | **1045**|
 
