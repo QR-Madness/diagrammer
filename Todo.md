@@ -374,6 +374,11 @@ implementation phase as defined in Specification.Readme.md.
   - LogoPicker component for selecting logos from IndexedDB storage
   - PDFExportStore for persisting export preferences
   - Tiptap JSON content parsing with support for headings, paragraphs, lists, code blocks, blockquotes, images, and horizontal rules
+- [x] Multi-page PDF export (all rich text pages + all canvas diagram pages)
+- [x] Full rich text rendering: text color, highlights, inline code, sub/superscript, text alignment, task lists, tables with colspan/rowspan, LaTeX math (KaTeX → PNG)
+- [x] PDFNodeRendererRegistry — extensible registry pattern (like ShapeRegistry) so new Tiptap extensions auto-surface missing PDF renderers via `warnUnhandledNodes()`
+- [x] CSS color parsing for `rgb()`, `rgba()`, named colors (not just hex)
+- [x] Centralized `PDF_STYLE` config for all rendering constants
 
 ### Phase 12.2: Embeddable Diagram Groups - COMPLETE
 

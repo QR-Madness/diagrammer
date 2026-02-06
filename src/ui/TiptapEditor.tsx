@@ -83,8 +83,9 @@ async function getBlobObjectUrl(blobUrl: string): Promise<string | null> {
 
 /**
  * Configure Tiptap extensions for rich text editing.
+ * Exported for use by generateJSON when converting HTML pages to JSON for PDF export.
  */
-const extensions = [
+export const extensions = [
   StarterKit.configure({
     heading: { levels: [1, 2, 3, 4, 5, 6] },
     // These are enabled by default, no need to set true

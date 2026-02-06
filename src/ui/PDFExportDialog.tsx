@@ -3,13 +3,19 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { exportToPdf } from '../utils/pdfExportUtils';
+import { exportToPdf, warnUnhandledNodes } from '../utils/pdfExportUtils';
+import type { PDFRichTextPage, PDFCanvasPage } from '../utils/pdfExportUtils';
 import { downloadBlob } from '../utils/downloadUtils';
 import { usePersistenceStore } from '../store/persistenceStore';
 import { useRichTextStore } from '../store/richTextStore';
+import { useRichTextPagesStore } from '../store/richTextPagesStore';
+import { usePageStore } from '../store/pageStore';
 import { usePDFExportStore, createInitialPDFOptions } from '../store/pdfExportStore';
-import { isRichTextEmpty } from '../types/RichText';
+import { isRichTextEmpty, RICH_TEXT_VERSION } from '../types/RichText';
 import { LogoPicker } from './LogoPicker';
+import { generateJSON } from '@tiptap/core';
+import { extensions as tiptapExtensions } from './TiptapEditor';
+import { getTiptapEditor } from './TiptapEditor';
 import type {
   PDFPageSize,
   PDFOrientation,
@@ -98,12 +104,6 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
   }, [isOpen, currentDocumentName]);
 
   const handleExport = useCallback(async () => {
-    // Check if document has content
-    if (isRichTextEmpty(richTextContent)) {
-      setError('Document is empty. Add some content before exporting.');
-      return;
-    }
-
     setError(null);
     setIsExporting(true);
 
@@ -156,8 +156,85 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
         useThemeBackground: diagramUseThemeBackground,
       });
 
+      // Gather all rich text pages in order
+      const rtPagesState = useRichTextPagesStore.getState();
+      const editor = getTiptapEditor();
+
+      // Save current editor content to the pages store before export
+      if (editor && rtPagesState.activePageId) {
+        rtPagesState.updatePageContent(rtPagesState.activePageId, editor.getHTML());
+      }
+
+      // Re-read after save
+      const rtPages = useRichTextPagesStore.getState();
+      const richTextPages: PDFRichTextPage[] = [];
+
+      for (const pageId of rtPages.pageOrder) {
+        const page = rtPages.pages[pageId];
+        if (!page) continue;
+
+        if (pageId === rtPages.activePageId && editor) {
+          // Active page: use Tiptap JSON directly from editor (most accurate)
+          richTextPages.push({
+            name: page.name,
+            content: {
+              content: editor.getJSON(),
+              version: RICH_TEXT_VERSION,
+            },
+          });
+        } else {
+          // Non-active pages: convert HTML to Tiptap JSON via generateJSON
+          const htmlContent = page.content || '<p></p>';
+          const json = generateJSON(htmlContent, tiptapExtensions);
+          richTextPages.push({
+            name: page.name,
+            content: {
+              content: json,
+              version: RICH_TEXT_VERSION,
+            },
+          });
+        }
+      }
+
+      // Check if all pages are empty
+      const hasContent = richTextPages.some((p) => !isRichTextEmpty(p.content));
+      if (!hasContent && !diagramEmbedEnabled) {
+        setError('All document pages are empty. Add some content before exporting.');
+        setIsExporting(false);
+        return;
+      }
+
+      // Gather all canvas pages in order
+      const pageStoreState = usePageStore.getState();
+      // Sync current page's shapes from documentStore before reading
+      pageStoreState.syncCurrentPageFromDocument();
+      const freshPageState = usePageStore.getState();
+
+      const canvasPages: PDFCanvasPage[] = [];
+      for (const pageId of freshPageState.pageOrder) {
+        const page = freshPageState.pages[pageId];
+        if (!page) continue;
+        canvasPages.push({
+          name: page.name,
+          shapes: page.shapes,
+          shapeOrder: page.shapeOrder,
+        });
+      }
+
+      // Warn about any Tiptap extension types without PDF renderers
+      const extensionNodeNames = tiptapExtensions
+        .map((ext) => (ext as { name?: string }).name)
+        .filter((n): n is string => typeof n === 'string');
+      warnUnhandledNodes(extensionNodeNames);
+
       // Pass theme background for diagram rendering
-      const pdfBlob = await exportToPdf(options, richTextContent, themeColors.backgroundColor);
+      const pdfBlob = await exportToPdf(
+        options,
+        richTextContent,
+        themeColors.backgroundColor,
+        richTextPages,
+        canvasPages
+      );
       downloadBlob(pdfBlob, `${filename}.pdf`);
 
       onClose();

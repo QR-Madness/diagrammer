@@ -1,0 +1,85 @@
+import { describe, it, expect, vi } from 'vitest';
+import { parseColor, warnUnhandledNodes } from './pdfExportUtils';
+
+describe('parseColor', () => {
+  // ── Hex colors ──────────────────────────────────────────────────────────────
+  it('parses 6-digit hex', () => {
+    expect(parseColor('#ff0000')).toEqual([255, 0, 0]);
+    expect(parseColor('#00ff00')).toEqual([0, 255, 0]);
+    expect(parseColor('#0000ff')).toEqual([0, 0, 255]);
+    expect(parseColor('#1a2b3c')).toEqual([26, 43, 60]);
+  });
+
+  it('parses 3-digit hex shorthand', () => {
+    expect(parseColor('#f00')).toEqual([255, 0, 0]);
+    expect(parseColor('#0f0')).toEqual([0, 255, 0]);
+    expect(parseColor('#abc')).toEqual([170, 187, 204]);
+  });
+
+  // ── RGB / RGBA ──────────────────────────────────────────────────────────────
+  it('parses rgb()', () => {
+    expect(parseColor('rgb(255, 0, 0)')).toEqual([255, 0, 0]);
+    expect(parseColor('rgb(0,128,255)')).toEqual([0, 128, 255]);
+    expect(parseColor('rgb( 10 , 20 , 30 )')).toEqual([10, 20, 30]);
+  });
+
+  it('parses rgba()', () => {
+    expect(parseColor('rgba(255, 0, 0, 0.5)')).toEqual([255, 0, 0]);
+    expect(parseColor('rgba(100,200,50,1)')).toEqual([100, 200, 50]);
+  });
+
+  it('clamps rgb values to 255', () => {
+    expect(parseColor('rgb(300, 0, 0)')).toEqual([255, 0, 0]);
+  });
+
+  // ── Named colors ────────────────────────────────────────────────────────────
+  it('parses named colors', () => {
+    expect(parseColor('red')).toEqual([255, 0, 0]);
+    expect(parseColor('blue')).toEqual([0, 0, 255]);
+    expect(parseColor('green')).toEqual([0, 128, 0]);
+    expect(parseColor('black')).toEqual([0, 0, 0]);
+    expect(parseColor('white')).toEqual([255, 255, 255]);
+  });
+
+  it('is case-insensitive for named colors', () => {
+    expect(parseColor('Red')).toEqual([255, 0, 0]);
+    expect(parseColor('BLUE')).toEqual([0, 0, 255]);
+  });
+
+  // ── Edge cases ──────────────────────────────────────────────────────────────
+  it('handles whitespace', () => {
+    expect(parseColor('  #ff0000  ')).toEqual([255, 0, 0]);
+    expect(parseColor(' rgb(1,2,3) ')).toEqual([1, 2, 3]);
+  });
+
+  it('returns null for unparseable values', () => {
+    expect(parseColor('')).toBeNull();
+    expect(parseColor('not-a-color')).toBeNull();
+    expect(parseColor('#gg0000')).toBeNull();
+    expect(parseColor('hsl(0, 100%, 50%)')).toBeNull();
+  });
+});
+
+describe('warnUnhandledNodes', () => {
+  it('does not warn for registered types', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // These are all registered in the node renderer registry
+    warnUnhandledNodes([
+      'doc', 'text', 'heading', 'paragraph', 'bulletList', 'orderedList',
+      'listItem', 'codeBlock', 'blockquote', 'image', 'horizontalRule',
+      'embeddedGroup', 'taskList', 'taskItem', 'table', 'tableRow',
+      'tableCell', 'tableHeader', 'mathInline', 'mathBlock', 'hardBreak',
+    ]);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('warns for unregistered types', () => {
+    const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    warnUnhandledNodes(['heading', 'paragraph', 'myCustomNode']);
+    expect(spy).toHaveBeenCalledWith(
+      expect.stringContaining('myCustomNode')
+    );
+    spy.mockRestore();
+  });
+});
