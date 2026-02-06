@@ -948,9 +948,17 @@ This phase contains improvement recommendations from AI assistants to prepare fo
 
 #### Phase 15.2: Release Build
 
+- [x] Create `.github/workflows/release.yml` — manual dispatch release workflow
+  - `workflow_dispatch` trigger with version input and pre-release toggle
+  - Semver validation gate
+  - Test gate (typecheck + vitest + cargo test)
+  - Auto-bump versions in `package.json`, `tauri.conf.json`, `Cargo.toml`
+  - Cross-platform Tauri build (Linux: `.deb` + `.AppImage`, Windows: `.exe` + `.msi`)
+  - Creates git tag `v{version}` and GitHub Release with auto-generated release notes
+
 #### Phase 15.3: Release Pipeline
 
-- [ ] Workflow for GitHub releases (CI/CD pipeline)
+- [x] Workflow for GitHub releases (CI/CD pipeline)
 - [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
 - [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
