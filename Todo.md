@@ -956,14 +956,14 @@ This phase contains improvement recommendations from AI assistants to prepare fo
   - Cross-platform Tauri build (Linux: `.deb` + `.AppImage`, Windows: `.exe` + `.msi`)
   - Creates git tag `v{version}` and GitHub Release with auto-generated release notes
 
-#### Phase 15.3: Release Pipeline
+#### Phase 15.3: Release Pipeline (v.1.0.0-beta.1)
 
 - [x] Workflow for GitHub releases (CI/CD pipeline)
-- [ ] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
+- [x] Finalize UI polish and documentation (create release notes, update changelog, ensure all features are documented
       in README)
-- [ ] Commit, and await pre-release manual testing (human testing) before creating a release.
+- [x] Commit, and await pre-release manual testing (human testing) before creating a release.
 
-### Phase 16: Engine Improvements (Post-Release)
+### Phase 16: Engine Improvements [v1.0.1‑beta.1]
 
 Performance and reliability improvements deferred from Phase 14.9.
 
@@ -1010,7 +1010,7 @@ Performance and reliability improvements deferred from Phase 14.9.
   - Selection-based export with partial group selections.
   - Export with missing shape handlers (graceful degradation).
 
-### Phase 16.5: AI Recommendations (Claude Opus)
+### Phase 16.5: AI Recommendations (Claude Opus) [v1.1.0‑beta.1]
 
 Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
@@ -1123,7 +1123,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Example plugins: custom shape library, property panel section, export format.
   - Guidelines for state management and lifecycle.
 
-#### v1.0 Feature Completeness
+#### Full-Release Feature Completeness
 
 - [ ] **Template gallery**
   - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
@@ -1145,7 +1145,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
 
-### Phase 17: Advanced Diagram Patterns (Version 1.1)
+### Phase 17: Advanced Diagram Patterns [v1.2.0‑beta.1]
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns
