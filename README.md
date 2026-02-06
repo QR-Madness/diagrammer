@@ -77,10 +77,6 @@ bun run tauri:build    # Desktop
 /docs-site           # Documentation (Starlight)
 ```
 
-## 🤝 Contributing
-
-Contributions are welcome! See the [Roadmap](https://QR-Madness.github.io/diagrammer/development/roadmap/) for planned features.
-
 ## 📄 License
 
 MIT

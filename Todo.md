@@ -1,16 +1,13 @@
 # Development Todo List
 
-This document tracks the implementation tasks for building the Whiteboard Foundation prototype. Tasks are organized by
-implementation phase as defined in Specification.Readme.md.
-
-## Notes
-
-- **TODO**: Create a "stock-diagram" test scene with various shapes for visual inspection of new features. This should
-  be loadable on startup for development/testing purposes.
+<!-- 
+!! IMPORTANT !! 
+  This document is tightly coupled with `roadmap.mdx` in the documentation site. Be sure to also update that tracker as you complete phases. 
+-->
 
 ---
 
-## Completed Phases
+## Implementation Phase Tracker
 
 ### Phase 1: Core Foundation - COMPLETE
 
