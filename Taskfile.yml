@@ -125,6 +125,7 @@ tasks:
     desc: Install all dependencies
     cmds:
       - '{{.BUN}} install'
+      - task: docs:install
 
   clean:
     desc: Clean all build artifacts
@@ -133,6 +134,8 @@ tasks:
       - rm -rf src-tauri/target
       - rm -rf node_modules/.vite
       - rm -rf docs-site/dist
+      - rm -rf docs-site/.astro
+      - rm -rf docs-site/node_modules
 
   preview:
     desc: Preview production build
