@@ -3,7 +3,7 @@ title: Installation
 description: How to install Diagrammer on your system
 ---
 
-import { Tabs, TabItem } from "@astrojs/starlight/components";
+import { Tabs, TabItem, Steps, Aside } from "@astrojs/starlight/components";
 
 Diagrammer can be installed as a desktop application or run directly in your browser.
 
@@ -13,7 +13,7 @@ The desktop version provides the best performance and full feature access includ
 
 <Tabs>
   <TabItem label="Windows">
-    1. Download the latest `.msi` installer from the [releases page](https://github.com/QR-Madness/diagrammer/releases)
+    1. Download the latest `.msi` or `.exe` installer from the [releases page](https://github.com/QR-Madness/diagrammer/releases)
     2. Run the installer and follow the prompts
     3. Launch Diagrammer from the Start menu
   </TabItem>
@@ -28,46 +28,118 @@ The desktop version provides the best performance and full feature access includ
     ```bash
     sudo dpkg -i diagrammer_*.deb
     ```
-
-    **Fedora/RHEL (.rpm)**
-    ```bash
-    sudo rpm -i diagrammer-*.rpm
-    ```
-
   </TabItem>
-  <TabItem label="macOS (Must Build from Source)">
-    Though your welcome to build from source following the instructions below, we do not yet provide official macOS installers yet.
+  <TabItem label="macOS">
+    There are no pre-built macOS binaries yet. You can build from source — it only takes a few minutes. See the instructions below.
   </TabItem>
 </Tabs>
 
 ## Building from Source
 
-For developers who want to build from source:
+Building from source is straightforward on all platforms. macOS users — this is your primary installation path.
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (package manager and runtime)
-- [Rust](https://rustup.rs) (for Tauri backend)
-- [Taskfile](https://taskfile.dev/#/installation) (optional but highly recommended; for task automation)
-- Platform-specific dependencies (see [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/))
+You'll need three tools installed before building:
 
-### Build Steps
+<Tabs>
+  <TabItem label="macOS">
+    <Steps>
+      1. **Install Xcode Command Line Tools** (provides C compiler and system headers)
+         ```bash
+         xcode-select --install
+         ```
+
+      2. **Install Bun** (JavaScript runtime and package manager)
+         ```bash
+         curl -fsSL https://bun.sh/install | bash
+         ```
+         Close and reopen your terminal, then verify with `bun --version`.
+
+      3. **Install Rust** (for the Tauri desktop backend)
+         ```bash
+         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+         ```
+         Choose the default installation when prompted. Close and reopen your terminal, then verify with `rustc --version`.
+    </Steps>
+
+    <Aside type="tip">
+      If you use [Homebrew](https://brew.sh), you can also install Bun with `brew install oven-sh/bun/bun`.
+    </Aside>
+  </TabItem>
+  <TabItem label="Windows">
+    <Steps>
+      1. **Install Bun** — download from [bun.sh](https://bun.sh) or run:
+         ```powershell
+         powershell -c "irm bun.sh/install.ps1 | iex"
+         ```
+
+      2. **Install Rust** — download from [rustup.rs](https://rustup.rs) and run the installer.
+
+      3. **Install Visual Studio Build Tools** — required for Rust on Windows. Download from [Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) and install the "Desktop development with C++" workload.
+    </Steps>
+  </TabItem>
+  <TabItem label="Linux">
+    <Steps>
+      1. **Install Bun**
+         ```bash
+         curl -fsSL https://bun.sh/install | bash
+         ```
+
+      2. **Install Rust**
+         ```bash
+         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+         ```
+
+      3. **Install system dependencies** (Debian/Ubuntu)
+         ```bash
+         sudo apt-get update
+         sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+           librsvg2-dev patchelf
+         ```
+         For other distros, see the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
+    </Steps>
+  </TabItem>
+</Tabs>
+
+### Build the App
+
+Once prerequisites are installed, the build process is the same on all platforms:
 
 ```bash
 # Clone the repository
 git clone https://github.com/QR-Madness/diagrammer.git
 cd diagrammer
 
-# Install dependencies
+# Install JavaScript dependencies
 bun install
 
-# Run in development mode
-bun run dev          # Web only
-bun run tauri:dev    # Desktop app
+# Build the desktop application
+bun run tauri:build
+```
 
-# Build for production
-bun run build        # Web build
-bun run tauri:build  # Desktop installer
+The build takes a few minutes on first run (Rust compiles all dependencies). The finished installer will be in:
+
+| Platform | Output location |
+|----------|----------------|
+| macOS    | `src-tauri/target/release/bundle/dmg/` and `macos/` |
+| Windows  | `src-tauri/target/release/bundle/nsis/` and `msi/` |
+| Linux    | `src-tauri/target/release/bundle/appimage/` and `deb/` |
+
+<Aside type="note">
+  On macOS, the built `.app` is unsigned. On first launch, right-click the app and select **Open**, then click **Open** again in the dialog to bypass Gatekeeper.
+</Aside>
+
+### Running in Development Mode
+
+If you want to run Diagrammer without creating an installer:
+
+```bash
+# Web version only (opens in browser)
+bun run dev
+
+# Desktop app with hot-reload
+bun run tauri:dev
 ```
 
 ## System Requirements
@@ -81,4 +153,4 @@ bun run tauri:build  # Desktop installer
 
 ## Next Steps
 
-Once installed, proceed to the [Quick Start](./quick-start/) guide to create your first diagram.
+Once installed, proceed to the [Quick Start](../guide/quick-start/) guide to create your first diagram.

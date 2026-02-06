@@ -6,9 +6,53 @@ import starlightClientMermaid from '@pasqal-io/starlight-client-mermaid';
 // Check if building for offline/local use (no base path needed)
 const isOffline = process.env.DOCS_OFFLINE === 'true';
 
+// Build sidebar with conditional sections
+const sidebar = [
+	{
+		label: 'Guide',
+		items: [
+			{ label: 'Welcome', slug: 'guide/welcome' },
+			{ label: 'Quick Start', slug: 'guide/quick-start' },
+			{ label: 'Canvas & Tools', slug: 'guide/canvas-tools' },
+			{ label: 'Shape Libraries', slug: 'guide/shape-libraries' },
+			{ label: 'Rich Text & Notes', slug: 'guide/rich-text-editor' },
+			{ label: 'Collaboration', slug: 'guide/collaboration' },
+			{ label: 'Export & Import', slug: 'guide/export-import' },
+		],
+	},
+	// Installation section is only shown in the online build
+	...(!isOffline ? [{
+		label: 'Installation',
+		items: [
+			{ label: 'Download & Install', slug: 'getting-started/installation' },
+		],
+	}] : []),
+	{
+		label: 'Reference',
+		items: [
+			{ label: 'Keyboard Shortcuts', slug: 'reference/keyboard-shortcuts' },
+			{ label: 'Settings', slug: 'reference/settings' },
+			{ label: 'Shape Properties', slug: 'reference/shape-properties' },
+		],
+	},
+	{
+		label: 'Developer',
+		badge: { text: 'Dev', variant: 'tip' },
+		items: [
+			{ label: 'Architecture Overview', slug: 'developer/architecture' },
+			{ label: 'Project Setup', slug: 'developer/project-setup' },
+			{ label: 'Core Systems', slug: 'developer/core-systems' },
+			{ label: 'State Management', slug: 'developer/state-management' },
+			{ label: 'Collaboration Protocol', slug: 'developer/collaboration-protocol' },
+			{ label: 'Contributing', slug: 'developer/contributing' },
+			{ label: 'Roadmap', slug: 'developer/roadmap' },
+		],
+	},
+];
+
 // https://astro.build/config
 export default defineConfig({
-	site: isOffline ? undefined : 'https://QR-Madness.github.io',
+	site: isOffline ? undefined : 'https://QR-Madness.github.io/diagrammer/',
 	base: isOffline ? '/' : '/diagrammer',
 	integrations: [
 		starlight({
@@ -23,41 +67,7 @@ export default defineConfig({
 			],
 			customCss: ['./src/styles/custom.css'],
 			plugins: [starlightClientMermaid()],
-			sidebar: [
-				{
-					label: 'Getting Started',
-					items: [
-						{ label: 'Introduction', slug: 'getting-started/introduction' },
-						{ label: 'Installation', slug: 'getting-started/installation' },
-						{ label: 'Quick Start', slug: 'getting-started/quick-start' },
-					],
-				},
-				{
-					label: 'Features',
-					items: [
-						{ label: 'Canvas & Tools', slug: 'features/canvas-tools' },
-						{ label: 'Shape Libraries', slug: 'features/shape-libraries' },
-						{ label: 'Collaboration', slug: 'features/collaboration' },
-						{ label: 'Export & Import', slug: 'features/export-import' },
-						{ label: 'Rich Text Editor', slug: 'features/rich-text-editor' },
-					],
-				},
-				{
-					label: 'Reference',
-					items: [
-						{ label: 'Keyboard Shortcuts', slug: 'reference/keyboard-shortcuts' },
-						{ label: 'Settings', slug: 'reference/settings' },
-						{ label: 'Shape Properties', slug: 'reference/shape-properties' },
-					],
-				},
-				{
-					label: 'Development',
-					items: [
-						{ label: 'Architecture', slug: 'development/architecture' },
-						{ label: 'Roadmap', slug: 'development/roadmap' },
-					],
-				},
-			],
+			sidebar,
 		}),
 	],
 });

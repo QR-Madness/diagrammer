@@ -49,20 +49,17 @@ Standard flowchart symbols for process diagrams:
 
 | Shape | Usage |
 |-------|-------|
-| **Process** | Standard process step (rectangle) |
 | **Decision** | Yes/No branch point (diamond) |
 | **Terminator** | Start/End points (rounded rectangle) |
 | **Data** | Input/Output (parallelogram) |
 | **Document** | Document reference (wavy bottom) |
 | **Predefined Process** | Subroutine call (double-sided) |
-| **Manual Input** | User input step |
+| **Manual Input** | User input step (trapezoid) |
 | **Preparation** | Initialization step (hexagon) |
-| **Connector** | Off-page connector (circle) |
-| **Or** | Multiple paths (circle with cross) |
-| **Summing Junction** | Merge paths (circle with X) |
-| **Database** | Database storage (cylinder) |
-| **Internal Storage** | Memory storage |
-| **Manual Operation** | Manual process (trapezoid) |
+| **Connector** | On-page connector (circle) |
+| **Off-Page Connector** | Off-page reference (pentagon arrow) |
+
+Use a standard **Rectangle** shape for generic process steps.
 
 ### UML
 
@@ -70,34 +67,25 @@ Unified Modeling Language shapes for software design:
 
 <Tabs>
   <TabItem label="Class Diagrams">
-    - **Class** - Class with attributes and methods compartments
-    - **Interface** - Interface definition
-    - **Abstract Class** - Abstract class (italicized name)
-    - **Enumeration** - Enum type
-    - **Package** - Package container
+    - **Class** — Three-compartment box with attributes and methods
+    - **Interface** — Interface definition with stereotype
+    - **Abstract Class** — Abstract class (italicized name)
+    - **Enumeration** — Enum type
+    - **Package** — Package container
+    - **Note** — Dog-eared annotation note
   </TabItem>
   <TabItem label="Use Case">
-    - **Actor** - Stick figure for users/systems
-    - **Use Case** - Ellipse for functionality
-    - **System Boundary** - Rectangle container
-  </TabItem>
-  <TabItem label="Sequence">
-    - **Lifeline** - Object with timeline
-    - **Activation** - Method execution bar
-    - **Message** - Communication arrow
-    - **Fragment** - Loop, alt, opt containers
-  </TabItem>
-  <TabItem label="State">
-    - **State** - Rounded rectangle
-    - **Initial State** - Filled circle
-    - **Final State** - Circle with dot
-    - **Composite State** - State with regions
+    - **Actor** — Stick figure for users/systems
+    - **Use Case** — Ellipse for functionality
+    - **System Boundary** — Rectangle container with title
+    - **Include Relation** — Include relationship indicator
+    - **Extend Relation** — Extend relationship indicator
   </TabItem>
 </Tabs>
 
 ### ERD (Entity-Relationship)
 
-Database modeling shapes:
+Database modeling shapes (Crow's Foot notation):
 
 | Shape | Description |
 |-------|-------------|
@@ -105,19 +93,7 @@ Database modeling shapes:
 | **Weak Entity** | Dependent entity (double border) |
 | **Attribute** | Column/field (ellipse) |
 | **Key Attribute** | Primary key (underlined ellipse) |
-| **Derived Attribute** | Computed field (dashed ellipse) |
-| **Multivalued Attribute** | Array/list (double ellipse) |
 | **Relationship** | Association (diamond) |
-| **Weak Relationship** | Identifying relationship (double diamond) |
-
-### Network
-
-Infrastructure and network diagrams:
-
-- Server, Workstation, Laptop, Mobile
-- Router, Switch, Firewall, Load Balancer
-- Cloud, Database, Storage
-- Internet, VPN, Wireless
 
 ## Shape Properties
 
@@ -152,7 +128,7 @@ Some shapes have unique properties:
 
 - **Rectangle**: Corner radius
 - **Line**: Start/end arrowheads
-- **Connector**: Routing style (orthogonal, curved, straight)
+- **Connector**: Routing style (orthogonal or straight)
 
 ## Custom Shape Libraries
 
@@ -216,7 +192,5 @@ Set default styles for new shapes:
 
 ## Tips
 
-- **Favorite shapes**: Right-click a shape → **Add to Favorites** for quick access
-- **Recent shapes**: The Shape Picker shows recently used shapes at the top
-- **Keyboard placement**: After selecting a shape tool, press Enter to place at cursor
-- **Clone styling**: Select a styled shape, then `Alt+Click` another shape to copy its style
+- **Right-click** a shape on canvas → **Save to Library** to add it to a custom library
+- After selecting a shape tool from the picker, click on the canvas to place it

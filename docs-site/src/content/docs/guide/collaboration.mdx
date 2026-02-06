@@ -31,20 +31,15 @@ To share a document with collaborators:
 
 2. **Start hosting**
    
-   Go to **Collaborate → Start Hosting** or click the **Share** button in the toolbar.
+   Go to **Settings → Collaboration** and configure the server port, then click **Start Server**.
 
 3. **Configure access**
    
-   Choose who can connect:
-   - **Anyone with the link** - No authentication required
-   - **Require authentication** - Users must log in with credentials you set
+   Set up authentication — users will need a username and password to connect.
 
 4. **Share the connection info**
    
-   Copy the connection URL and share it with your team. It looks like:
-   ```
-   ws://192.168.1.100:8080/doc/abc123
-   ```
+   Share your IP address and port with your team. They'll enter it in their client connection panel.
 
 </Steps>
 
@@ -58,19 +53,17 @@ To join someone else's session:
 
 <Steps>
 
-1. **Get the connection URL**
+1. **Get the connection info**
    
-   Obtain the WebSocket URL from the host.
+   Obtain the host's IP address and port.
 
 2. **Connect**
    
-   Go to **Collaborate → Join Session** and paste the URL.
-   
-   Or click a `diagrammer://` link if the host shared one.
+   Go to **Settings → Collaboration** and enter the host IP, port, username, and password in the client connection panel.
 
-3. **Authenticate (if required)**
+3. **Authenticate**
    
-   Enter credentials if the host enabled authentication.
+   Enter the credentials configured by the host.
 
 </Steps>
 
@@ -86,11 +79,10 @@ See where other collaborators are working:
 
 ### Selection Awareness
 
-Shared selection state prevents conflicts:
+See what others have selected:
 
-- See what others have selected (highlighted with their color)
-- Shapes being actively edited show a lock indicator
-- Attempting to edit a locked shape shows a notification
+- Shapes selected by other users are highlighted with their color
+- User name labels appear on remote selections
 
 ### Presence Indicators
 
@@ -102,12 +94,11 @@ The toolbar shows connected users:
 
 ### Real-time Sync
 
-All changes sync instantly:
+All changes sync in real-time:
 
 - Shape creation, modification, deletion
 - Property changes (colors, text, etc.)
 - Page additions and modifications
-- Undo/redo (per-user history)
 
 ## Offline Support
 
@@ -212,6 +203,6 @@ Configure what connected users can do:
 If you see duplicate shapes or edits:
 
 1. This is rare with CRDT sync
-2. Try refreshing the document (`F5`)
+2. Try disconnecting and reconnecting
 3. Check if multiple browser tabs are open
 4. Report persistent issues with document export
