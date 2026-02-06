@@ -16,7 +16,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.9.1",
+    "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-fs": "^2.4.5",
     "@tiptap/core": "^2.1.0",
     "@tiptap/extension-color": "^2.1.0",
@@ -51,7 +51,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.9.6",
+    "@tauri-apps/cli": "^2.10.0",
     "@types/jsdom": "^27.0.0",
     "@types/rbush": "^4.0.0",
     "@types/react": "^18.2.45",
