@@ -3,10 +3,10 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
+    "dev": "cross-env ONLINE_MODE=true astro dev",
+    "start": "cross-env ONLINE_MODE=true astro dev",
     "build": "astro build",
-    "preview": "astro preview",
+    "preview": "cross-env ONLINE_MODE=true astro preview",
     "astro": "astro"
   },
   "dependencies": {
@@ -15,5 +15,8 @@
     "astro": "^5.6.1",
     "mermaid": "^11.12.2",
     "sharp": "^0.34.2"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0"
   }
 }

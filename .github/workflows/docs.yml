@@ -35,6 +35,8 @@ jobs:
       - name: Build documentation
         working-directory: docs-site
         run: bun run build
+        env:
+          ONLINE_MODE: "true"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

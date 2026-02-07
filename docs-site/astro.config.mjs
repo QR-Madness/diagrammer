@@ -3,8 +3,8 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightClientMermaid from '@pasqal-io/starlight-client-mermaid';
 
-// Check if building for offline/local use (no base path needed)
-const isOffline = process.env.DOCS_OFFLINE === 'true';
+// Default to offline/bundled build; set ONLINE_MODE=true for GitHub Pages deployment
+const isOnline = process.env.ONLINE_MODE === 'true';
 
 // Build sidebar with conditional sections
 const sidebar = [
@@ -21,7 +21,7 @@ const sidebar = [
 		],
 	},
 	// Installation section is only shown in the online build
-	...(!isOffline ? [{
+	...(isOnline ? [{
 		label: 'Installation',
 		items: [
 			{ label: 'Download & Install', slug: 'getting-started/installation' },
@@ -52,8 +52,9 @@ const sidebar = [
 
 // https://astro.build/config
 export default defineConfig({
-	site: isOffline ? undefined : 'https://QR-Madness.github.io/diagrammer/',
-	base: isOffline ? '/' : '/diagrammer',
+	site: isOnline ? 'https://QR-Madness.github.io/diagrammer' : undefined,
+	// base: isOnline ? '' : '/diagrammer/',
+	trailingSlash: 'never',
 	integrations: [
 		starlight({
 			title: 'Diagrammer',

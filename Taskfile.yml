@@ -152,18 +152,16 @@ tasks:
       - '{{.BUN}} run dev'
 
   docs:build:
-    desc: Build documentation for production (GitHub Pages)
+    desc: Build documentation for offline/local use (default)
     dir: docs-site
-    env:
-      DOCS_OFFLINE: 'true'
     cmds:
       - '{{.BUN}} run build'
 
-  docs:build:offline:
-    desc: Build documentation for offline/local use (no base path)
+  docs:build:online:
+    desc: Build documentation for online deployment (GitHub Pages)
     dir: docs-site
     env:
-      DOCS_OFFLINE: 'true'
+      ONLINE_MODE: 'true'
     cmds:
       - '{{.BUN}} run build'
 
