@@ -70,9 +70,9 @@
 }
 
 /* Hero section styling */
-.hero {
+/* .hero {
   background: linear-gradient(135deg, var(--sl-color-gray-6) 0%, var(--sl-color-black) 100%);
-}
+} */
 
 /* Code block styling - ensure visibility */
 pre {
