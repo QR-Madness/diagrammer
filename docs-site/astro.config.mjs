@@ -53,7 +53,7 @@ const sidebar = [
 // https://astro.build/config
 export default defineConfig({
 	site: isOnline ? 'https://QR-Madness.github.io/diagrammer' : undefined,
-	// base: isOnline ? '' : '/diagrammer/',
+	base: isOnline ? '/diagrammer/' : undefined,
 	trailingSlash: 'never',
 	integrations: [
 		starlight({
