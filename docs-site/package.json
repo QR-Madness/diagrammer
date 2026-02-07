@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "cross-env ONLINE_MODE=true astro dev",
     "start": "cross-env ONLINE_MODE=true astro dev",
-    "build": "astro build",
+    "build": "cross-env ONLINE_MODE=true astro build",
+    "build:offline": "astro build",
     "preview": "cross-env ONLINE_MODE=true astro preview",
     "astro": "astro"
   },

@@ -155,7 +155,7 @@ tasks:
     desc: Build documentation for offline/local use (default)
     dir: docs-site
     cmds:
-      - '{{.BUN}} run build'
+      - '{{.BUN}} run build:offline'
 
   docs:build:online:
     desc: Build documentation for online deployment (GitHub Pages)
