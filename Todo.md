@@ -1193,6 +1193,42 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 - [ ] Implement AI-powered diagram analysis
 - [ ] Generate insights and suggested edits
 
+### Future: Enterprise Edition (Paid)
+
+A commercially licensed tier targeting teams and organizations, built on top of the free open-source core.
+
+#### Scalable Collaboration Server
+- [ ] Replace single-host Tauri WebSocket server with a dedicated, horizontally scalable collaboration server
+- [ ] Implement a room/session broker that distributes document sessions across server instances
+- [ ] Add connection pooling, backpressure, and graceful degradation under load
+- [ ] Support configurable persistence backends (PostgreSQL, Redis, S3) for CRDT state
+- [ ] Provide Docker / Kubernetes deployment manifests and Helm chart
+
+#### Cloud Storage Connectors
+- [ ] Implement a storage provider abstraction layer (local FS, S3, Azure Blob, GCS)
+- [ ] Add OAuth-based linking for Google Drive, OneDrive, Dropbox
+- [ ] Support read/write of diagrams directly from cloud storage
+- [ ] Implement cross-provider sync and conflict resolution
+
+#### Enterprise Plugin System
+- [ ] Webhook plugin — outbound event notifications (document created/updated/deleted, user joined/left)
+- [ ] Audit log plugin — structured, queryable logs of all document and user events
+- [ ] SSO/SAML plugin — integrate with corporate identity providers (Okta, Azure AD, etc.)
+- [ ] RBAC plugin — role-based access control for documents, pages, and team workspaces
+- [ ] Data retention plugin — configurable retention policies and automated purging
+
+#### Security & Compliance
+- [ ] End-to-end encryption for document content in transit and at rest
+- [ ] Per-document encryption key management (envelope encryption)
+- [ ] Signed export artifacts (PDF, SVG) with tamper-evident checksums
+- [ ] SOC 2 / GDPR compliance documentation and data handling controls
+
+#### Advanced Observability
+- [ ] Structured server logging with configurable verbosity (JSON, stdout, syslog)
+- [ ] Prometheus metrics endpoint (connections, sync latency, document ops/sec)
+- [ ] OpenTelemetry tracing for request lifecycle visibility
+- [ ] Admin dashboard for server health, active sessions, and storage usage
+
 ---
 
 ## Testing Notes

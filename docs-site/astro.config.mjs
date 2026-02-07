@@ -68,6 +68,7 @@ export default defineConfig({
 			],
 			customCss: ['./src/styles/custom.css'],
 			plugins: [starlightClientMermaid()],
+			// @ts-ignore
 			sidebar,
 		}),
 	],

@@ -93,22 +93,25 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ inputs.version }}"
+          # MSI/WiX only supports numeric pre-release identifiers — strip the
+          # pre-release suffix for tauri.conf.json (e.g. 1.0.0-beta.1 → 1.0.0)
+          MSI_VERSION="${VERSION%%-*}"
 
-          # package.json
+          # package.json — full semver
           bun -e "
             const pkg = JSON.parse(await Bun.file('package.json').text());
             pkg.version = '${VERSION}';
             await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-          # src-tauri/tauri.conf.json
+          # src-tauri/tauri.conf.json — MSI-safe version
           bun -e "
             const conf = JSON.parse(await Bun.file('src-tauri/tauri.conf.json').text());
-            conf.version = '${VERSION}';
+            conf.version = '${MSI_VERSION}';
             await Bun.write('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
-          # src-tauri/Cargo.toml — update version line
+          # src-tauri/Cargo.toml — full semver
           sed -i "0,/^version = .*/s//version = \"${VERSION}\"/" src-tauri/Cargo.toml
 
           # Regenerate Cargo.lock
@@ -152,22 +155,23 @@ jobs:
       - name: Bump versions
         run: |
           VERSION="${{ inputs.version }}"
+          MSI_VERSION="${VERSION%%-*}"
 
-          # package.json
+          # package.json — full semver
           bun -e "
             const pkg = JSON.parse(await Bun.file('package.json').text());
             pkg.version = '${VERSION}';
             await Bun.write('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-          # src-tauri/tauri.conf.json
+          # src-tauri/tauri.conf.json — MSI-safe version (no pre-release suffix)
           bun -e "
             const conf = JSON.parse(await Bun.file('src-tauri/tauri.conf.json').text());
-            conf.version = '${VERSION}';
+            conf.version = '${MSI_VERSION}';
             await Bun.write('src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
-          # src-tauri/Cargo.toml — update version line
+          # src-tauri/Cargo.toml — full semver
           sed -i "0,/^version = .*/s//version = \"${VERSION}\"/" src-tauri/Cargo.toml
 
           # docs-site roadmap.mdx — update version badge
