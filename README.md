@@ -10,7 +10,7 @@ A high-performance diagramming and whiteboard application that handles **10,000+
 
 **[Download the latest release](https://github.com/QR-Madness/diagrammer/releases)**
 
-![Diagrammer Screenshot](Diagrammer.png)
+<!-- ![Diagrammer Logo](Diagrammer.png) -->
 
 ## ✨ Features
 
