@@ -96,7 +96,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          shared-key: ${{ matrix.platform }}-${{ matrix.tauri_bundles }}
+          shared-key: ${{ matrix.artifact_suffix }}
 
       - name: Bump versions for build
         shell: bash
