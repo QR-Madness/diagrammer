@@ -96,6 +96,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          shared-key: ${{ matrix.platform }}-${{ matrix.tauri_bundles }}
 
       - name: Bump versions for build
         shell: bash
@@ -144,21 +145,19 @@ jobs:
         run: |
           SUFFIX="${{ matrix.artifact_suffix }}"
 
-          for f in src-tauri/target/release/bundle/deb/*.deb; do
-            [ -f "$f" ] && mv "$f" "${f%.deb}_${SUFFIX}.deb"
-          done
-          for f in src-tauri/target/release/bundle/appimage/*.AppImage; do
-            [ -f "$f" ] && mv "$f" "${f%.AppImage}_${SUFFIX}.AppImage"
-          done
-          for f in src-tauri/target/release/bundle/rpm/*.rpm; do
-            [ -f "$f" ] && mv "$f" "${f%.rpm}_${SUFFIX}.rpm"
-          done
-          for f in src-tauri/target/release/bundle/nsis/*.exe; do
-            [ -f "$f" ] && mv "$f" "${f%.exe}_${SUFFIX}.exe"
-          done
-          for f in src-tauri/target/release/bundle/msi/*.msi; do
-            [ -f "$f" ] && mv "$f" "${f%.msi}_${SUFFIX}.msi"
-          done
+          rename_glob() {
+            local ext="$1"
+            for f in $2; do
+              [ -f "$f" ] && mv "$f" "${f%.$ext}_${SUFFIX}.$ext"
+            done
+            return 0
+          }
+
+          rename_glob deb       "src-tauri/target/release/bundle/deb/*.deb"
+          rename_glob AppImage  "src-tauri/target/release/bundle/appimage/*.AppImage"
+          rename_glob rpm       "src-tauri/target/release/bundle/rpm/*.rpm"
+          rename_glob exe       "src-tauri/target/release/bundle/nsis/*.exe"
+          rename_glob msi       "src-tauri/target/release/bundle/msi/*.msi"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
