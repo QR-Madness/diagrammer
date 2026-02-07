@@ -51,6 +51,10 @@
       },
       "deb": {
         "depends": []
+      },
+      "rpm": {
+        "depends": [],
+        "release": "1"
       }
     },
     "macOS": {

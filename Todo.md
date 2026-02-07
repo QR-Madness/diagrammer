@@ -1125,7 +1125,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Example plugins: custom shape library, property panel section, export format.
   - Guidelines for state management and lifecycle.
 
-#### Full-Release Feature Completeness
+#### Quality-of-Life Improvements
 
 - [ ] **Template gallery**
   - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
