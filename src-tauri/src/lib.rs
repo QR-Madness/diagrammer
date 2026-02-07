@@ -458,6 +458,28 @@ use std::sync::atomic::AtomicU16;
 /// Port for the local documentation server
 static DOCS_SERVER_PORT: AtomicU16 = AtomicU16::new(0);
 
+/// Middleware that rewrites clean URL paths (e.g. `/guide/welcome`) to serve
+/// the corresponding `index.html` directly, avoiding ServeDir's 301 redirect
+/// to a trailing-slash URL.
+async fn rewrite_clean_urls(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let path = request.uri().path();
+
+    // Only rewrite paths that look like clean URLs (no file extension, not root)
+    if path != "/" && !path.ends_with('/') && !path.contains('.') {
+        let new_path = format!("{}/index.html", path);
+        if let Ok(uri) = new_path.parse::<axum::http::Uri>() {
+            let (mut parts, body) = request.into_parts();
+            parts.uri = uri;
+            return next.run(axum::extract::Request::from_parts(parts, body)).await;
+        }
+    }
+
+    next.run(request).await
+}
+
 /// Start a simple HTTP server to serve documentation
 async fn start_docs_server(docs_dir: std::path::PathBuf) -> Result<u16, String> {
     use axum::{Router, routing::get_service};
@@ -482,7 +504,8 @@ async fn start_docs_server(docs_dir: std::path::PathBuf) -> Result<u16, String> 
     DOCS_SERVER_PORT.store(port, std::sync::atomic::Ordering::Relaxed);
     
     let app = Router::new()
-        .fallback_service(get_service(ServeDir::new(docs_dir)));
+        .fallback_service(get_service(ServeDir::new(docs_dir)))
+        .layer(axum::middleware::from_fn(rewrite_clean_urls));
     
     // Spawn the server in the background
     tokio::spawn(async move {
