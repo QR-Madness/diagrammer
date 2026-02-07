@@ -52,7 +52,7 @@ React handles only the UI chrome (toolbar, panels, modals). It does **not** rend
 
 ### Engine Core
 
-Pure TypeScript classes handling canvas rendering and interaction — no React dependency. Camera, Renderer, InputHandler, ToolManager, SpatialIndex, HitTester, and ShapeRegistry. See [Core Systems](../core-systems/) for details.
+Pure TypeScript classes handling canvas rendering and interaction — no React dependency. Camera, Renderer, InputHandler, ToolManager, SpatialIndex, HitTester, and ShapeRegistry. See [Core Systems](./core-systems) for details.
 
 ### Store Layer
 
@@ -66,7 +66,7 @@ Zustand stores with Immer for immutable updates, split by responsibility:
 | PageStore | Multi-page structure |
 | PersistenceStore | Save/load, auto-save |
 
-See [State Management](../state-management/) for the full breakdown including collaboration and feature stores.
+See [State Management](./state-management) for the full breakdown including collaboration and feature stores.
 
 ### Storage Layer
 
@@ -74,7 +74,7 @@ Hybrid storage — **localStorage** for document metadata and preferences, **Ind
 
 ### Tauri Backend
 
-The Rust backend (`src-tauri/`) provides native file system access, a WebSocket server for collaboration, and JWT authentication. See [Collaboration Protocol](../collaboration-protocol/) for the wire protocol details.
+The Rust backend (`src-tauri/`) provides native file system access, a WebSocket server for collaboration, and JWT authentication. See [Collaboration Protocol](./collaboration-protocol) for the wire protocol details.
 
 ## Key Design Decisions
 
@@ -106,8 +106,8 @@ The app works fully offline. Collaboration features (Protected Local mode) use W
 
 ## Next Steps
 
-- [Core Systems](../core-systems/) — coordinate pipeline, rendering, shape registry, tools
-- [State Management](../state-management/) — Zustand store architecture
-- [Collaboration Protocol](../collaboration-protocol/) — WebSocket protocol, CRDT sync, offline support
-- [Project Setup](../project-setup/) — development environment and commands
-- [Contributing](../contributing/) — code style, testing, and PR guidelines
+- [Core Systems](./core-systems) — coordinate pipeline, rendering, shape registry, tools
+- [State Management](./state-management) — Zustand store architecture
+- [Collaboration Protocol](./collaboration-protocol) — WebSocket protocol, CRDT sync, offline support
+- [Project Setup](./project-setup) — development environment and commands
+- [Contributing](./contributing) — code style, testing, and PR guidelines

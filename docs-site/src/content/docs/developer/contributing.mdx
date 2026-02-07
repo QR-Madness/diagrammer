@@ -11,7 +11,7 @@ We welcome contributions of all kinds — bug fixes, new shape libraries, docume
 
 <Steps>
   1. Fork the repository on [GitHub](https://github.com/QR-Madness/diagrammer)
-  2. Clone your fork and set up the dev environment (see [Project Setup](../project-setup/))
+  2. Clone your fork and set up the dev environment (see [Project Setup](./project-setup))
   3. Create a feature branch: `git checkout -b my-feature`
   4. Make your changes
   5. Run checks: `task check` (or `bun run typecheck && bun run test --run`)
@@ -100,7 +100,7 @@ Before making significant architectural changes, please open an issue to discuss
 - **DocumentStore is the single source of truth** — don't cache shape data elsewhere
 - **Camera owns all coordinate math** — never manually apply pan/zoom
 
-See [Architecture](../architecture/) and [Core Systems](../core-systems/) for deeper context.
+See [Architecture](./architecture) and [Core Systems](./core-systems) for deeper context.
 
 ## Commit Messages
 
