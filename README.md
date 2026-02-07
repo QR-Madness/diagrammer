@@ -1,7 +1,8 @@
 # Diagrammer
 
-[![Documentation](https://img.shields.io/badge/docs-online-blue)](https://QR-Madness.github.io/diagrammer/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Deploy Documentation](https://github.com/QR-Madness/diagrammer/actions/workflows/docs.yml/badge.svg)](https://github.com/QR-Madness/diagrammer/actions/workflows/docs.yml)
+[![Build Release Artifacts](https://github.com/QR-Madness/diagrammer/actions/workflows/release.yml/badge.svg)](https://github.com/QR-Madness/diagrammer/actions/workflows/release.yml)
 
 A high-performance diagramming and whiteboard application that handles **10,000+ shapes at 60fps**. Built with TypeScript, React, and Canvas 2D API. Runs as a desktop app (Tauri) or in your browser.
 
