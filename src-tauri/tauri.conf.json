@@ -32,7 +32,7 @@
     "active": true,
     "targets": "all",
     "resources": {
-      "../docs-site/dist": "docs"
+      "../docs-site/.vitepress/dist": "docs"
     },
     "icon": [
       "icons/icon.png",

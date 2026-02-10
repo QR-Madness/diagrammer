@@ -132,8 +132,8 @@ tasks:
       - rm -rf dist
       - rm -rf src-tauri/target
       - rm -rf node_modules/.vite
-      - rm -rf docs-site/dist
-      - rm -rf docs-site/.astro
+      - rm -rf docs-site/.vitepress/dist
+      - rm -rf docs-site/.vitepress/cache
       - rm -rf docs-site/node_modules
 
   preview:
