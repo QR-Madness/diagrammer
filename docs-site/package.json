@@ -3,21 +3,18 @@
   "type": "module",
   "version": "0.0.1",
   "scripts": {
-    "dev": "cross-env ONLINE_MODE=true astro dev",
-    "start": "cross-env ONLINE_MODE=true astro dev",
-    "build": "cross-env ONLINE_MODE=true astro build",
-    "build:offline": "astro build",
-    "preview": "cross-env ONLINE_MODE=true astro preview",
-    "astro": "astro"
+    "dev": "cross-env ONLINE_MODE=true vitepress dev",
+    "build": "cross-env ONLINE_MODE=true vitepress build",
+    "build:offline": "vitepress build",
+    "preview": "cross-env ONLINE_MODE=true vitepress preview"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.37.6",
-    "@pasqal-io/starlight-client-mermaid": "^0.1.0",
-    "astro": "^5.6.1",
-    "mermaid": "^11.12.2",
-    "sharp": "^0.34.2"
+    "vitepress": "^1.6.3",
+    "vitepress-plugin-mermaid": "^2.0.17",
+    "mermaid": "^11.4.1",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
-    "cross-env": "^10.1.0"
+    "cross-env": "^7.0.3"
   }
 }
