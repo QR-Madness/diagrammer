@@ -561,19 +561,31 @@ async fn open_docs(app: tauri::AppHandle) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    // Initialize devtools FIRST, before builder (debug builds only)
+    #[cfg(debug_assertions)]
+    let devtools = tauri_plugin_devtools::init();
+
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::init());
+
+    // Add devtools plugin in debug builds
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(devtools);
+    }
+
+    builder
         .setup(|app| {
-            // Initialize logging in debug mode
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
+            // Initialize logging in release mode only (devtools handles logging in debug)
+            #[cfg(not(debug_assertions))]
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
 
             // Log startup
             log::info!("Diagrammer v{} starting...", env!("CARGO_PKG_VERSION"));
