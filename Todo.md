@@ -1178,7 +1178,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
 
-### Phase 17: Embedded Files [v1.2.0‑beta.1]
+### Phase 17: Embedded Files [RELEASE v1.2.0‑beta.1]
 
 File embedding system for PDFs, spreadsheets, and other assets. Uses reference-based architecture with lazy loading to maintain canvas performance.
 
@@ -1221,6 +1221,7 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
   - Page navigation (prev/next, page number input)
   - Zoom controls
   - Lazy page loading (render visible pages only)
+  - BONUS: Cache the viewer's position in the document upon close
 
 - [ ] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
   - SheetJS (xlsx) for parsing XLSX/CSV
@@ -1296,7 +1297,7 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
   - LRU cache for recently viewed file content
   - Thumbnail-only mode for low-memory situations
 
-### Phase 18: Advanced Diagram Patterns [v1.3.0‑beta.1]
+### Phase 18: Advanced Diagram Patterns [RELEASE v1.3.0‑beta.1]
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns + Swimlane customization
@@ -1337,7 +1338,71 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
 
 ### Future: AI Model Integration
 
-- [ ] Implement a pipeline for model usage and integration with the application
+#### Architecture: Semantic Abstraction Layer
+
+AI should reason about **relationships and entities**, not coordinates. The app handles spatial layout.
+
+**AI Output Schema** (no X/Y coordinates):
+```typescript
+interface AIGraphOutput {
+  diagram_type: 'flowchart' | 'erd' | 'class-diagram' | 'sequence' | 'network';
+  nodes: Array<{
+    id: string;
+    type: string;          // maps to shape type
+    label: string;
+    attributes?: string[]; // for ERD entities, class members, etc.
+  }>;
+  edges: Array<{
+    from: string;          // node id
+    to: string;            // node id
+    label?: string;
+    cardinality?: 'one-to-one' | 'one-to-many' | 'many-to-many';
+  }>;
+  layout_hint?: 'hierarchical' | 'force-directed' | 'grid' | 'radial';
+}
+```
+
+**Near-Node Placement** (for incremental edits):
+```typescript
+interface PlacementHint {
+  near: string;                              // existing shape ID or label
+  direction: 'above' | 'below' | 'left' | 'right' | 'auto';
+  offset?: 'compact' | 'normal' | 'spacious';
+}
+```
+
+**Layout Engine** converts semantic graph → positioned shapes:
+- Hierarchical (dagre): flowcharts, org charts, trees
+- Force-directed (d3-force): ERDs, network diagrams
+- Near-node resolver: incremental additions with overlap avoidance
+
+#### Deliverables
+
+- [ ] **Layout Engine** (`src/services/LayoutEngine.ts`)
+  - dagre integration for hierarchical layouts
+  - d3-force integration for force-directed layouts
+  - Near-node placement resolver
+  - Overlap avoidance with existing shapes
+  - Diagram type → layout strategy mapping
+
+- [ ] **AI Service** (`src/services/AIService.ts`)
+  - Provider abstraction (Claude, OpenAI, Ollama)
+  - System prompt with diagram domain context
+  - Structured output schema validation
+  - Tool call execution pipeline
+
+- [ ] **AI Assistant Panel** (`src/ui/AIAssistantPanel.tsx`)
+  - Text input for natural language requests
+  - "Generate Diagram" from description
+  - "Improve Selection" for existing shapes
+  - "Explain Diagram" for documentation
+  - Provider selection in settings
+
+- [ ] **Schema Validator** (`src/services/AISchemaValidator.ts`)
+  - Validate node types against shape libraries
+  - Map diagram_type to appropriate shapes
+  - Graceful fallback for unknown types
+
 - [ ] Implement AI-powered diagram analysis
 - [ ] Generate insights and suggested edits
 
