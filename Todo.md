@@ -1180,7 +1180,121 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 ### Phase 17: Embedded Files [v1.2.0‑beta.1]
 
-- [ ] 
+File embedding system for PDFs, spreadsheets, and other assets. Uses reference-based architecture with lazy loading to maintain canvas performance.
+
+#### Architecture Decisions
+
+- **Modal viewer pattern**: Content viewed in modal, not in-place rendered on canvas (preserves 60fps target)
+- **Thumbnail on canvas**: Cached preview thumbnail + file icon/name displayed as shape
+- **Reference-based storage**: Shapes hold `blobRef` (SHA-256 hash), actual files in BlobStorage
+- **Lazy loading tiers**: Off-screen (nothing) → On-screen (thumbnail) → Modal open (full content)
+- **Separate blob sync**: HTTP endpoints for large files, WebSocket for shape metadata only
+
+#### Phase 17.1: Core Infrastructure
+
+- [ ] **FileShape type definition** (`src/types/FileShape.ts`)
+  - Extends BaseShape with: `blobRef`, `fileName`, `mimeType`, `fileSize`
+  - Preview metadata: `thumbnail` (base64), `pageCount`, `dimensions`
+  - Supported categories: `pdf`, `spreadsheet`, `generic`
+
+- [ ] **File shape handlers** (`src/shapes/files/`)
+  - `BaseFileHandler.ts` — Common: bounds, selection, download action
+  - `PdfHandler.ts` — PDF icon, page count badge, thumbnail render
+  - `SpreadsheetHandler.ts` — Table icon, row/column count badge
+  - `GenericFileHandler.ts` — File type icon + filename fallback
+  - Register all handlers in ShapeRegistry
+
+- [ ] **Thumbnail generation service** (`src/services/ThumbnailGenerator.ts`)
+  - Web Worker for non-blocking generation
+  - PDF: Render page 1 at ~400px width via pdf.js → JPEG blob
+  - XLSX/CSV: Generate mini-table preview or use generic icon
+  - Store thumbnail in shape's `preview.thumbnail` field
+
+#### Phase 17.2: Content Viewer Modal
+
+- [ ] **FileViewerModal component** (`src/ui/FileViewerModal.tsx`)
+  - Full-screen modal with close button, download, replace actions
+  - File type detection and appropriate viewer dispatch
+
+- [ ] **PDF viewer** (`src/ui/viewers/PdfViewer.tsx`)
+  - pdf.js integration for rendering
+  - Page navigation (prev/next, page number input)
+  - Zoom controls
+  - Lazy page loading (render visible pages only)
+
+- [ ] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
+  - SheetJS (xlsx) for parsing XLSX/CSV
+  - Table rendering with virtual scrolling for large datasets
+  - Sheet tabs for multi-sheet workbooks
+  - Basic cell formatting preservation
+
+- [ ] **Generic file viewer** (`src/ui/viewers/GenericFileViewer.tsx`)
+  - File icon, name, size, type display
+  - Download button
+  - "No preview available" message
+
+#### Phase 17.3: File Import Flow
+
+- [ ] **File drop/upload handling**
+  - Drag-and-drop files onto canvas
+  - File picker via toolbar or context menu
+  - Validate file types and size limits
+
+- [ ] **Import pipeline**
+  - Store file in BlobStorage (content-addressed)
+  - Generate thumbnail (async, Web Worker)
+  - Create FileShape at drop position
+  - Update spatial index
+
+#### Phase 17.4: Storage Manager Integration
+
+- [ ] **Files tab in Storage Manager**
+  - List all embedded files with: name, type, size, reference count
+  - Preview thumbnails where available
+  - Show which documents reference each file
+  - Orphan detection (files with no shape references)
+  - Delete/replace individual files
+
+- [ ] **Storage references checker extension**
+  - Update `BlobGarbageCollector` to scan FileShape `blobRef` fields
+  - Protect files referenced by any document
+  - Handle thumbnail blobs if stored separately
+
+#### Phase 17.5: Collaboration Support
+
+- [ ] **HTTP blob endpoints** (Rust backend)
+  - `POST /api/blobs/:hash` — Upload blob with hash verification
+  - `GET /api/blobs/:hash` — Download blob by hash
+  - `HEAD /api/blobs/:hash` — Check blob existence
+  - Chunked upload/download for large files (>10MB)
+  - Authentication via JWT token header
+
+- [ ] **Blob sync protocol**
+  - On shape sync, client checks if blob exists locally
+  - If missing, fetch via HTTP endpoint
+  - Progress indicator for large file downloads
+  - Retry logic with exponential backoff
+
+- [ ] **AssetBundler extension**
+  - Update `bundleDocumentWithAssets()` to include file blobs
+  - Handle large files (consider compression or external references)
+
+#### Phase 17.6: Polish & Edge Cases
+
+- [ ] **File replacement flow**
+  - Replace file contents while keeping shape position/size
+  - Regenerate thumbnail
+  - Update all references atomically
+
+- [ ] **Error handling**
+  - Corrupt file detection on import
+  - Missing blob recovery (prompt to re-upload)
+  - Unsupported file type graceful fallback
+
+- [ ] **Memory management**
+  - Unload full PDF/spreadsheet content when modal closes
+  - LRU cache for recently viewed file content
+  - Thumbnail-only mode for low-memory situations
 
 ### Phase 18: Advanced Diagram Patterns [v1.3.0‑beta.1]
 
