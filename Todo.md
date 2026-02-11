@@ -1327,6 +1327,30 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
 
 - [ ] Implement Advanced Themes
 
+### Future: Cross-Platform Memory Profiling
+
+Comprehensive memory analysis across Windows, Linux (WebKitGTK), and macOS to identify platform-specific behaviors and potential leaks.
+
+- [ ] **Baseline memory profiling**
+  - Document normal memory usage per platform (WebView2 vs WebKitGTK vs WKWebView)
+  - Establish acceptable memory ranges for idle, active editing, and heavy usage
+  - Track memory over extended sessions (8+ hours)
+
+- [ ] **Leak detection suite**
+  - Create reproducible test scenarios (create/delete pages, add/remove shapes, image upload/delete)
+  - Heap snapshot comparison before/after operations
+  - Identify retained objects (ProseMirror state, detached DOM, blob URLs)
+
+- [ ] **Platform-specific investigation**
+  - WebKitGTK memory characteristics on Linux (PopOS, Ubuntu, etc.)
+  - AppArmor/sandboxing impact on memory reporting
+  - Garbage collection timing differences
+
+- [ ] **Cleanup improvements** (if leaks found)
+  - Revoke blob object URLs when no longer needed
+  - Clear ProseMirror transaction history on page switch
+  - Ensure proper React component unmount cleanup
+
 ### Future: Canvas Code Integration with Git
 
 - [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and
