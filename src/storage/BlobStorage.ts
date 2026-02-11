@@ -243,23 +243,49 @@ export class BlobStorage {
   /**
    * Get storage usage statistics.
    *
+   * Note: On Linux (WebKitGTK), navigator.storage.estimate() may return 0 for quota.
+   * In this case, we fall back to a reasonable default (5GB) for desktop apps.
+   *
    * @returns Storage stats with used/available bytes and percentage
    */
   async getStorageStats(): Promise<StorageStats> {
+    // Default fallback for desktop apps when web API doesn't work (e.g., WebKitGTK on Linux)
+    const DEFAULT_QUOTA_FALLBACK = 5 * 1024 * 1024 * 1024; // 5GB
+
     if (!navigator.storage || !navigator.storage.estimate) {
-      return { used: 0, available: 0, percentUsed: 0 };
+      // API not available - use fallback for desktop
+      const isDesktop = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+      return {
+        used: 0,
+        available: isDesktop ? DEFAULT_QUOTA_FALLBACK : 0,
+        percentUsed: 0,
+      };
     }
 
     try {
       const estimate = await navigator.storage.estimate();
       const used = estimate.usage || 0;
-      const available = estimate.quota || 0;
+      let available = estimate.quota || 0;
+
+      // WebKitGTK on Linux returns 0 for quota - use fallback
+      if (available === 0) {
+        const isDesktop = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+        if (isDesktop) {
+          available = DEFAULT_QUOTA_FALLBACK;
+        }
+      }
+
       const percentUsed = available > 0 ? (used / available) * 100 : 0;
 
       return { used, available, percentUsed };
     } catch (error) {
       console.error('Failed to get storage stats:', error);
-      return { used: 0, available: 0, percentUsed: 0 };
+      const isDesktop = '__TAURI__' in window || '__TAURI_INTERNALS__' in window;
+      return {
+        used: 0,
+        available: isDesktop ? DEFAULT_QUOTA_FALLBACK : 0,
+        percentUsed: 0,
+      };
     }
   }
 

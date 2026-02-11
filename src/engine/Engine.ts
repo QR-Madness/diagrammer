@@ -392,11 +392,14 @@ export class Engine {
     this.toolManager.register(new ConnectorTool());
 
     // Initialize shape library and register library shape tools
-    const shapeLibrary = useShapeLibraryStore.getState();
-    shapeLibrary.initialize();
+    useShapeLibraryStore.getState().initialize();
+
+    // Re-fetch state after initialization to get updated registeredDefinitions
+    // (Zustand creates a new state object on update, so we need a fresh reference)
+    const { registeredDefinitions } = useShapeLibraryStore.getState();
 
     // Register a tool for each library shape
-    for (const definition of shapeLibrary.registeredDefinitions) {
+    for (const definition of registeredDefinitions) {
       this.toolManager.register(new LibraryShapeTool(definition));
     }
   }
