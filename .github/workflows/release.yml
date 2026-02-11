@@ -204,8 +204,8 @@ jobs:
           # src-tauri/Cargo.toml — full semver
           sed -i "0,/^version = .*/s//version = \"${VERSION}\"/" src-tauri/Cargo.toml
 
-          # docs-site roadmap.mdx — update version badge
-          sed -i 's/<Badge text="Version [^"]*"/<Badge text="Version '"${VERSION}"'"/' docs-site/src/content/docs/developer/roadmap.mdx
+          # docs-site roadmap.md — update version badge
+          sed -i 's/\*\*Version [^*]*\*\*/\*\*Version '"${VERSION}"'\*\*/' docs-site/developer/roadmap.md
 
           # Regenerate Cargo.lock
           cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
@@ -214,7 +214,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock docs-site/src/content/docs/developer/roadmap.mdx
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock docs-site/developer/roadmap.md
           git commit -m "release: v${{ inputs.version }}"
           git tag "v${{ inputs.version }}"
           git push origin HEAD --tags
