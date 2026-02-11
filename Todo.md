@@ -1,9 +1,35 @@
 # Development Todo List
 
-<!-- 
-!! IMPORTANT !! 
-  This document is tightly coupled with `roadmap.mdx` in the documentation site. Be sure to also update that tracker as you complete phases. 
+<!--
+!! IMPORTANT !!
+  This document is tightly coupled with `roadmap.md` in the documentation site. Be sure to also update that tracker as you complete phases.
 -->
+
+---
+
+## ⚠️ CRITICAL: Backwards Compatibility & Document Safety
+
+**Since v1.0.0-beta.1 is released, all changes MUST be backwards-compatible.**
+
+### Document Safety Requirements
+- **Document format changes**: Must include migration code that automatically upgrades older documents
+- **Never break existing documents**: Users rely on this tool for critical documentation
+- **Test with real documents**: Before merging changes that touch persistence, document loading, or shape data
+- **Serialization changes**: Add new fields as optional with sensible defaults; never remove or rename existing fields without migration
+
+### Backwards Compatibility Rules
+- **Store changes**: New fields must be optional or have defaults; never break existing localStorage/IndexedDB data
+- **Protocol changes**: Maintain compatibility with existing clients; version the protocol if breaking changes are necessary
+- **Shape registry**: New shape types are fine; changes to existing shape handlers must preserve rendering of old documents
+- **Export formats**: JSON export must remain readable by older versions where possible
+
+### When Breaking Changes Are Unavoidable
+1. Implement automatic migration in the loading code
+2. Add version field to track document format version
+3. Test migration with documents from previous releases
+4. Document the migration in release notes
+
+---
 
 ---
 
@@ -997,6 +1023,11 @@ Performance and reliability improvements deferred from Phase 14.9.
 
 #### Developer Tooling
 
+- [ ] **Release artifact checksums**
+  - Generate SHA-256 checksums for all release binaries (.dmg, .msi, .AppImage, .deb, .rpm).
+  - Upload `checksums-sha256.txt` alongside artifacts in GitHub Releases.
+  - Allows users to verify download integrity with `sha256sum -c checksums-sha256.txt`.
+
 - [ ] **Tool state machine tests**
   - `ToolManager.ts` tool switching and state transitions untested.
   - Add unit tests for tool lifecycle (activate, deactivate, transitions).
@@ -1147,11 +1178,14 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
 
-### Phase 17: Advanced Diagram Patterns [v1.2.0‑beta.1]
+### Phase 17: Embedded Files [v1.2.0‑beta.1]
+
+- [ ] 
+
+### Phase 18: Advanced Diagram Patterns [v1.3.0‑beta.1]
 
 - [ ] Sequence diagram patterns
-- [ ] Activity diagram patterns
-- [ ] Swimlane customization
+- [ ] Activity diagram patterns + Swimlane customization
 
 ### Future: Auto-Update
 
