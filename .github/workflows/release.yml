@@ -225,6 +225,14 @@ jobs:
           path: release-artifacts
           merge-multiple: true
 
+      - name: Generate SHA-256 checksums
+        run: |
+          cd release-artifacts
+          find . -type f \( -name '*.deb' -o -name '*.AppImage' -o -name '*.rpm' -o -name '*.exe' -o -name '*.msi' \) \
+            -exec sha256sum {} + | sed 's| \./| |' | sort -k2 > checksums-sha256.txt
+          echo "=== checksums-sha256.txt ==="
+          cat checksums-sha256.txt
+
       - name: List artifacts
         run: find release-artifacts -type f | sort
 
@@ -238,5 +246,6 @@ jobs:
             release-artifacts/**/*.rpm
             release-artifacts/**/*.exe
             release-artifacts/**/*.msi
+            release-artifacts/checksums-sha256.txt
           if-no-files-found: warn
           retention-days: 90

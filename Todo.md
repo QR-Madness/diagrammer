@@ -997,48 +997,38 @@ Performance and reliability improvements deferred from Phase 14.9.
 
 #### Data Integrity & Storage
 
-- [ ] **Blob garbage collector performance** _(Medium: ~4-6 hours)_
+- [x] **Blob garbage collector performance** _(Medium: ~4-6 hours)_
   - Orphan detection iterates all documents: O(n*m) complexity.
   - Implement incremental GC with reference counting.
   - Add GC progress indicator for large document stores.
 
-- [ ] **Document version tracking UI** _(Medium: ~4-6 hours)_ (infrastructure complete in 14.9.2)
+- [x] **Document version tracking UI** _(Medium: ~4-6 hours)_ (infrastructure complete in 14.9.2)
   - Add conflict resolution UI (merge/overwrite/reload options).
   - Add "document changed externally" notification.
   - Integrate version tracking into persistenceStore for local docs.
 
-#### Connector & Shape Improvements
-
-- [ ] **Lazy connector route rebuilding** _(Large: ~8-12 hours)_
-  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
-  - Implement incremental updates for only affected connectors.
-  - Cache connector routes and invalidate on shape changes.
-
 #### Export Improvements
 
-- [ ] **Group-aware selection export** _(Small: ~2-3 hours)_
+- [x] **Group-aware selection export** _(Small: ~2-3 hours)_
   - Partial selections within groups not handled correctly.
   - Either export entire group or individual selected members.
   - Add option to flatten groups on export.
 
 #### Developer Tooling
 
-- [ ] **Release artifact checksums** _(Small: ~1-2 hours)_
+- [x] **Release artifact checksums** _(Small: ~1-2 hours)_
   - Generate SHA-256 checksums for all release binaries (.dmg, .msi, .AppImage, .deb, .rpm).
   - Upload `checksums-sha256.txt` alongside artifacts in GitHub Releases.
   - Allows users to verify download integrity with `sha256sum -c checksums-sha256.txt`.
 
-- [ ] **Tool state machine tests** _(Medium: ~4-6 hours)_
+- [x] **Tool state machine tests** _(Medium: ~4-6 hours)_
   - `ToolManager.ts` tool switching and state transitions untested.
   - Add unit tests for tool lifecycle (activate, deactivate, transitions).
   - Test edge cases: rapid tool switches, tool switch during operation.
 
-- [ ] **Integration test harness** _(Large: ~12-16 hours)_
-  - No end-to-end tests for collaborative workflows.
-  - Create test utilities for multi-client scenarios.
-  - Add CI job for integration test suite.
+- [ ] **Integration test harness** _(Large: ~12-16 hours)_ → Deferred to Phase 16.9
 
-- [ ] **Export functionality tests** _(Medium: ~3-4 hours)_
+- [x] **Export functionality tests** _(Medium: ~3-4 hours)_
   - PNG/SVG export with various shape types.
   - Selection-based export with partial group selections.
   - Export with missing shape handlers (graceful degradation).
@@ -1177,6 +1167,24 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Show action description in tooltip ("Undo: Move Rectangle").
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
+
+### Phase 16.9: Deferred Improvements [v1.1.0‑beta.2]
+
+Tasks deferred from Phase 16.
+
+#### Connector & Shape Improvements
+
+- [ ] **Lazy connector route rebuilding** _(Large: ~8-12 hours)_
+  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
+  - Implement incremental updates for only affected connectors.
+  - Cache connector routes and invalidate on shape changes.
+
+#### Developer Tooling
+
+- [ ] **Integration test harness** _(Large: ~12-16 hours)_
+  - No end-to-end tests for collaborative workflows.
+  - Create test utilities for multi-client scenarios.
+  - Add CI job for integration test suite.
 
 ### Phase 17: Embedded Files [RELEASE v1.2.0‑beta.1]
 

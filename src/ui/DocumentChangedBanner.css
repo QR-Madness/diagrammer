@@ -1,0 +1,66 @@
+/**
+ * Document Changed Banner styles.
+ * Phase 16 - Document Version Tracking UI
+ */
+
+.document-changed-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--color-info-bg, #1e2a4a);
+  border-bottom: 1px solid var(--color-info-border, #2a3a6a);
+  font-size: 13px;
+  color: var(--color-text-primary, #e0e0e0);
+  animation: dcb-slideDown 0.2s ease-out;
+}
+
+.document-changed-banner__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  color: var(--color-info, #6c9aff);
+}
+
+.document-changed-banner__message {
+  flex: 1;
+  min-width: 0;
+}
+
+.document-changed-banner__btn {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #363649);
+  background: var(--color-bg-secondary, #252537);
+  color: var(--color-text-primary, #e0e0e0);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.1s;
+}
+
+.document-changed-banner__btn:hover {
+  background: var(--color-bg-hover, #2a2a3d);
+}
+
+.document-changed-banner__btn--reload {
+  background: var(--color-accent, #6c7aff);
+  border-color: var(--color-accent, #6c7aff);
+  color: #fff;
+}
+
+.document-changed-banner__btn--reload:hover {
+  filter: brightness(1.1);
+}
+
+.document-changed-banner__btn--dismiss {
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+}
+
+@keyframes dcb-slideDown {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}

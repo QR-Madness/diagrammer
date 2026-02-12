@@ -41,6 +41,8 @@ export interface ExportOptions {
   padding: number;
   /** Output filename */
   filename: string;
+  /** Flatten groups on export (render children individually, no group container). Default: false */
+  flattenGroups?: boolean;
 }
 
 /**
@@ -57,18 +59,73 @@ export interface ExportData {
 
 /**
  * Get the shapes to export based on scope.
+ *
+ * For selection export, handles groups intelligently:
+ * - If a group is explicitly selected, export the entire group (container + children)
+ * - If only some children of a group are selected (partial selection),
+ *   export just those children without the group container
+ * - This prevents exporting invisible group backgrounds for partial selections
  */
 function getShapesToExport(data: ExportData, scope: 'all' | 'selection'): Shape[] {
   if (scope === 'selection' && data.selectedIds.length > 0) {
-    return data.selectedIds
-      .map((id) => data.shapes[id])
-      .filter((s): s is Shape => s !== undefined && s.visible);
+    const selectedSet = new Set(data.selectedIds);
+    const result: Shape[] = [];
+    const handled = new Set<string>();
+
+    for (const id of data.selectedIds) {
+      if (handled.has(id)) continue;
+      const shape = data.shapes[id];
+      if (!shape || !shape.visible) continue;
+
+      if (isGroup(shape)) {
+        // Group is explicitly selected — include it (render will draw children)
+        result.push(shape);
+        handled.add(id);
+        // Mark children as handled so they aren't double-exported
+        for (const childId of shape.childIds) {
+          handled.add(childId);
+        }
+      } else {
+        // Check if this shape is a child of a group that is NOT selected
+        const parentGroup = findParentGroup(shape, data.shapes);
+        if (parentGroup && !selectedSet.has(parentGroup.id)) {
+          // Partial selection — export the child individually
+          result.push(shape);
+        } else {
+          // Either top-level shape or parent group is also selected
+          // If parent group is selected, it's already handled above
+          if (!parentGroup || !selectedSet.has(parentGroup.id)) {
+            result.push(shape);
+          }
+        }
+        handled.add(id);
+      }
+    }
+
+    return result;
   }
 
   // All shapes in z-order
   return data.shapeOrder
     .map((id) => data.shapes[id])
     .filter((s): s is Shape => s !== undefined && s.visible);
+}
+
+/**
+ * Find the parent group of a shape, if any.
+ */
+function findParentGroup(
+  shape: Shape,
+  allShapes: Record<string, Shape>
+): GroupShape | null {
+  for (const candidate of Object.values(allShapes)) {
+    if (candidate && isGroup(candidate)) {
+      if (candidate.childIds.includes(shape.id)) {
+        return candidate;
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -237,7 +294,7 @@ export async function exportToPng(
 
     // Render shapes in z-order
     for (const shape of shapes) {
-      renderShapeForExport(ctx, shape, data.shapes, 1);
+      renderShapeForExport(ctx, shape, data.shapes, 1, options.flattenGroups);
     }
 
     // Convert to blob and cleanup
@@ -271,31 +328,36 @@ function renderShapeForExport(
   ctx: CanvasRenderingContext2D,
   shape: Shape,
   allShapes: Record<string, Shape>,
-  parentOpacity: number
+  parentOpacity: number,
+  flattenGroups?: boolean
 ): void {
   if (!shape.visible) return;
 
   const effectiveOpacity = shape.opacity * parentOpacity;
 
   if (isGroup(shape)) {
-    // 1. Render group background/border first
-    ctx.save();
-    ctx.globalAlpha = effectiveOpacity;
-    groupHandler.render(ctx, shape);
-    ctx.restore();
+    if (!flattenGroups) {
+      // 1. Render group background/border first
+      ctx.save();
+      ctx.globalAlpha = effectiveOpacity;
+      groupHandler.render(ctx, shape);
+      ctx.restore();
+    }
 
     // 2. Render children with inherited opacity
     for (const childId of shape.childIds) {
       const child = allShapes[childId];
       if (child) {
-        renderShapeForExport(ctx, child, allShapes, effectiveOpacity);
+        renderShapeForExport(ctx, child, allShapes, effectiveOpacity, flattenGroups);
       }
     }
 
-    // 3. Render group label on top
-    ctx.save();
-    groupHandler.renderLabel(ctx, shape, effectiveOpacity);
-    ctx.restore();
+    if (!flattenGroups) {
+      // 3. Render group label on top
+      ctx.save();
+      groupHandler.renderLabel(ctx, shape, effectiveOpacity);
+      ctx.restore();
+    }
   } else {
     ctx.save();
     ctx.globalAlpha = effectiveOpacity;
@@ -377,7 +439,7 @@ export function exportToSvg(data: ExportData, options: ExportOptions): string {
 
   // Render shapes
   for (const shape of shapes) {
-    const svg = shapeToSvg(shape, data.shapes, offsetX, offsetY, 1);
+    const svg = shapeToSvg(shape, data.shapes, offsetX, offsetY, 1, options.flattenGroups);
     if (svg) {
       elements.push(svg);
     }
@@ -398,14 +460,15 @@ function shapeToSvg(
   allShapes: Record<string, Shape>,
   offsetX: number,
   offsetY: number,
-  parentOpacity: number
+  parentOpacity: number,
+  flattenGroups?: boolean
 ): string {
   if (!shape.visible) return '';
 
   const effectiveOpacity = shape.opacity * parentOpacity;
 
   if (isGroup(shape)) {
-    return groupToSvg(shape, allShapes, offsetX, offsetY, effectiveOpacity);
+    return groupToSvg(shape, allShapes, offsetX, offsetY, effectiveOpacity, flattenGroups);
   } else if (isRectangle(shape)) {
     return rectangleToSvg(shape, offsetX, offsetY, effectiveOpacity);
   } else if (isEllipse(shape)) {
@@ -430,14 +493,15 @@ function groupToSvg(
   allShapes: Record<string, Shape>,
   offsetX: number,
   offsetY: number,
-  opacity: number
+  opacity: number,
+  flattenGroups?: boolean
 ): string {
   const children: string[] = [];
 
   for (const childId of group.childIds) {
     const child = allShapes[childId];
     if (child) {
-      const svg = shapeToSvg(child, allShapes, offsetX, offsetY, opacity);
+      const svg = shapeToSvg(child, allShapes, offsetX, offsetY, opacity, flattenGroups);
       if (svg) {
         children.push(svg);
       }
@@ -445,6 +509,11 @@ function groupToSvg(
   }
 
   if (children.length === 0) return '';
+
+  if (flattenGroups) {
+    // No group wrapper — just render children directly
+    return children.join('\n');
+  }
 
   return `  <g>
 ${children.join('\n')}
