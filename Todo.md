@@ -997,48 +997,48 @@ Performance and reliability improvements deferred from Phase 14.9.
 
 #### Data Integrity & Storage
 
-- [ ] **Blob garbage collector performance**
+- [ ] **Blob garbage collector performance** _(Medium: ~4-6 hours)_
   - Orphan detection iterates all documents: O(n*m) complexity.
   - Implement incremental GC with reference counting.
   - Add GC progress indicator for large document stores.
 
-- [ ] **Document version tracking UI** (infrastructure complete in 14.9.2)
+- [ ] **Document version tracking UI** _(Medium: ~4-6 hours)_ (infrastructure complete in 14.9.2)
   - Add conflict resolution UI (merge/overwrite/reload options).
   - Add "document changed externally" notification.
   - Integrate version tracking into persistenceStore for local docs.
 
 #### Connector & Shape Improvements
 
-- [ ] **Lazy connector route rebuilding**
+- [ ] **Lazy connector route rebuilding** _(Large: ~8-12 hours)_
   - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
   - Implement incremental updates for only affected connectors.
   - Cache connector routes and invalidate on shape changes.
 
 #### Export Improvements
 
-- [ ] **Group-aware selection export**
+- [ ] **Group-aware selection export** _(Small: ~2-3 hours)_
   - Partial selections within groups not handled correctly.
   - Either export entire group or individual selected members.
   - Add option to flatten groups on export.
 
 #### Developer Tooling
 
-- [ ] **Release artifact checksums**
+- [ ] **Release artifact checksums** _(Small: ~1-2 hours)_
   - Generate SHA-256 checksums for all release binaries (.dmg, .msi, .AppImage, .deb, .rpm).
   - Upload `checksums-sha256.txt` alongside artifacts in GitHub Releases.
   - Allows users to verify download integrity with `sha256sum -c checksums-sha256.txt`.
 
-- [ ] **Tool state machine tests**
+- [ ] **Tool state machine tests** _(Medium: ~4-6 hours)_
   - `ToolManager.ts` tool switching and state transitions untested.
   - Add unit tests for tool lifecycle (activate, deactivate, transitions).
   - Test edge cases: rapid tool switches, tool switch during operation.
 
-- [ ] **Integration test harness**
+- [ ] **Integration test harness** _(Large: ~12-16 hours)_
   - No end-to-end tests for collaborative workflows.
   - Create test utilities for multi-client scenarios.
   - Add CI job for integration test suite.
 
-- [ ] **Export functionality tests**
+- [ ] **Export functionality tests** _(Medium: ~3-4 hours)_
   - PNG/SVG export with various shape types.
   - Selection-based export with partial group selections.
   - Export with missing shape handlers (graceful degradation).
@@ -1301,6 +1301,43 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
 
 - [ ] Sequence diagram patterns
 - [ ] Activity diagram patterns + Swimlane customization
+
+#### Phase 18.1: Sticky Notes
+
+- [ ] **StickyNote shape type** (`src/shapes/StickyNote.ts`)
+  - Postit-like appearance with folded corner effect
+  - Configurable background color (default yellow palette: yellow, pink, blue, green, orange)
+  - Rich text content support (bold, italic, bullet lists)
+  - Auto-resize based on content or fixed size with overflow handling
+  - Drop shadow for "lifted paper" effect
+
+- [ ] **Anchor modes**
+  - **Canvas mode** (default): Note exists in world space, moves with pan/zoom like other shapes
+  - **Screen mode**: Note anchored to viewport corner (top-left, top-right, bottom-left, bottom-right)
+  - Screen-anchored notes persist across pages and zoom levels
+  - Toggle anchor mode via context menu or PropertyPanel
+
+- [ ] **StickyNoteTool** (`src/tools/StickyNoteTool.ts`)
+  - Click-to-place with default size
+  - Drag-to-size for custom dimensions
+  - Immediate inline editing on creation
+
+- [ ] **PropertyPanel integration**
+  - Color picker with sticky note palette
+  - Anchor mode toggle (canvas/screen + corner selector for screen mode)
+  - Font size and alignment controls
+  - Transparency/opacity slider
+
+- [ ] **Screen-anchored note rendering**
+  - Render after main canvas in screen space (not affected by camera transform)
+  - Maintain position relative to viewport on resize
+  - Z-order always above canvas content
+  - Draggable within viewport bounds
+
+- [ ] **Persistence**
+  - Canvas notes: stored in document like other shapes
+  - Screen notes: stored in document metadata with viewport-relative positions
+  - Export: include canvas notes in PNG/SVG; exclude or optionally include screen notes
 
 ### Future: Auto-Update
 
