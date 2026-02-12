@@ -1,9 +1,35 @@
 # Development Todo List
 
-<!-- 
-!! IMPORTANT !! 
-  This document is tightly coupled with `roadmap.mdx` in the documentation site. Be sure to also update that tracker as you complete phases. 
+<!--
+!! IMPORTANT !!
+  This document is tightly coupled with `roadmap.md` in the documentation site. Be sure to also update that tracker as you complete phases.
 -->
+
+---
+
+## ⚠️ CRITICAL: Backwards Compatibility & Document Safety
+
+**Since v1.0.0-beta.1 is released, all changes MUST be backwards-compatible.**
+
+### Document Safety Requirements
+- **Document format changes**: Must include migration code that automatically upgrades older documents
+- **Never break existing documents**: Users rely on this tool for critical documentation
+- **Test with real documents**: Before merging changes that touch persistence, document loading, or shape data
+- **Serialization changes**: Add new fields as optional with sensible defaults; never remove or rename existing fields without migration
+
+### Backwards Compatibility Rules
+- **Store changes**: New fields must be optional or have defaults; never break existing localStorage/IndexedDB data
+- **Protocol changes**: Maintain compatibility with existing clients; version the protocol if breaking changes are necessary
+- **Shape registry**: New shape types are fine; changes to existing shape handlers must preserve rendering of old documents
+- **Export formats**: JSON export must remain readable by older versions where possible
+
+### When Breaking Changes Are Unavoidable
+1. Implement automatic migration in the loading code
+2. Add version field to track document format version
+3. Test migration with documents from previous releases
+4. Document the migration in release notes
+
+---
 
 ---
 
@@ -971,43 +997,38 @@ Performance and reliability improvements deferred from Phase 14.9.
 
 #### Data Integrity & Storage
 
-- [ ] **Blob garbage collector performance**
+- [x] **Blob garbage collector performance** _(Medium: ~4-6 hours)_
   - Orphan detection iterates all documents: O(n*m) complexity.
   - Implement incremental GC with reference counting.
   - Add GC progress indicator for large document stores.
 
-- [ ] **Document version tracking UI** (infrastructure complete in 14.9.2)
+- [x] **Document version tracking UI** _(Medium: ~4-6 hours)_ (infrastructure complete in 14.9.2)
   - Add conflict resolution UI (merge/overwrite/reload options).
   - Add "document changed externally" notification.
   - Integrate version tracking into persistenceStore for local docs.
 
-#### Connector & Shape Improvements
-
-- [ ] **Lazy connector route rebuilding**
-  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
-  - Implement incremental updates for only affected connectors.
-  - Cache connector routes and invalidate on shape changes.
-
 #### Export Improvements
 
-- [ ] **Group-aware selection export**
+- [x] **Group-aware selection export** _(Small: ~2-3 hours)_
   - Partial selections within groups not handled correctly.
   - Either export entire group or individual selected members.
   - Add option to flatten groups on export.
 
 #### Developer Tooling
 
-- [ ] **Tool state machine tests**
+- [x] **Release artifact checksums** _(Small: ~1-2 hours)_
+  - Generate SHA-256 checksums for all release binaries (.dmg, .msi, .AppImage, .deb, .rpm).
+  - Upload `checksums-sha256.txt` alongside artifacts in GitHub Releases.
+  - Allows users to verify download integrity with `sha256sum -c checksums-sha256.txt`.
+
+- [x] **Tool state machine tests** _(Medium: ~4-6 hours)_
   - `ToolManager.ts` tool switching and state transitions untested.
   - Add unit tests for tool lifecycle (activate, deactivate, transitions).
   - Test edge cases: rapid tool switches, tool switch during operation.
 
-- [ ] **Integration test harness**
-  - No end-to-end tests for collaborative workflows.
-  - Create test utilities for multi-client scenarios.
-  - Add CI job for integration test suite.
+- [ ] **Integration test harness** _(Large: ~12-16 hours)_ → Deferred to Phase 16.9
 
-- [ ] **Export functionality tests**
+- [x] **Export functionality tests** _(Medium: ~3-4 hours)_
   - PNG/SVG export with various shape types.
   - Selection-based export with partial group selections.
   - Export with missing shape handlers (graceful degradation).
@@ -1033,61 +1054,61 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Implement windowed rendering (react-window or custom) to only render visible items.
   - Include smooth scroll position restoration when collapsing/expanding groups.
 
-- [ ] **Lazy loading for shape libraries**
+- [x] **Lazy loading for shape libraries**
   - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
   - Use dynamic imports with loading states in ShapePicker.
   - Reduces initial bundle size and memory footprint.
 
-- [ ] **Spatial index incremental updates**
+- [x] **Spatial index incremental updates**
   - Currently rebuilds entire RBush index on shape changes. Implement incremental insert/remove/update.
   - Track which shapes changed and update only those entries.
   - Critical for smooth performance during drag operations on large canvases.
 
 #### User Experience
 
-- [ ] **Quick action palette (Cmd/Ctrl+K)**
+- [x] **Quick action palette (Cmd/Ctrl+K)**
   - Fuzzy-searchable command palette for all actions: tools, alignment, export, settings, etc.
   - Include recent commands and context-aware suggestions.
   - Similar to VS Code's command palette or Linear's Cmd+K.
 
-- [ ] **Keyboard shortcut reference panel**
+- [x] **Keyboard shortcut reference panel**
   - Accessible via `?` key or Help menu.
   - Categorized list of all shortcuts with search/filter.
   - Consider printable cheat sheet export.
 
-- [ ] **Shape search in canvas**
+- [x] **Shape search in canvas**
   - Ctrl+F to search shapes by label text, type, or custom properties.
   - Highlight matches and provide navigation (next/previous).
   - Integrate with existing layer view filtering.
 
-- [ ] **Zoom to fit selection**
+- [x] **Zoom to fit selection** _(Already implemented: `Camera.zoomToFit()` + `zoomToFitAnimated()`)_
   - Button/shortcut to zoom and pan camera to frame selected shapes with padding.
   - Also add "Zoom to fit all" for entire document.
   - Smooth animated transition rather than instant jump.
 
-- [ ] **Smooth pan/zoom animations**
+- [x] **Smooth pan/zoom animations**
   - Add easing to camera transitions (zoom to fit, minimap navigation, etc.).
   - Use requestAnimationFrame-based interpolation.
   - Configurable animation duration in settings.
 
-- [ ] **Multi-select property editing improvements**
+- [x] **Multi-select property editing improvements**
   - When multiple shapes selected, show "Mixed" for differing values.
   - Allow editing to apply to all selected shapes.
   - Show count of selected shapes in PropertyPanel header.
 
-- [ ] **Drag-and-drop shape creation**
+- [x] **Drag-and-drop shape creation**
   - Drag shapes from ShapePicker directly onto canvas (not just click-to-place).
   - Show ghost preview during drag.
   - More intuitive than current tool selection workflow.
 
-- [ ] **Touch/tablet gesture refinements**
+- [x] **Touch/tablet gesture refinements**
   - Two-finger pinch zoom with proper anchor point.
   - Three-finger pan gesture.
   - Apple Pencil pressure sensitivity for line width (future).
 
 #### Stability & Quality
 
-- [ ] **React error boundaries for crash recovery**
+- [x] **React error boundaries for crash recovery**
   - Wrap major UI sections (PropertyPanel, LayerPanel, DocumentEditor) in error boundaries.
   - Display user-friendly error message with "Reload" option.
   - Log errors to console with stack trace for debugging.
@@ -1103,14 +1124,14 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - High contrast mode support.
   - Screen reader announcements for state changes.
 
-- [ ] **Graceful WebSocket reconnection feedback**
+- [x] **Graceful WebSocket reconnection feedback**
   - Clear UI indication when connection is lost/reconnecting.
   - Queue indicator showing pending changes.
   - Manual "Retry" button after max reconnection attempts.
 
 #### Developer Experience
 
-- [ ] **Debug overlay improvements**
+- [x] **Debug overlay improvements**
   - Toggle-able overlay showing: spatial index bounds, hit test regions, render stats.
   - Shape inspector: click shape to see all properties in dev panel.
   - Accessible via settings or keyboard shortcut (Ctrl+Shift+D).
@@ -1120,7 +1141,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Include all required handler methods with TypeScript stubs.
   - Auto-register in ShapeRegistry.
 
-- [ ] **Plugin development documentation**
+- [x] **Plugin development documentation**
   - Document PanelExtensions registry API.
   - Example plugins: custom shape library, property panel section, export format.
   - Guidelines for state management and lifecycle.
@@ -1132,12 +1153,12 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - New document dialog with template selection.
   - Allow users to save documents as custom templates.
 
-- [ ] **Duplicate page functionality**
+- [x] **Duplicate page functionality** _(Already implemented: `pageStore.duplicatePage()`)_
   - Right-click page tab → "Duplicate Page".
   - Deep-clone all shapes with new IDs.
   - Useful for iterating on diagram variations.
 
-- [ ] **Shape locking visual indicator**
+- [x] **Shape locking visual indicator**
   - Show lock icon overlay on locked shapes in canvas.
   - Different indicators for position-locked vs fully-locked.
   - Makes lock state discoverable without checking PropertyPanel.
@@ -1147,11 +1168,184 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
 
-### Phase 17: Advanced Diagram Patterns [v1.2.0‑beta.1]
+### Phase 16.9: Deferred Improvements [v1.1.0‑beta.2]
+
+Tasks deferred from Phase 16.
+
+#### Connector & Shape Improvements
+
+- [ ] **Lazy connector route rebuilding** _(Large: ~8-12 hours)_
+  - `rebuildAllConnectorRoutes()` rebuilds ALL connectors on any change.
+  - Implement incremental updates for only affected connectors.
+  - Cache connector routes and invalidate on shape changes.
+
+#### Developer Tooling
+
+- [ ] **Integration test harness** _(Large: ~12-16 hours)_
+  - No end-to-end tests for collaborative workflows.
+  - Create test utilities for multi-client scenarios.
+  - Add CI job for integration test suite.
+
+### Phase 17: Embedded Files [RELEASE v1.2.0‑beta.1]
+
+File embedding system for PDFs, spreadsheets, and other assets. Uses reference-based architecture with lazy loading to maintain canvas performance.
+
+#### Architecture Decisions
+
+- **Modal viewer pattern**: Content viewed in modal, not in-place rendered on canvas (preserves 60fps target)
+- **Thumbnail on canvas**: Cached preview thumbnail + file icon/name displayed as shape
+- **Reference-based storage**: Shapes hold `blobRef` (SHA-256 hash), actual files in BlobStorage
+- **Lazy loading tiers**: Off-screen (nothing) → On-screen (thumbnail) → Modal open (full content)
+- **Separate blob sync**: HTTP endpoints for large files, WebSocket for shape metadata only
+
+#### Phase 17.1: Core Infrastructure
+
+- [ ] **FileShape type definition** (`src/types/FileShape.ts`)
+  - Extends BaseShape with: `blobRef`, `fileName`, `mimeType`, `fileSize`
+  - Preview metadata: `thumbnail` (base64), `pageCount`, `dimensions`
+  - Supported categories: `pdf`, `spreadsheet`, `generic`
+
+- [ ] **File shape handlers** (`src/shapes/files/`)
+  - `BaseFileHandler.ts` — Common: bounds, selection, download action
+  - `PdfHandler.ts` — PDF icon, page count badge, thumbnail render
+  - `SpreadsheetHandler.ts` — Table icon, row/column count badge
+  - `GenericFileHandler.ts` — File type icon + filename fallback
+  - Register all handlers in ShapeRegistry
+
+- [ ] **Thumbnail generation service** (`src/services/ThumbnailGenerator.ts`)
+  - Web Worker for non-blocking generation
+  - PDF: Render page 1 at ~400px width via pdf.js → JPEG blob
+  - XLSX/CSV: Generate mini-table preview or use generic icon
+  - Store thumbnail in shape's `preview.thumbnail` field
+
+#### Phase 17.2: Content Viewer Modal
+
+- [ ] **FileViewerModal component** (`src/ui/FileViewerModal.tsx`)
+  - Full-screen modal with close button, download, replace actions
+  - File type detection and appropriate viewer dispatch
+
+- [ ] **PDF viewer** (`src/ui/viewers/PdfViewer.tsx`)
+  - pdf.js integration for rendering
+  - Page navigation (prev/next, page number input)
+  - Zoom controls
+  - Lazy page loading (render visible pages only)
+  - BONUS: Cache the viewer's position in the document upon close
+
+- [ ] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
+  - SheetJS (xlsx) for parsing XLSX/CSV
+  - Table rendering with virtual scrolling for large datasets
+  - Sheet tabs for multi-sheet workbooks
+  - Basic cell formatting preservation
+
+- [ ] **Generic file viewer** (`src/ui/viewers/GenericFileViewer.tsx`)
+  - File icon, name, size, type display
+  - Download button
+  - "No preview available" message
+
+#### Phase 17.3: File Import Flow
+
+- [ ] **File drop/upload handling**
+  - Drag-and-drop files onto canvas
+  - File picker via toolbar or context menu
+  - Validate file types and size limits
+
+- [ ] **Import pipeline**
+  - Store file in BlobStorage (content-addressed)
+  - Generate thumbnail (async, Web Worker)
+  - Create FileShape at drop position
+  - Update spatial index
+
+#### Phase 17.4: Storage Manager Integration
+
+- [ ] **Files tab in Storage Manager**
+  - List all embedded files with: name, type, size, reference count
+  - Preview thumbnails where available
+  - Show which documents reference each file
+  - Orphan detection (files with no shape references)
+  - Delete/replace individual files
+
+- [ ] **Storage references checker extension**
+  - Update `BlobGarbageCollector` to scan FileShape `blobRef` fields
+  - Protect files referenced by any document
+  - Handle thumbnail blobs if stored separately
+
+#### Phase 17.5: Collaboration Support
+
+- [ ] **HTTP blob endpoints** (Rust backend)
+  - `POST /api/blobs/:hash` — Upload blob with hash verification
+  - `GET /api/blobs/:hash` — Download blob by hash
+  - `HEAD /api/blobs/:hash` — Check blob existence
+  - Chunked upload/download for large files (>10MB)
+  - Authentication via JWT token header
+
+- [ ] **Blob sync protocol**
+  - On shape sync, client checks if blob exists locally
+  - If missing, fetch via HTTP endpoint
+  - Progress indicator for large file downloads
+  - Retry logic with exponential backoff
+
+- [ ] **AssetBundler extension**
+  - Update `bundleDocumentWithAssets()` to include file blobs
+  - Handle large files (consider compression or external references)
+
+#### Phase 17.6: Polish & Edge Cases
+
+- [ ] **File replacement flow**
+  - Replace file contents while keeping shape position/size
+  - Regenerate thumbnail
+  - Update all references atomically
+
+- [ ] **Error handling**
+  - Corrupt file detection on import
+  - Missing blob recovery (prompt to re-upload)
+  - Unsupported file type graceful fallback
+
+- [ ] **Memory management**
+  - Unload full PDF/spreadsheet content when modal closes
+  - LRU cache for recently viewed file content
+  - Thumbnail-only mode for low-memory situations
+
+### Phase 18: Advanced Diagram Patterns [RELEASE v1.3.0‑beta.1]
 
 - [ ] Sequence diagram patterns
-- [ ] Activity diagram patterns
-- [ ] Swimlane customization
+- [ ] Activity diagram patterns + Swimlane customization
+
+#### Phase 18.1: Sticky Notes
+
+- [ ] **StickyNote shape type** (`src/shapes/StickyNote.ts`)
+  - Postit-like appearance with folded corner effect
+  - Configurable background color (default yellow palette: yellow, pink, blue, green, orange)
+  - Rich text content support (bold, italic, bullet lists)
+  - Auto-resize based on content or fixed size with overflow handling
+  - Drop shadow for "lifted paper" effect
+
+- [ ] **Anchor modes**
+  - **Canvas mode** (default): Note exists in world space, moves with pan/zoom like other shapes
+  - **Screen mode**: Note anchored to viewport corner (top-left, top-right, bottom-left, bottom-right)
+  - Screen-anchored notes persist across pages and zoom levels
+  - Toggle anchor mode via context menu or PropertyPanel
+
+- [ ] **StickyNoteTool** (`src/tools/StickyNoteTool.ts`)
+  - Click-to-place with default size
+  - Drag-to-size for custom dimensions
+  - Immediate inline editing on creation
+
+- [ ] **PropertyPanel integration**
+  - Color picker with sticky note palette
+  - Anchor mode toggle (canvas/screen + corner selector for screen mode)
+  - Font size and alignment controls
+  - Transparency/opacity slider
+
+- [ ] **Screen-anchored note rendering**
+  - Render after main canvas in screen space (not affected by camera transform)
+  - Maintain position relative to viewport on resize
+  - Z-order always above canvas content
+  - Draggable within viewport bounds
+
+- [ ] **Persistence**
+  - Canvas notes: stored in document like other shapes
+  - Screen notes: stored in document metadata with viewport-relative positions
+  - Export: include canvas notes in PNG/SVG; exclude or optionally include screen notes
 
 ### Future: Auto-Update
 
@@ -1178,6 +1372,30 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 - [ ] Implement Advanced Themes
 
+### Future: Cross-Platform Memory Profiling
+
+Comprehensive memory analysis across Windows, Linux (WebKitGTK), and macOS to identify platform-specific behaviors and potential leaks.
+
+- [ ] **Baseline memory profiling**
+  - Document normal memory usage per platform (WebView2 vs WebKitGTK vs WKWebView)
+  - Establish acceptable memory ranges for idle, active editing, and heavy usage
+  - Track memory over extended sessions (8+ hours)
+
+- [ ] **Leak detection suite**
+  - Create reproducible test scenarios (create/delete pages, add/remove shapes, image upload/delete)
+  - Heap snapshot comparison before/after operations
+  - Identify retained objects (ProseMirror state, detached DOM, blob URLs)
+
+- [ ] **Platform-specific investigation**
+  - WebKitGTK memory characteristics on Linux (PopOS, Ubuntu, etc.)
+  - AppArmor/sandboxing impact on memory reporting
+  - Garbage collection timing differences
+
+- [ ] **Cleanup improvements** (if leaks found)
+  - Revoke blob object URLs when no longer needed
+  - Clear ProseMirror transaction history on page switch
+  - Ensure proper React component unmount cleanup
+
 ### Future: Canvas Code Integration with Git
 
 - [ ] Implement a composable VCS pattern which allows interfacing with Git for version control and file usage, and
@@ -1189,7 +1407,71 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 ### Future: AI Model Integration
 
-- [ ] Implement a pipeline for model usage and integration with the application
+#### Architecture: Semantic Abstraction Layer
+
+AI should reason about **relationships and entities**, not coordinates. The app handles spatial layout.
+
+**AI Output Schema** (no X/Y coordinates):
+```typescript
+interface AIGraphOutput {
+  diagram_type: 'flowchart' | 'erd' | 'class-diagram' | 'sequence' | 'network';
+  nodes: Array<{
+    id: string;
+    type: string;          // maps to shape type
+    label: string;
+    attributes?: string[]; // for ERD entities, class members, etc.
+  }>;
+  edges: Array<{
+    from: string;          // node id
+    to: string;            // node id
+    label?: string;
+    cardinality?: 'one-to-one' | 'one-to-many' | 'many-to-many';
+  }>;
+  layout_hint?: 'hierarchical' | 'force-directed' | 'grid' | 'radial';
+}
+```
+
+**Near-Node Placement** (for incremental edits):
+```typescript
+interface PlacementHint {
+  near: string;                              // existing shape ID or label
+  direction: 'above' | 'below' | 'left' | 'right' | 'auto';
+  offset?: 'compact' | 'normal' | 'spacious';
+}
+```
+
+**Layout Engine** converts semantic graph → positioned shapes:
+- Hierarchical (dagre): flowcharts, org charts, trees
+- Force-directed (d3-force): ERDs, network diagrams
+- Near-node resolver: incremental additions with overlap avoidance
+
+#### Deliverables
+
+- [ ] **Layout Engine** (`src/services/LayoutEngine.ts`)
+  - dagre integration for hierarchical layouts
+  - d3-force integration for force-directed layouts
+  - Near-node placement resolver
+  - Overlap avoidance with existing shapes
+  - Diagram type → layout strategy mapping
+
+- [ ] **AI Service** (`src/services/AIService.ts`)
+  - Provider abstraction (Claude, OpenAI, Ollama)
+  - System prompt with diagram domain context
+  - Structured output schema validation
+  - Tool call execution pipeline
+
+- [ ] **AI Assistant Panel** (`src/ui/AIAssistantPanel.tsx`)
+  - Text input for natural language requests
+  - "Generate Diagram" from description
+  - "Improve Selection" for existing shapes
+  - "Explain Diagram" for documentation
+  - Provider selection in settings
+
+- [ ] **Schema Validator** (`src/services/AISchemaValidator.ts`)
+  - Validate node types against shape libraries
+  - Map diagram_type to appropriate shapes
+  - Graceful fallback for unknown types
+
 - [ ] Implement AI-powered diagram analysis
 - [ ] Generate insights and suggested edits
 

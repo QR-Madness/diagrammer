@@ -223,3 +223,12 @@
 .shape-picker-grid.size-large .shape-picker-item-name {
   font-size: 11px;
 }
+
+/* Drag-and-drop hint */
+.shape-picker-hint {
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  color: var(--color-text-muted, #666);
+  text-align: center;
+  border-top: 1px solid var(--color-border, #333);
+}

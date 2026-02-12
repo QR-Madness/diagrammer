@@ -1,0 +1,192 @@
+/**
+ * Version Conflict Dialog styles.
+ * Phase 16 - Document Version Tracking UI
+ */
+
+.version-conflict-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: vcd-fadeIn 0.15s ease-out;
+}
+
+.version-conflict-dialog {
+  background: var(--color-bg-primary, #1e1e2e);
+  border: 1px solid var(--color-border, #363649);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: 440px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: vcd-slideIn 0.2s ease-out;
+}
+
+.version-conflict-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border, #363649);
+}
+
+.version-conflict-dialog__header h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-primary, #e0e0e0);
+}
+
+.version-conflict-dialog__close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #999);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.version-conflict-dialog__close:hover {
+  background: var(--color-bg-hover, #2a2a3d);
+  color: var(--color-text-primary, #e0e0e0);
+}
+
+.version-conflict-dialog__content {
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.version-conflict-dialog__message {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--color-text-primary, #e0e0e0);
+  line-height: 1.5;
+}
+
+.version-conflict-dialog__time {
+  margin: 0 0 16px;
+  font-size: 11px;
+  color: var(--color-text-tertiary, #777);
+}
+
+.version-conflict-dialog__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.version-conflict-dialog__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.version-conflict-dialog__option:hover {
+  background: var(--color-bg-hover, #2a2a3d);
+}
+
+.version-conflict-dialog__option--selected {
+  background: var(--color-bg-selected, #2a2a4d);
+  border-color: var(--color-accent, #6c7aff);
+}
+
+.version-conflict-dialog__option--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.version-conflict-dialog__option--danger.version-conflict-dialog__option--selected {
+  border-color: var(--color-error, #e06060);
+}
+
+.version-conflict-dialog__option input[type='radio'] {
+  display: none;
+}
+
+.version-conflict-dialog__option-icon {
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.version-conflict-dialog__option-label {
+  font-size: 13px;
+  color: var(--color-text-primary, #e0e0e0);
+}
+
+.version-conflict-dialog__option-note {
+  font-size: 11px;
+  color: var(--color-text-tertiary, #777);
+  margin-left: auto;
+}
+
+.version-conflict-dialog__description {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #999);
+  background: var(--color-bg-secondary, #252537);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+.version-conflict-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.version-conflict-dialog__btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #363649);
+  background: var(--color-bg-secondary, #252537);
+  color: var(--color-text-primary, #e0e0e0);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.version-conflict-dialog__btn:hover {
+  background: var(--color-bg-hover, #2a2a3d);
+}
+
+.version-conflict-dialog__btn--primary {
+  background: var(--color-accent, #6c7aff);
+  border-color: var(--color-accent, #6c7aff);
+  color: #fff;
+}
+
+.version-conflict-dialog__btn--primary:hover {
+  filter: brightness(1.1);
+}
+
+.version-conflict-dialog__btn--danger {
+  background: var(--color-error, #e06060);
+  border-color: var(--color-error, #e06060);
+}
+
+@keyframes vcd-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vcd-slideIn {
+  from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}

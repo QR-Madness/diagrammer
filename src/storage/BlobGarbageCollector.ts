@@ -12,6 +12,32 @@ export interface GCOptions {
 }
 
 /**
+ * Extended options for incremental garbage collection.
+ */
+export interface IncrementalGCOptions extends GCOptions {
+  /**
+   * Progress callback invoked during GC.
+   * @param phase - Current phase ('scanning' | 'deleting')
+   * @param current - Current item index (0-based)
+   * @param total - Total items in this phase
+   */
+  onProgress?: (phase: 'scanning' | 'deleting', current: number, total: number) => void;
+
+  /** Batch size for deletions. Default: 10 */
+  deleteBatchSize?: number;
+}
+
+/**
+ * Cached reference data for a document, keyed by document ID.
+ */
+interface CachedDocumentRefs {
+  /** Blob IDs referenced by this document */
+  blobIds: string[];
+  /** Document modifiedAt timestamp when cache was built */
+  modifiedAt: number;
+}
+
+/**
  * Check if a blob is an icon (SVG file).
  */
 function isIconBlob(blob: BlobMetadata): boolean {
@@ -27,6 +53,10 @@ function isIconBlob(blob: BlobMetadata): boolean {
  * 2. Find blobs not in the reference set (orphans)
  * 3. Delete orphaned blobs (sweep)
  *
+ * Supports incremental mode with a reference cache that skips unchanged
+ * documents based on their modifiedAt timestamp, reducing O(n*m) to O(k*m)
+ * where k is the number of changed documents.
+ *
  * By default, icons (SVG files) are preserved to avoid accidentally deleting
  * user-uploaded icons. Use `includeIcons: true` to also clean up unused icons.
  *
@@ -37,9 +67,17 @@ function isIconBlob(blob: BlobMetadata): boolean {
  *
  * // Clean both images and icons
  * const stats = await blobGC.collectGarbage({ includeIcons: true });
+ *
+ * // Incremental GC with progress reporting
+ * const stats = await blobGC.collectGarbageIncremental({
+ *   onProgress: (phase, current, total) => console.log(`${phase}: ${current}/${total}`),
+ * });
  * ```
  */
 export class BlobGarbageCollector {
+  /** Cache of document references, keyed by document ID */
+  private refCache = new Map<string, CachedDocumentRefs>();
+
   constructor(private storage: BlobStorage) {}
 
   /**
@@ -94,6 +132,68 @@ export class BlobGarbageCollector {
   }
 
   /**
+   * Incremental garbage collection that caches document references.
+   *
+   * Only re-scans documents that have changed since the last GC run,
+   * making repeated runs much faster for large document stores.
+   * Also supports progress reporting and batched deletions.
+   *
+   * @param options - Incremental GC options
+   * @returns Statistics about the cleanup operation
+   */
+  async collectGarbageIncremental(options: IncrementalGCOptions = {}): Promise<GCStats> {
+    const { includeIcons = false, onProgress, deleteBatchSize = 10 } = options;
+    const startTime = Date.now();
+
+    // Get all document references using incremental cache
+    const referencedBlobIds = await this.getAllDocumentReferencesIncremental(onProgress);
+
+    // Get all blobs in storage
+    const allBlobs = await this.storage.listAllBlobs();
+
+    // Find orphans
+    const orphans = allBlobs.filter((blob) => {
+      if (!referencedBlobIds.has(blob.id)) {
+        if (!includeIcons && isIconBlob(blob)) {
+          return false;
+        }
+        return true;
+      }
+      return false;
+    });
+
+    // Delete orphans in batches
+    let bytesFreed = 0;
+    for (let i = 0; i < orphans.length; i += deleteBatchSize) {
+      const batch = orphans.slice(i, i + deleteBatchSize);
+      const deletePromises = batch.map(async (orphan) => {
+        try {
+          await this.storage.deleteBlob(orphan.id);
+          return orphan.size;
+        } catch (error) {
+          console.error('Failed to delete orphaned blob:', orphan.id, error);
+          return 0;
+        }
+      });
+
+      const freed = await Promise.all(deletePromises);
+      bytesFreed += freed.reduce((sum, b) => sum + b, 0);
+
+      if (onProgress) {
+        onProgress('deleting', Math.min(i + deleteBatchSize, orphans.length), orphans.length);
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
+
+    return {
+      blobsDeleted: orphans.length,
+      bytesFreed,
+      durationMs,
+    };
+  }
+
+  /**
    * Get list of orphaned blobs without deleting them.
    *
    * Useful for showing preview in Storage Manager UI before cleanup.
@@ -129,6 +229,22 @@ export class BlobGarbageCollector {
   }
 
   /**
+   * Clear the internal reference cache.
+   * Call this when you want to force a full rescan.
+   */
+  clearCache(): void {
+    this.refCache.clear();
+  }
+
+  /**
+   * Get the number of cached document entries.
+   * Useful for diagnostics.
+   */
+  getCacheSize(): number {
+    return this.refCache.size;
+  }
+
+  /**
    * Scan all documents and collect blob references.
    *
    * This reads all documents from localStorage and extracts their blobReferences arrays.
@@ -153,6 +269,71 @@ export class BlobGarbageCollector {
         } catch (error) {
           console.error('Failed to load document for GC:', docMeta.id, error);
           // Continue with other documents
+        }
+      }
+    } catch (error) {
+      console.error('Failed to get document references:', error);
+    }
+
+    return references;
+  }
+
+  /**
+   * Incremental document reference scanning.
+   *
+   * Uses a cache keyed by document ID and modifiedAt timestamp.
+   * Only re-loads documents whose modifiedAt has changed.
+   * Removes cache entries for deleted documents.
+   *
+   * @param onProgress - Optional progress callback
+   * @returns Set of all referenced blob IDs
+   */
+  private async getAllDocumentReferencesIncremental(
+    onProgress?: (phase: 'scanning' | 'deleting', current: number, total: number) => void
+  ): Promise<Set<string>> {
+    const references = new Set<string>();
+
+    try {
+      const persistenceStore = usePersistenceStore.getState();
+      const allDocuments = persistenceStore.getDocumentList();
+      const currentDocIds = new Set<string>();
+
+      for (let i = 0; i < allDocuments.length; i++) {
+        const docMeta = allDocuments[i]!;
+        currentDocIds.add(docMeta.id);
+
+        // Check if cache is still valid
+        const cached = this.refCache.get(docMeta.id);
+        if (cached && cached.modifiedAt === docMeta.modifiedAt) {
+          // Cache hit — use cached references
+          cached.blobIds.forEach((id) => references.add(id));
+        } else {
+          // Cache miss — load and scan document
+          try {
+            const doc = loadDocumentFromStorage(docMeta.id);
+            const blobIds = doc?.blobReferences ?? [];
+
+            // Update cache
+            this.refCache.set(docMeta.id, {
+              blobIds: [...blobIds],
+              modifiedAt: docMeta.modifiedAt,
+            });
+
+            blobIds.forEach((id) => references.add(id));
+          } catch (error) {
+            console.error('Failed to load document for GC:', docMeta.id, error);
+          }
+        }
+
+        if (onProgress) {
+          onProgress('scanning', i + 1, allDocuments.length);
+        }
+      }
+
+      // Evict cache entries for deleted documents
+      for (const cachedId of this.refCache.keys()) {
+        if (!currentDocIds.has(cachedId)) {
+          this.refCache.delete(cachedId);
         }
       }
     } catch (error) {

@@ -11,6 +11,10 @@ import { UnifiedToolbar } from './UnifiedToolbar';
 import { StatusBar } from './StatusBar';
 import { PresenceIndicators } from './PresenceIndicators';
 import { NotificationToast } from './NotificationToast';
+import { ErrorBoundary } from './ErrorBoundary';
+import { ConnectionStatusBanner } from './ConnectionStatusBanner';
+import { CommandPalette } from './CommandPalette';
+import { ShapeSearchPanel } from './ShapeSearchPanel';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
@@ -29,6 +33,12 @@ function App() {
 
   // Settings modal state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Command palette state (Cmd/Ctrl+K)
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  // Shape search state (Ctrl+F)
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Get rebuild function from document store
   const rebuildAllConnectorRoutes = useDocumentStore((state) => state.rebuildAllConnectorRoutes);
@@ -70,6 +80,20 @@ function App() {
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      // Cmd/Ctrl+K — Command palette
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsPaletteOpen((v) => !v);
+        return;
+      }
+
+      // Ctrl+F — Shape search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setIsSearchOpen((v) => !v);
+        return;
+      }
+
       // F1 - Open documentation
       if (e.key === 'F1') {
         e.preventDefault();
@@ -126,13 +150,18 @@ function App() {
   return (
     <AuthGuard>
       <div className="app">
+        <ConnectionStatusBanner />
         <UnifiedToolbar
           onOpenSettings={handleOpenSettings}
           onRebuildConnectors={handleRebuildConnectors}
         />
         <main className="app-main">
           <SplitPane
-            leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
+            leftPanel={
+              <ErrorBoundary sectionName="Document Editor">
+                <DocumentEditorPanel onCollapse={handleCollapseEditor} />
+              </ErrorBoundary>
+            }
             rightPanel={
               <>
                 <CanvasContainer
@@ -140,8 +169,12 @@ function App() {
                   showGrid={true}
                   showFps={import.meta.env.DEV}
                 />
-                <PropertyPanel />
-                <LayerPanel />
+                <ErrorBoundary sectionName="Properties">
+                  <PropertyPanel />
+                </ErrorBoundary>
+                <ErrorBoundary sectionName="Layers">
+                  <LayerPanel />
+                </ErrorBoundary>
               </>
             }
             collapsed={isEditorCollapsed}
@@ -160,6 +193,12 @@ function App() {
           isOpen={isSettingsOpen}
           onClose={handleCloseSettings}
         />
+
+        {/* Command Palette (Cmd/Ctrl+K) */}
+        <CommandPalette isOpen={isPaletteOpen} onClose={() => setIsPaletteOpen(false)} />
+
+        {/* Shape Search (Ctrl+F) */}
+        <ShapeSearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 
         {/* Toast notifications */}
         <NotificationToast />

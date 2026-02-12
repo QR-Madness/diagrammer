@@ -5,17 +5,44 @@
  * - Registering shape definitions with the ShapeRegistry
  * - Tracking registered categories
  * - Providing shape metadata for UI components
+ * - Lazy loading of shape libraries on demand
  */
 
 import { create } from 'zustand';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import { createLibraryShapeHandler } from '../shapes/library/LibraryShapeHandler';
-import { flowchartShapes } from '../shapes/library/flowchartShapes';
-import { umlUseCaseShapes } from '../shapes/library/umlUseCaseShapes';
-import { erdShapes } from '../shapes/library/erdShapes';
-import { umlClassShapes } from '../shapes/library/umlClassShapes';
 import type { LibraryShapeDefinition } from '../shapes/library/ShapeLibraryTypes';
 import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
+
+/**
+ * Lazy library loader configuration.
+ */
+interface LibraryLoader {
+  category: ShapeLibraryCategory;
+  load: () => Promise<{ default: LibraryShapeDefinition[] } | LibraryShapeDefinition[]>;
+}
+
+/**
+ * Available libraries with their lazy loaders.
+ */
+const LIBRARY_LOADERS: LibraryLoader[] = [
+  {
+    category: 'flowchart',
+    load: () => import('../shapes/library/flowchartShapes').then((m) => m.flowchartShapes),
+  },
+  {
+    category: 'uml-usecase',
+    load: () => import('../shapes/library/umlUseCaseShapes').then((m) => m.umlUseCaseShapes),
+  },
+  {
+    category: 'erd',
+    load: () => import('../shapes/library/erdShapes').then((m) => m.erdShapes),
+  },
+  {
+    category: 'uml-class',
+    load: () => import('../shapes/library/umlClassShapes').then((m) => m.umlClassShapes),
+  },
+];
 
 /**
  * Shape library state.
@@ -27,6 +54,8 @@ export interface ShapeLibraryState {
   registeredCategories: ShapeLibraryCategory[];
   /** Registered shape definitions (for tool creation) */
   registeredDefinitions: LibraryShapeDefinition[];
+  /** Categories currently being loaded */
+  loadingCategories: Set<string>;
 }
 
 /**
@@ -35,6 +64,10 @@ export interface ShapeLibraryState {
 export interface ShapeLibraryActions {
   /** Initialize the library by registering all shapes */
   initialize: () => void;
+  /** Lazy-load and register a specific library category */
+  loadCategory: (category: ShapeLibraryCategory) => Promise<void>;
+  /** Load all libraries (for initial startup) */
+  loadAllLibraries: () => Promise<void>;
   /** Register a single shape definition */
   registerShape: (definition: LibraryShapeDefinition) => void;
   /** Register multiple shape definitions */
@@ -47,6 +80,8 @@ export interface ShapeLibraryActions {
   getShapeDefinition: (type: string) => LibraryShapeDefinition | undefined;
   /** Check if a shape type is a library shape */
   isLibraryShape: (type: string) => boolean;
+  /** Check if a category is currently loading */
+  isCategoryLoading: (category: string) => boolean;
 }
 
 /**
@@ -56,6 +91,7 @@ const initialState: ShapeLibraryState = {
   isInitialized: false,
   registeredCategories: [],
   registeredDefinitions: [],
+  loadingCategories: new Set(),
 };
 
 /**
@@ -79,19 +115,45 @@ export const useShapeLibraryStore = create<ShapeLibraryState & ShapeLibraryActio
     initialize: () => {
       if (get().isInitialized) return;
 
-      // Register all flowchart shapes
-      get().registerShapes(flowchartShapes);
-
-      // Register UML use-case shapes
-      get().registerShapes(umlUseCaseShapes);
-
-      // Register ERD shapes (Crow's Foot notation)
-      get().registerShapes(erdShapes);
-
-      // Register UML Class Diagram shapes
-      get().registerShapes(umlClassShapes);
+      // Load all libraries asynchronously
+      get().loadAllLibraries();
 
       set({ isInitialized: true });
+    },
+
+    loadCategory: async (category) => {
+      const loader = LIBRARY_LOADERS.find((l) => l.category === category);
+      if (!loader) return;
+
+      // Skip if already loading or loaded
+      if (get().loadingCategories.has(category)) return;
+      if (get().registeredCategories.includes(category)) return;
+
+      set((state) => {
+        const newLoading = new Set(state.loadingCategories);
+        newLoading.add(category);
+        return { loadingCategories: newLoading };
+      });
+
+      try {
+        const result = await loader.load();
+        const definitions = Array.isArray(result) ? result : [];
+        get().registerShapes(definitions);
+      } catch (e) {
+        console.error(`Failed to load shape library: ${category}`, e);
+      } finally {
+        set((state) => {
+          const newLoading = new Set(state.loadingCategories);
+          newLoading.delete(category);
+          return { loadingCategories: newLoading };
+        });
+      }
+    },
+
+    loadAllLibraries: async () => {
+      await Promise.all(
+        LIBRARY_LOADERS.map((loader) => get().loadCategory(loader.category))
+      );
     },
 
     registerShape: (definition) => {
@@ -140,6 +202,10 @@ export const useShapeLibraryStore = create<ShapeLibraryState & ShapeLibraryActio
 
     isLibraryShape: (type) => {
       return get().registeredDefinitions.some((d) => d.type === type);
+    },
+
+    isCategoryLoading: (category) => {
+      return get().loadingCategories.has(category);
     },
   })
 );

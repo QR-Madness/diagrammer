@@ -8,9 +8,14 @@ import { SaveToLibraryDialog } from './SaveToLibraryDialog';
 import { CollaborativeCursors } from './CollaborativeCursors';
 import { SelectionHighlight } from './SelectionHighlight';
 import { Minimap } from './Minimap';
+import { useDocumentStore } from '../store/documentStore';
+import { useHistoryStore } from '../store/historyStore';
 import { useThemeStore } from '../store/themeStore';
 import { useSessionStore } from '../store/sessionStore';
 import { useSettingsStore } from '../store/settingsStore';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
+import { Vec2 } from '../math/Vec2';
+import { nanoid } from 'nanoid';
 
 /**
  * Props for the CanvasContainer component.
@@ -294,6 +299,51 @@ export function CanvasContainer({
     setSaveToLibraryOpen(false);
   }, []);
 
+  /**
+   * Handle drag over canvas to allow drop.
+   */
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/diagrammer-shape')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  /**
+   * Handle drop to create a shape at the drop position.
+   */
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    const shapeType = e.dataTransfer.getData('application/diagrammer-shape');
+    if (!shapeType) return;
+    e.preventDefault();
+
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    // Convert screen position to world position
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const screenPoint = new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+    const worldPoint = engine.camera.screenToWorld(screenPoint);
+
+    // Create shape via registry handler
+    try {
+      const handler = shapeRegistry.getHandler(shapeType);
+      const id = nanoid();
+      const shape = handler.create(worldPoint, id);
+
+      useHistoryStore.getState().push(`Create ${shapeType}`);
+      useDocumentStore.getState().addShape(shape);
+      engine.spatialIndex.insert(shape);
+      useSessionStore.getState().select([id]);
+      useSessionStore.getState().setActiveTool('select');
+      engine.requestRender();
+    } catch {
+      // Shape type not registered — ignore
+    }
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -312,6 +362,8 @@ export function CanvasContainer({
         onFocus={handleFocus}
         onBlur={handleBlur}
         onContextMenu={handleContextMenu}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         style={{
           display: 'block',
           outline: 'none',

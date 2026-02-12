@@ -1,7 +1,7 @@
 import { Vec2 } from '../math/Vec2';
 import { Mat3 } from '../math/Mat3';
 import { Box } from '../math/Box';
-import { clamp, lerp } from '../math/geometry';
+import { clamp, lerp, easeInOutCubic } from '../math/geometry';
 
 /**
  * Camera state representing the viewport in world space.
@@ -40,6 +40,18 @@ export class Camera {
   private _targetZoom: number;
   private _screenWidth: number;
   private _screenHeight: number;
+
+  // Animation state for animateTo()
+  private _animation: {
+    startX: number;
+    startY: number;
+    startZoom: number;
+    targetX: number;
+    targetY: number;
+    targetZoom: number;
+    startTime: number;
+    duration: number;
+  } | null = null;
 
   constructor(state?: Partial<CameraState>) {
     this._x = state?.x ?? 0;
@@ -280,6 +292,92 @@ export class Camera {
     this._y = bounds.center.y;
     this._zoom = newZoom;
     this._targetZoom = newZoom;
+  }
+
+  /**
+   * Animate the camera to a target position and zoom with easing.
+   * Call updateAnimation() each frame to advance.
+   *
+   * @param targetX - Target world X
+   * @param targetY - Target world Y
+   * @param targetZoom - Target zoom level
+   * @param duration - Animation duration in milliseconds (default: 300)
+   */
+  animateTo(targetX: number, targetY: number, targetZoom: number, duration: number = 300): void {
+    this._animation = {
+      startX: this._x,
+      startY: this._y,
+      startZoom: this._zoom,
+      targetX,
+      targetY,
+      targetZoom: this.clampZoom(targetZoom),
+      startTime: performance.now(),
+      duration: Math.max(1, duration),
+    };
+  }
+
+  /**
+   * Update the camera animation. Call each frame.
+   *
+   * @returns true if animation is still in progress
+   */
+  updateAnimation(): boolean {
+    if (!this._animation) return false;
+
+    const elapsed = performance.now() - this._animation.startTime;
+    const t = Math.min(1, elapsed / this._animation.duration);
+    const eased = easeInOutCubic(t);
+
+    this._x = lerp(this._animation.startX, this._animation.targetX, eased);
+    this._y = lerp(this._animation.startY, this._animation.targetY, eased);
+    this._zoom = lerp(this._animation.startZoom, this._animation.targetZoom, eased);
+    this._targetZoom = this._zoom;
+
+    if (t >= 1) {
+      this._animation = null;
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Whether the camera is currently animating.
+   */
+  get isAnimating(): boolean {
+    return this._animation !== null;
+  }
+
+  /**
+   * Cancel any in-progress animation.
+   */
+  cancelAnimation(): void {
+    this._animation = null;
+  }
+
+  /**
+   * Animated version of zoomToFit. Smoothly transitions to fit bounds.
+   *
+   * @param bounds - The world bounds to fit
+   * @param padding - Padding in pixels around the bounds
+   * @param duration - Animation duration in ms (default: 300)
+   */
+  zoomToFitAnimated(bounds: Box, padding: number = 50, duration: number = 300): void {
+    const availableWidth = Math.max(1, this._screenWidth - padding * 2);
+    const availableHeight = Math.max(1, this._screenHeight - padding * 2);
+
+    const boundsWidth = bounds.width;
+    const boundsHeight = bounds.height;
+
+    if (boundsWidth === 0 && boundsHeight === 0) {
+      this.animateTo(bounds.center.x, bounds.center.y, this._zoom, duration);
+      return;
+    }
+
+    const zoomX = boundsWidth > 0 ? availableWidth / boundsWidth : MAX_ZOOM;
+    const zoomY = boundsHeight > 0 ? availableHeight / boundsHeight : MAX_ZOOM;
+    const newZoom = this.clampZoom(Math.min(zoomX, zoomY));
+
+    this.animateTo(bounds.center.x, bounds.center.y, newZoom, duration);
   }
 
   /**

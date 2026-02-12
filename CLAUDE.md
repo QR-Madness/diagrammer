@@ -6,6 +6,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A high-performance diagramming and whiteboard application built with TypeScript, React, and Canvas API, targeting 10,000+ shapes at 60fps. Prioritizes correctness, extensibility, and performance. Runs as both a web app (Vite) and a desktop app (Tauri with Rust backend).
 
+## CRITICAL: Backwards Compatibility & Document Safety
+
+**Since v1.0.0-beta.1 is released, all changes MUST be backwards-compatible and protect user documents.**
+
+### Document Safety Requirements
+
+- **Document format changes**: Must include automatic migration code that runs on load
+- **Never lose data**: If a field is removed or renamed, migrate it to the new structure
+- **Version tracking**: Documents have a `version` field — bump it and add migration in `/src/migrations/`
+- **Test migrations**: Every document format change needs tests with old document fixtures
+- **Blob references**: Never orphan blobs — update `BlobGarbageCollector` if blob reference patterns change
+
+### Backwards Compatibility Rules
+
+- **Store changes**: New fields must be optional with sensible defaults
+- **API changes**: Deprecated functions must remain functional with console warnings
+- **Protocol changes**: WebSocket protocol must handle older message formats gracefully
+- **Settings changes**: New settings must have defaults that preserve existing behavior
+- **Shape type changes**: Never remove shape types — mark as deprecated, keep rendering
+
+### When Breaking Changes Are Unavoidable
+
+1. Implement automatic migration that runs transparently on document load
+2. Add version detection to handle both old and new formats
+3. Log migration events for debugging (but don't alarm users)
+4. Test with real documents from earlier versions
+5. Document the migration path in release notes
+
 ## Technology Stack
 
 - **Runtime**: Bun (package manager and JS runtime — not Node.js)

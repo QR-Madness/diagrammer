@@ -278,9 +278,23 @@ export class Engine {
 
   /**
    * Force a render on the next animation frame.
+   * Also syncs engine camera position back to sessionStore.
    */
   requestRender(): void {
+    this.syncCameraToStore();
     this.renderer.requestRender();
+  }
+
+  /**
+   * Sync the engine camera position back to the session store
+   * so that UI code can read the current viewport center.
+   */
+  private syncCameraToStore(): void {
+    const store = useSessionStore.getState();
+    const cam = this.camera;
+    if (store.camera.x !== cam.x || store.camera.y !== cam.y || store.camera.zoom !== cam.zoom) {
+      store.setCamera({ x: cam.x, y: cam.y, zoom: cam.zoom });
+    }
   }
 
   /**
@@ -392,11 +406,14 @@ export class Engine {
     this.toolManager.register(new ConnectorTool());
 
     // Initialize shape library and register library shape tools
-    const shapeLibrary = useShapeLibraryStore.getState();
-    shapeLibrary.initialize();
+    useShapeLibraryStore.getState().initialize();
+
+    // Re-fetch state after initialization to get updated registeredDefinitions
+    // (Zustand creates a new state object on update, so we need a fresh reference)
+    const { registeredDefinitions } = useShapeLibraryStore.getState();
 
     // Register a tool for each library shape
-    for (const definition of shapeLibrary.registeredDefinitions) {
+    for (const definition of registeredDefinitions) {
       this.toolManager.register(new LibraryShapeTool(definition));
     }
   }
@@ -405,6 +422,10 @@ export class Engine {
    * Subscribe to document and session store changes.
    */
   private subscribeToStores(): void {
+    // Track previous shapes for incremental spatial index updates
+    let previousShapes: Record<string, Shape> = {};
+    let previousShapeOrder: string[] = [];
+
     // Subscribe to document store
     this.unsubscribeDocument = useDocumentStore.subscribe((state) => {
       // Update connector endpoints when shapes move
@@ -413,8 +434,10 @@ export class Engine {
       // Update renderer with new shape data
       this.renderer.setShapes(state.shapes, state.shapeOrder);
 
-      // Update spatial index
-      this.spatialIndex.rebuild(Object.values(state.shapes));
+      // Incremental spatial index update
+      this.updateSpatialIndexIncremental(previousShapes, previousShapeOrder, state.shapes, state.shapeOrder);
+      previousShapes = state.shapes;
+      previousShapeOrder = state.shapeOrder;
 
       // Request render
       this.renderer.requestRender();
@@ -478,6 +501,59 @@ export class Engine {
     this.renderer.setToolOverlayCallback(
       this.toolManager.getToolOverlayCallback()
     );
+  }
+
+  /**
+   * Incrementally update the spatial index based on what changed.
+   * Falls back to full rebuild for bulk changes (>50% shapes changed).
+   */
+  private updateSpatialIndexIncremental(
+    prevShapes: Record<string, Shape>,
+    prevOrder: string[],
+    nextShapes: Record<string, Shape>,
+    nextOrder: string[],
+  ): void {
+    // First sync or order length changed significantly → full rebuild
+    if (prevOrder.length === 0 || Math.abs(nextOrder.length - prevOrder.length) > nextOrder.length * 0.5) {
+      this.spatialIndex.rebuild(Object.values(nextShapes));
+      return;
+    }
+
+    // Collect changes
+    const added: Shape[] = [];
+    const updated: Shape[] = [];
+    const removedIds: string[] = [];
+
+    // Find removed and updated shapes
+    for (const id of prevOrder) {
+      const nextShape = nextShapes[id];
+      if (!nextShape) {
+        removedIds.push(id);
+      } else if (nextShape !== prevShapes[id]) {
+        updated.push(nextShape);
+      }
+    }
+
+    // Find added shapes
+    for (const id of nextOrder) {
+      if (!(id in prevShapes)) {
+        const shape = nextShapes[id];
+        if (shape) added.push(shape);
+      }
+    }
+
+    const totalChanges = added.length + updated.length + removedIds.length;
+
+    // If more than half the shapes changed, full rebuild is faster
+    if (totalChanges > nextOrder.length * 0.5) {
+      this.spatialIndex.rebuild(Object.values(nextShapes));
+      return;
+    }
+
+    // Apply incremental changes
+    if (removedIds.length > 0) this.spatialIndex.removeMany(removedIds);
+    for (const shape of updated) this.spatialIndex.update(shape);
+    for (const shape of added) this.spatialIndex.insert(shape);
   }
 
   /**

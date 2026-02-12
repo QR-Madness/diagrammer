@@ -35,6 +35,10 @@ export interface RendererOptions {
   handleSize?: number;
   /** Grid opacity (0-100). Default: 100 */
   gridOpacity?: number;
+  /** Show debug overlay with spatial index bounds and shape info. Default: false */
+  showDebugOverlay?: boolean;
+  /** Show lock indicators on locked shapes. Default: true */
+  showLockIndicators?: boolean;
 }
 
 /**
@@ -69,6 +73,8 @@ const DEFAULT_OPTIONS: Required<RendererOptions> = {
   handleStrokeColor: '#2196f3',
   handleSize: 8,
   gridOpacity: 100,
+  showDebugOverlay: false,
+  showLockIndicators: true,
 };
 
 /**
@@ -354,6 +360,16 @@ export class Renderer {
 
     // 4. Draw shapes in z-order with viewport culling
     this.drawShapes();
+
+    // 4.5. Draw lock indicators on locked shapes (in world space)
+    if (options.showLockIndicators) {
+      this.drawLockIndicators();
+    }
+
+    // 4.6. Draw debug overlay (spatial index bounds) in world space
+    if (options.showDebugOverlay) {
+      this.drawDebugOverlay();
+    }
 
     // 5. Restore transform for screen-space drawing (back to DPI-scaled screen space)
     ctx.restore();
@@ -803,6 +819,86 @@ export class Renderer {
       // Shape type not registered - skip silently
       this.emphasizedShapeId = null;
     }
+  }
+
+  /**
+   * Draw lock indicators on locked shapes.
+   * Shows a small lock icon at the top-right corner of locked shapes.
+   */
+  private drawLockIndicators(): void {
+    const { ctx, shapes, shapeOrder, camera } = this;
+    const zoom = camera.zoom;
+    const iconSize = 14 / zoom;
+
+    for (const id of shapeOrder) {
+      const shape = shapes[id];
+      if (!shape || !shape.visible) continue;
+
+      const isLocked = shape.locked || shape.lockedPosition || shape.lockedSize;
+      if (!isLocked) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(shape.type);
+        const bounds = handler.getBounds(shape);
+
+        const x = bounds.maxX - iconSize * 0.5;
+        const y = bounds.minY - iconSize * 0.5;
+
+        ctx.save();
+
+        // Draw icon background circle
+        ctx.fillStyle = shape.locked ? 'rgba(220, 50, 50, 0.8)' : 'rgba(220, 160, 50, 0.8)';
+        ctx.beginPath();
+        ctx.arc(x, y, iconSize * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw lock symbol (simple padlock)
+        const s = iconSize * 0.25;
+        ctx.strokeStyle = '#fff';
+        ctx.fillStyle = '#fff';
+        ctx.lineWidth = 1.5 / zoom;
+
+        // Lock body (filled rect)
+        ctx.fillRect(x - s, y - s * 0.2, s * 2, s * 1.4);
+
+        // Lock shackle (arc)
+        ctx.beginPath();
+        ctx.arc(x, y - s * 0.5, s * 0.7, Math.PI, 0);
+        ctx.stroke();
+
+        ctx.restore();
+      } catch {
+        // Skip shapes without handlers
+      }
+    }
+  }
+
+  /**
+   * Draw debug overlay showing spatial index bounds.
+   */
+  private drawDebugOverlay(): void {
+    const { ctx, shapes, shapeOrder, camera } = this;
+    const zoom = camera.zoom;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 0, 255, 0.3)';
+    ctx.lineWidth = 1 / zoom;
+    ctx.setLineDash([4 / zoom, 4 / zoom]);
+
+    for (const id of shapeOrder) {
+      const shape = shapes[id];
+      if (!shape || !shape.visible) continue;
+
+      try {
+        const handler = shapeRegistry.getHandler(shape.type);
+        const bounds = handler.getBounds(shape);
+        ctx.strokeRect(bounds.minX, bounds.minY, bounds.width, bounds.height);
+      } catch {
+        // Skip
+      }
+    }
+
+    ctx.restore();
   }
 
   /**
