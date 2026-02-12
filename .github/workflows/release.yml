@@ -20,8 +20,18 @@ jobs:
     steps:
       - name: Validate version format
         run: |
-          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "::error::Invalid version format '${{ inputs.version }}'. Expected semver (e.g. 1.0.0 or 1.2.3-beta.1)"
+          VERSION="${{ inputs.version }}"
+
+          # Check for non-ASCII characters (catches Unicode hyphens, smart quotes, etc.)
+          if [[ "$VERSION" =~ [^[:ascii:]] ]]; then
+            echo "::error::Version contains non-ASCII characters. Got: '$VERSION'"
+            echo "::error::Common culprit: Unicode hyphen (U+2011) instead of ASCII hyphen (U+002D)"
+            echo "::error::Hex dump:" && echo -n "$VERSION" | xxd
+            exit 1
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Invalid version format '$VERSION'. Expected semver (e.g. 1.0.0 or 1.2.3-beta.1)"
             exit 1
           fi
 
