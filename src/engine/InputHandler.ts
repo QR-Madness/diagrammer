@@ -125,6 +125,14 @@ export class InputHandler {
   // Track captured pointers
   private capturedPointers: Set<number> = new Set();
 
+  // Track active pointer positions for gesture detection
+  private activePointers: Map<number, Vec2> = new Map();
+
+  // Pinch-zoom gesture state
+  private pinchStartDistance: number = 0;
+  private pinchStartZoom: number = 1;
+  private isPinching: boolean = false;
+
   // Track if destroyed
   private destroyed = false;
 
@@ -234,6 +242,16 @@ export class InputHandler {
       // Some browsers may not support pointer capture
     }
 
+    // Track position for gesture detection
+    const screenPoint = this.getScreenPoint(e);
+    this.activePointers.set(e.pointerId, screenPoint);
+
+    // Detect pinch-zoom start (2 fingers)
+    if (this.activePointers.size === 2) {
+      this.startPinchGesture();
+      return;
+    }
+
     // Focus canvas for keyboard events
     this.canvas.focus();
 
@@ -247,6 +265,19 @@ export class InputHandler {
   private handlePointerMove(e: PointerEvent): void {
     if (this.destroyed) return;
 
+    // Update tracked position
+    const screenPoint = this.getScreenPoint(e);
+    this.activePointers.set(e.pointerId, screenPoint);
+
+    // Handle pinch-zoom gesture
+    if (this.isPinching && this.activePointers.size >= 2) {
+      this.updatePinchGesture();
+      return;
+    }
+
+    // Skip normal event forwarding during multi-touch
+    if (this.activePointers.size > 1) return;
+
     const normalized = this.normalizePointerEvent(e, 'move');
     this.onPointerEvent(normalized);
   }
@@ -259,6 +290,15 @@ export class InputHandler {
 
     // Release pointer capture
     this.releasePointer(e.pointerId);
+    this.activePointers.delete(e.pointerId);
+
+    // End pinch gesture
+    if (this.isPinching) {
+      if (this.activePointers.size < 2) {
+        this.isPinching = false;
+      }
+      return;
+    }
 
     const normalized = this.normalizePointerEvent(e, 'up');
     this.onPointerEvent(normalized);
@@ -272,6 +312,13 @@ export class InputHandler {
 
     // Release pointer capture
     this.releasePointer(e.pointerId);
+    this.activePointers.delete(e.pointerId);
+
+    // End pinch gesture
+    if (this.isPinching && this.activePointers.size < 2) {
+      this.isPinching = false;
+      return;
+    }
 
     // Treat cancel as up
     const normalized = this.normalizePointerEvent(e, 'up');
@@ -367,6 +414,52 @@ export class InputHandler {
   private handleKeyUp(e: KeyboardEvent): void {
     if (this.destroyed) return;
     this.onKeyEvent(e);
+  }
+
+  /**
+   * Start a pinch-zoom gesture when two fingers are detected.
+   */
+  private startPinchGesture(): void {
+    const points = Array.from(this.activePointers.values());
+    if (points.length < 2) return;
+    const [p1, p2] = points;
+    if (!p1 || !p2) return;
+
+    this.pinchStartDistance = p1.distanceTo(p2);
+    this.pinchStartZoom = this.camera.zoom;
+    this.isPinching = true;
+  }
+
+  /**
+   * Update pinch-zoom gesture with current finger positions.
+   */
+  private updatePinchGesture(): void {
+    const points = Array.from(this.activePointers.values());
+    if (points.length < 2) return;
+    const [p1, p2] = points;
+    if (!p1 || !p2) return;
+
+    const currentDistance = p1.distanceTo(p2);
+    if (this.pinchStartDistance === 0) return;
+
+    const scale = currentDistance / this.pinchStartDistance;
+    const targetZoom = this.pinchStartZoom * scale;
+
+    // Calculate midpoint as zoom anchor
+    const midpoint = new Vec2(
+      (p1.x + p2.x) / 2,
+      (p1.y + p2.y) / 2,
+    );
+
+    // Apply zoom centered on midpoint between fingers
+    const factor = targetZoom / this.camera.zoom;
+    this.camera.zoomAt(midpoint, factor);
+    // Notify via wheel callback so Engine can request render
+    this.onWheelEvent(
+      new WheelEvent('wheel', { deltaY: 0 }),
+      midpoint,
+      this.camera.screenToWorld(midpoint),
+    );
   }
 
   /**

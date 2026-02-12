@@ -39,6 +39,22 @@ import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
 import './PropertyPanel.css';
 
+/** Sentinel value indicating mixed values across selected shapes */
+const MIXED = Symbol('mixed');
+
+/**
+ * Get the value of a property across multiple shapes.
+ * Returns MIXED symbol if values differ, or the common value if all the same.
+ */
+function getSharedValue<T>(shapes: Shape[], getter: (s: Shape) => T): T | typeof MIXED {
+  if (shapes.length === 0) return MIXED;
+  const first = getter(shapes[0]!);
+  for (let i = 1; i < shapes.length; i++) {
+    if (getter(shapes[i]!) !== first) return MIXED;
+  }
+  return first;
+}
+
 /** Constraints for panel width */
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
@@ -1272,7 +1288,7 @@ export function PropertyPanel() {
             {/* Fill Color */}
             {shape.fill !== null && (
               <CompactColorInput
-                label="Fill"
+                label={isMultiple && getSharedValue(selectedShapes, (s) => s.fill) === MIXED ? 'Fill (Mixed)' : 'Fill'}
                 value={shape.fill || ''}
                 onChange={(color) => handleBulkUpdate({ fill: color })}
                 showNoFill
@@ -1283,7 +1299,7 @@ export function PropertyPanel() {
             {shape.stroke !== null && (
               <div className="stroke-row">
                 <CompactColorInput
-                  label="Stroke"
+                  label={isMultiple && getSharedValue(selectedShapes, (s) => s.stroke) === MIXED ? 'Stroke (Mixed)' : 'Stroke'}
                   value={shape.stroke || ''}
                   onChange={(color) => handleBulkUpdate({ stroke: color })}
                 />
@@ -1299,7 +1315,7 @@ export function PropertyPanel() {
 
             {/* Opacity */}
             <CompactSliderInput
-              label="Opacity"
+              label={isMultiple && getSharedValue(selectedShapes, (s) => s.opacity) === MIXED ? 'Opacity (Mixed)' : 'Opacity'}
               value={shape.opacity}
               onChange={(val) => handleBulkUpdate({ opacity: val })}
               formatValue={(v) => `${Math.round(v * 100)}%`}

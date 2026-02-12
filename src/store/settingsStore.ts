@@ -34,6 +34,8 @@ export interface SettingsState {
   layerClickFocusShape: boolean;
   /** Grid opacity (0-100, percentage) */
   gridOpacity: number;
+  /** Animation duration for camera transitions in ms (0 = instant) */
+  animationDuration: number;
 }
 
 /**
@@ -70,6 +72,8 @@ export interface SettingsActions {
   setLayerClickFocusShape: (focus: boolean) => void;
   /** Set grid opacity */
   setGridOpacity: (opacity: number) => void;
+  /** Set animation duration for camera transitions */
+  setAnimationDuration: (duration: number) => void;
   /** Reset all settings to defaults */
   resetSettings: () => void;
 }
@@ -87,6 +91,7 @@ const initialState: SettingsState = {
   showMinimap: false,
   layerClickFocusShape: false,
   gridOpacity: 100,
+  animationDuration: 300,
 };
 
 /**
@@ -172,6 +177,10 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         set({ gridOpacity: Math.max(0, Math.min(100, opacity)) });
       },
 
+      setAnimationDuration: (duration: number) => {
+        set({ animationDuration: Math.max(0, Math.min(2000, duration)) });
+      },
+
       resetSettings: () => {
         set(initialState);
       },
@@ -188,6 +197,7 @@ export const useSettingsStore = create<SettingsState & SettingsActions>()(
         showMinimap: state.showMinimap,
         layerClickFocusShape: state.layerClickFocusShape,
         gridOpacity: state.gridOpacity,
+        animationDuration: state.animationDuration,
       }),
     }
   )

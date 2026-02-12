@@ -1054,12 +1054,12 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Implement windowed rendering (react-window or custom) to only render visible items.
   - Include smooth scroll position restoration when collapsing/expanding groups.
 
-- [ ] **Lazy loading for shape libraries**
+- [x] **Lazy loading for shape libraries**
   - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
   - Use dynamic imports with loading states in ShapePicker.
   - Reduces initial bundle size and memory footprint.
 
-- [ ] **Spatial index incremental updates**
+- [x] **Spatial index incremental updates**
   - Currently rebuilds entire RBush index on shape changes. Implement incremental insert/remove/update.
   - Track which shapes changed and update only those entries.
   - Critical for smooth performance during drag operations on large canvases.
@@ -1071,7 +1071,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Include recent commands and context-aware suggestions.
   - Similar to VS Code's command palette or Linear's Cmd+K.
 
-- [ ] **Keyboard shortcut reference panel**
+- [x] **Keyboard shortcut reference panel**
   - Accessible via `?` key or Help menu.
   - Categorized list of all shortcuts with search/filter.
   - Consider printable cheat sheet export.
@@ -1081,17 +1081,17 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Highlight matches and provide navigation (next/previous).
   - Integrate with existing layer view filtering.
 
-- [ ] **Zoom to fit selection**
+- [x] **Zoom to fit selection** _(Already implemented: `Camera.zoomToFit()` + `zoomToFitAnimated()`)_
   - Button/shortcut to zoom and pan camera to frame selected shapes with padding.
   - Also add "Zoom to fit all" for entire document.
   - Smooth animated transition rather than instant jump.
 
-- [ ] **Smooth pan/zoom animations**
+- [x] **Smooth pan/zoom animations**
   - Add easing to camera transitions (zoom to fit, minimap navigation, etc.).
   - Use requestAnimationFrame-based interpolation.
   - Configurable animation duration in settings.
 
-- [ ] **Multi-select property editing improvements**
+- [x] **Multi-select property editing improvements**
   - When multiple shapes selected, show "Mixed" for differing values.
   - Allow editing to apply to all selected shapes.
   - Show count of selected shapes in PropertyPanel header.
@@ -1101,14 +1101,14 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Show ghost preview during drag.
   - More intuitive than current tool selection workflow.
 
-- [ ] **Touch/tablet gesture refinements**
+- [x] **Touch/tablet gesture refinements**
   - Two-finger pinch zoom with proper anchor point.
   - Three-finger pan gesture.
   - Apple Pencil pressure sensitivity for line width (future).
 
 #### Stability & Quality
 
-- [ ] **React error boundaries for crash recovery**
+- [x] **React error boundaries for crash recovery**
   - Wrap major UI sections (PropertyPanel, LayerPanel, DocumentEditor) in error boundaries.
   - Display user-friendly error message with "Reload" option.
   - Log errors to console with stack trace for debugging.
@@ -1124,14 +1124,14 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - High contrast mode support.
   - Screen reader announcements for state changes.
 
-- [ ] **Graceful WebSocket reconnection feedback**
+- [x] **Graceful WebSocket reconnection feedback**
   - Clear UI indication when connection is lost/reconnecting.
   - Queue indicator showing pending changes.
   - Manual "Retry" button after max reconnection attempts.
 
 #### Developer Experience
 
-- [ ] **Debug overlay improvements**
+- [x] **Debug overlay improvements**
   - Toggle-able overlay showing: spatial index bounds, hit test regions, render stats.
   - Shape inspector: click shape to see all properties in dev panel.
   - Accessible via settings or keyboard shortcut (Ctrl+Shift+D).
@@ -1141,7 +1141,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Include all required handler methods with TypeScript stubs.
   - Auto-register in ShapeRegistry.
 
-- [ ] **Plugin development documentation**
+- [x] **Plugin development documentation**
   - Document PanelExtensions registry API.
   - Example plugins: custom shape library, property panel section, export format.
   - Guidelines for state management and lifecycle.
@@ -1153,12 +1153,12 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - New document dialog with template selection.
   - Allow users to save documents as custom templates.
 
-- [ ] **Duplicate page functionality**
+- [x] **Duplicate page functionality** _(Already implemented: `pageStore.duplicatePage()`)_
   - Right-click page tab → "Duplicate Page".
   - Deep-clone all shapes with new IDs.
   - Useful for iterating on diagram variations.
 
-- [ ] **Shape locking visual indicator**
+- [x] **Shape locking visual indicator**
   - Show lock icon overlay on locked shapes in canvas.
   - Different indicators for position-locked vs fully-locked.
   - Makes lock state discoverable without checking PropertyPanel.

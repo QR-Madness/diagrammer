@@ -408,6 +408,10 @@ export class Engine {
    * Subscribe to document and session store changes.
    */
   private subscribeToStores(): void {
+    // Track previous shapes for incremental spatial index updates
+    let previousShapes: Record<string, Shape> = {};
+    let previousShapeOrder: string[] = [];
+
     // Subscribe to document store
     this.unsubscribeDocument = useDocumentStore.subscribe((state) => {
       // Update connector endpoints when shapes move
@@ -416,8 +420,10 @@ export class Engine {
       // Update renderer with new shape data
       this.renderer.setShapes(state.shapes, state.shapeOrder);
 
-      // Update spatial index
-      this.spatialIndex.rebuild(Object.values(state.shapes));
+      // Incremental spatial index update
+      this.updateSpatialIndexIncremental(previousShapes, previousShapeOrder, state.shapes, state.shapeOrder);
+      previousShapes = state.shapes;
+      previousShapeOrder = state.shapeOrder;
 
       // Request render
       this.renderer.requestRender();
@@ -481,6 +487,59 @@ export class Engine {
     this.renderer.setToolOverlayCallback(
       this.toolManager.getToolOverlayCallback()
     );
+  }
+
+  /**
+   * Incrementally update the spatial index based on what changed.
+   * Falls back to full rebuild for bulk changes (>50% shapes changed).
+   */
+  private updateSpatialIndexIncremental(
+    prevShapes: Record<string, Shape>,
+    prevOrder: string[],
+    nextShapes: Record<string, Shape>,
+    nextOrder: string[],
+  ): void {
+    // First sync or order length changed significantly → full rebuild
+    if (prevOrder.length === 0 || Math.abs(nextOrder.length - prevOrder.length) > nextOrder.length * 0.5) {
+      this.spatialIndex.rebuild(Object.values(nextShapes));
+      return;
+    }
+
+    // Collect changes
+    const added: Shape[] = [];
+    const updated: Shape[] = [];
+    const removedIds: string[] = [];
+
+    // Find removed and updated shapes
+    for (const id of prevOrder) {
+      const nextShape = nextShapes[id];
+      if (!nextShape) {
+        removedIds.push(id);
+      } else if (nextShape !== prevShapes[id]) {
+        updated.push(nextShape);
+      }
+    }
+
+    // Find added shapes
+    for (const id of nextOrder) {
+      if (!(id in prevShapes)) {
+        const shape = nextShapes[id];
+        if (shape) added.push(shape);
+      }
+    }
+
+    const totalChanges = added.length + updated.length + removedIds.length;
+
+    // If more than half the shapes changed, full rebuild is faster
+    if (totalChanges > nextOrder.length * 0.5) {
+      this.spatialIndex.rebuild(Object.values(nextShapes));
+      return;
+    }
+
+    // Apply incremental changes
+    if (removedIds.length > 0) this.spatialIndex.removeMany(removedIds);
+    for (const shape of updated) this.spatialIndex.update(shape);
+    for (const shape of added) this.spatialIndex.insert(shape);
   }
 
   /**

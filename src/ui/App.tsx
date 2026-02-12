@@ -11,6 +11,8 @@ import { UnifiedToolbar } from './UnifiedToolbar';
 import { StatusBar } from './StatusBar';
 import { PresenceIndicators } from './PresenceIndicators';
 import { NotificationToast } from './NotificationToast';
+import { ErrorBoundary } from './ErrorBoundary';
+import { ConnectionStatusBanner } from './ConnectionStatusBanner';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
@@ -126,13 +128,18 @@ function App() {
   return (
     <AuthGuard>
       <div className="app">
+        <ConnectionStatusBanner />
         <UnifiedToolbar
           onOpenSettings={handleOpenSettings}
           onRebuildConnectors={handleRebuildConnectors}
         />
         <main className="app-main">
           <SplitPane
-            leftPanel={<DocumentEditorPanel onCollapse={handleCollapseEditor} />}
+            leftPanel={
+              <ErrorBoundary sectionName="Document Editor">
+                <DocumentEditorPanel onCollapse={handleCollapseEditor} />
+              </ErrorBoundary>
+            }
             rightPanel={
               <>
                 <CanvasContainer
@@ -140,8 +147,12 @@ function App() {
                   showGrid={true}
                   showFps={import.meta.env.DEV}
                 />
-                <PropertyPanel />
-                <LayerPanel />
+                <ErrorBoundary sectionName="Properties">
+                  <PropertyPanel />
+                </ErrorBoundary>
+                <ErrorBoundary sectionName="Layers">
+                  <LayerPanel />
+                </ErrorBoundary>
               </>
             }
             collapsed={isEditorCollapsed}
