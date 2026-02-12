@@ -4,7 +4,7 @@ This document tracks Diagrammer's development progress and planned features.
 
 ## Current Status
 
-**Version 1.0.0-beta.1**
+**Version 1.1.0-beta.1**
 
 Diagrammer is feature-rich, and nearly-stable with the following key features completed:
 - ✅ High-performance canvas rendering (10k+ shapes @ 60fps)
