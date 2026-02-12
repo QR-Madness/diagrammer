@@ -278,9 +278,23 @@ export class Engine {
 
   /**
    * Force a render on the next animation frame.
+   * Also syncs engine camera position back to sessionStore.
    */
   requestRender(): void {
+    this.syncCameraToStore();
     this.renderer.requestRender();
+  }
+
+  /**
+   * Sync the engine camera position back to the session store
+   * so that UI code can read the current viewport center.
+   */
+  private syncCameraToStore(): void {
+    const store = useSessionStore.getState();
+    const cam = this.camera;
+    if (store.camera.x !== cam.x || store.camera.y !== cam.y || store.camera.zoom !== cam.zoom) {
+      store.setCamera({ x: cam.x, y: cam.y, zoom: cam.zoom });
+    }
   }
 
   /**

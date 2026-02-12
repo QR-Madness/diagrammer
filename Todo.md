@@ -1066,7 +1066,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 #### User Experience
 
-- [ ] **Quick action palette (Cmd/Ctrl+K)**
+- [x] **Quick action palette (Cmd/Ctrl+K)**
   - Fuzzy-searchable command palette for all actions: tools, alignment, export, settings, etc.
   - Include recent commands and context-aware suggestions.
   - Similar to VS Code's command palette or Linear's Cmd+K.
@@ -1076,7 +1076,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Categorized list of all shortcuts with search/filter.
   - Consider printable cheat sheet export.
 
-- [ ] **Shape search in canvas**
+- [x] **Shape search in canvas**
   - Ctrl+F to search shapes by label text, type, or custom properties.
   - Highlight matches and provide navigation (next/previous).
   - Integrate with existing layer view filtering.
@@ -1096,7 +1096,7 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Allow editing to apply to all selected shapes.
   - Show count of selected shapes in PropertyPanel header.
 
-- [ ] **Drag-and-drop shape creation**
+- [x] **Drag-and-drop shape creation**
   - Drag shapes from ShapePicker directly onto canvas (not just click-to-place).
   - Show ghost preview during drag.
   - More intuitive than current tool selection workflow.

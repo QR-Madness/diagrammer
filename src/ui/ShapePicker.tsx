@@ -11,6 +11,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useShapeLibraryStore } from '../store/shapeLibraryStore';
 import { useSessionStore } from '../store/sessionStore';
+import { createShapeAtCenter } from '../engine/CommandRegistry';
 import type { ShapeMetadata, ShapeLibraryCategory } from '../shapes/ShapeMetadata';
 import './ShapePicker.css';
 
@@ -58,6 +59,8 @@ export function ShapePicker() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { getShapesByCategory, getAllLibraryShapes, isInitialized } = useShapeLibraryStore();
+  // Subscribe to registeredDefinitions so memos recompute after async loading
+  const registeredDefinitions = useShapeLibraryStore((s) => s.registeredDefinitions);
   const activeTool = useSessionStore((state) => state.activeTool);
   const setActiveTool = useSessionStore((state) => state.setActiveTool);
 
@@ -65,13 +68,13 @@ export function ShapePicker() {
   const shapes = useMemo(() => {
     if (!isInitialized) return [];
     return getShapesByCategory(selectedCategory);
-  }, [isInitialized, selectedCategory, getShapesByCategory]);
+  }, [isInitialized, selectedCategory, getShapesByCategory, registeredDefinitions]);
 
   // Get all library shapes to check if current tool is a library shape
   const allLibraryShapes = useMemo(() => {
     if (!isInitialized) return [];
     return getAllLibraryShapes();
-  }, [isInitialized, getAllLibraryShapes]);
+  }, [isInitialized, getAllLibraryShapes, registeredDefinitions]);
 
   // Check if current tool is a library shape
   const isLibraryShapeActive = useMemo(() => {
@@ -100,7 +103,7 @@ export function ShapePicker() {
       counts[cat] = getShapesByCategory(cat).length;
     }
     return counts;
-  }, [isInitialized, getShapesByCategory]);
+  }, [isInitialized, getShapesByCategory, registeredDefinitions]);
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -130,13 +133,27 @@ export function ShapePicker() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  // Handle shape selection
+  // Handle shape selection — create a default-sized shape at the viewport center
   const handleSelect = useCallback(
     (shape: ShapeMetadata) => {
-      setActiveTool(shape.type);
+      try {
+        createShapeAtCenter(shape.type);
+      } catch {
+        // Fallback: activate the tool (e.g. for shapes without a registered handler)
+        setActiveTool(shape.type);
+      }
       setIsOpen(false);
     },
     [setActiveTool]
+  );
+
+  // Handle drag start for drag-and-drop shape creation
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, shape: ShapeMetadata) => {
+      e.dataTransfer.setData('application/diagrammer-shape', shape.type);
+      e.dataTransfer.effectAllowed = 'copy';
+    },
+    []
   );
 
   // Toggle dropdown
@@ -202,6 +219,8 @@ export function ShapePicker() {
                   key={shape.type}
                   className={`shape-picker-item ${activeTool === shape.type ? 'selected' : ''}`}
                   onClick={() => handleSelect(shape)}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, shape)}
                   title={shape.name}
                 >
                   <ShapePreview metadata={shape} size={PREVIEW_SIZES[viewSize]} />
@@ -209,6 +228,10 @@ export function ShapePicker() {
                 </button>
               ))
             )}
+          </div>
+
+          <div className="shape-picker-hint">
+            Drag onto canvas or click to select tool
           </div>
         </div>
       )}
