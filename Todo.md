@@ -1168,6 +1168,78 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Consider branching undo history for complex workflows.
   - Keyboard shortcut for redo: Ctrl+Y in addition to Ctrl+Shift+Z.
 
+### Phase 16.6: Icon System Improvements [v1.1.0‑beta.2]
+
+Expand and enhance the icon system with large tech icon libraries and flexible styling options.
+
+#### Bug Fixes
+
+- [ ] **Icon style not saving to style profiles**
+  - Setting "Save Icon Style to Style Profile" in Settings > Style Profile doesn't work.
+  - Icon-related properties (iconId, iconSize, iconPadding) are not persisted when saving a style profile.
+  - Fix StyleProfileProperties type and save/apply logic to include icon properties.
+
+#### Icon Styles & Placement
+
+- [ ] **Icon placement modes**
+  - Current: Inside placement (icon badge in top-left corner).
+  - Add new modes: badge overlay (with adjustable background), centered icon, icon-only (no shape background).
+  - Badge mode: configurable background color, shape (circle, rounded-rect, square), and padding.
+  - PropertyPanel dropdown for selecting icon placement mode.
+
+- [ ] **Icon badge backgrounds**
+  - Solid color backgrounds for icon badges.
+  - Optional border/outline for badges.
+  - Transparency/opacity control.
+
+#### Tech Icon Library Expansion
+
+- [ ] **Large tech icon library with lazy loading**
+  - AWS architecture icons (compute, storage, database, networking, etc.).
+  - Azure architecture icons.
+  - Google Cloud Platform icons.
+  - Kubernetes, Docker, and container ecosystem icons.
+  - Programming language and framework icons.
+  - Database icons (PostgreSQL, MySQL, MongoDB, Redis, etc.).
+  - Use SVG sprite sheets or individual lazy-loaded SVGs to minimize bundle size.
+  - Organize into searchable categories in IconPicker.
+
+- [ ] **Icon library loading optimization**
+  - Load icon categories on-demand (not at startup).
+  - Implement icon search across all categories without loading full sets.
+  - Cache loaded icons in memory with LRU eviction.
+  - Show loading skeleton while icons are fetched.
+
+### Phase 16.7: Application Backup & Recovery [v1.1.0‑beta.2]
+
+Comprehensive backup system for transferring and recovering all application data.
+
+#### Backup System
+
+- [ ] **Full application backup export**
+  - Export all local documents as a single archive (.diagrammer-backup or .zip).
+  - Include all blob storage (images, icons, embedded files).
+  - Include style profiles, color palettes, and custom shape libraries.
+  - Include application settings and preferences.
+  - Progress indicator for large backups.
+
+- [ ] **Backup import/restore**
+  - Import backup archive and restore all data.
+  - Option to merge with existing data or replace entirely.
+  - Conflict resolution UI for duplicate documents/profiles.
+  - Validation of backup integrity before restore.
+
+- [ ] **Selective backup options**
+  - Choose which data to include: documents, blobs, settings, libraries.
+  - Per-document export with dependencies (all referenced blobs included).
+  - Export selected documents only.
+
+- [ ] **Backup UI in Settings**
+  - Backup/Restore tab in Settings modal.
+  - Last backup timestamp display.
+  - Backup size estimation before export.
+  - Restore preview showing what will be imported.
+
 ### Phase 16.9: Deferred Improvements [v1.1.0‑beta.2]
 
 Tasks deferred from Phase 16.
