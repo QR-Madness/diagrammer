@@ -14,7 +14,8 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useIconLibraryStore, initializeIconLibrary } from '../store/iconLibraryStore';
 import type { IconMetadata, IconCategory } from '../storage/IconTypes';
-import { getIconCategories } from '../storage/builtinIcons';
+import { ICON_CATEGORY_LABELS } from '../storage/IconTypes';
+import { getIconCategories, isLazyCategory, isCategoryLoaded } from '../storage/builtinIcons';
 import './IconPicker.css';
 
 /**
@@ -29,17 +30,8 @@ interface IconPickerProps {
   label?: string;
 }
 
-/**
- * Icon category labels for display.
- */
-const CATEGORY_LABELS: Record<IconCategory, string> = {
-  arrows: 'Arrows',
-  shapes: 'Shapes',
-  symbols: 'Symbols',
-  tech: 'Tech',
-  general: 'General',
-  custom: 'Custom',
-};
+/** Core categories to show by default (eagerly loaded) */
+const CORE_CATEGORIES: IconCategory[] = ['arrows', 'shapes', 'symbols', 'tech', 'general'];
 
 /**
  * IconPicker component.
@@ -61,6 +53,9 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
     isLoading,
     error,
     clearError,
+    loadCategory,
+    isCategoryLoading,
+    getIconsByCategory,
   } = useIconLibraryStore();
 
   // Initialize icon library on mount
@@ -73,25 +68,39 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
   // Get all icons
   const allIcons = useMemo(() => getAllIcons(), [customIcons]);
 
-  // Get categories with counts
+  // Get categories with counts - organized by type
   const categories = useMemo(() => {
     const builtinCategories = getIconCategories();
     const customCount = customIcons.length;
 
-    return [
-      { category: 'all' as const, count: allIcons.length },
-      ...builtinCategories,
-      ...(customCount > 0 ? [{ category: 'custom' as IconCategory, count: customCount }] : []),
-    ];
+    // Separate core and lazy categories
+    const coreCategories = builtinCategories.filter((c) => CORE_CATEGORIES.includes(c.category));
+    const lazyCategories = builtinCategories.filter((c) => c.lazy);
+
+    return {
+      all: { category: 'all' as const, count: allIcons.length, lazy: false },
+      core: coreCategories,
+      lazy: lazyCategories,
+      custom: customCount > 0 ? { category: 'custom' as IconCategory, count: customCount, lazy: false } : null,
+    };
   }, [allIcons.length, customIcons.length]);
+
+  // Load lazy category when selected
+  useEffect(() => {
+    if (selectedCategory !== 'all' && isLazyCategory(selectedCategory)) {
+      loadCategory(selectedCategory);
+    }
+  }, [selectedCategory, loadCategory]);
 
   // Filter icons by category and search
   const filteredIcons = useMemo(() => {
-    let icons = allIcons;
+    let icons: IconMetadata[];
 
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      icons = icons.filter((icon) => icon.category === selectedCategory);
+    // Get icons based on category selection
+    if (selectedCategory === 'all') {
+      icons = allIcons;
+    } else {
+      icons = getIconsByCategory(selectedCategory);
     }
 
     // Filter by search query
@@ -101,7 +110,10 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
     }
 
     return icons;
-  }, [allIcons, selectedCategory, searchQuery]);
+  }, [allIcons, selectedCategory, searchQuery, getIconsByCategory]);
+
+  // Check if current category is loading
+  const isCategoryLoadingNow = selectedCategory !== 'all' && isCategoryLoading(selectedCategory);
 
   // Get selected icon details
   const selectedIcon = useMemo(() => {
@@ -248,15 +260,52 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
 
       {/* Category tabs */}
       <div className="icon-picker-categories">
-        {categories.map(({ category, count }) => (
+        {/* All category */}
+        <button
+          className={`icon-picker-category ${selectedCategory === 'all' ? 'active' : ''}`}
+          onClick={() => setSelectedCategory('all')}
+        >
+          All ({categories.all.count})
+        </button>
+
+        {/* Core categories */}
+        {categories.core.map(({ category, count }) => (
           <button
             key={category}
             className={`icon-picker-category ${selectedCategory === category ? 'active' : ''}`}
             onClick={() => setSelectedCategory(category)}
           >
-            {category === 'all' ? 'All' : CATEGORY_LABELS[category]} ({count})
+            {ICON_CATEGORY_LABELS[category]} ({count})
           </button>
         ))}
+
+        {/* Separator if there are lazy categories */}
+        {categories.lazy.length > 0 && <span className="icon-picker-category-sep">|</span>}
+
+        {/* Lazy-loadable categories (cloud, devops, etc.) */}
+        {categories.lazy.map(({ category, count }) => {
+          const loaded = isCategoryLoaded(category);
+          return (
+            <button
+              key={category}
+              className={`icon-picker-category ${selectedCategory === category ? 'active' : ''} ${!loaded ? 'lazy' : ''}`}
+              onClick={() => setSelectedCategory(category)}
+              title={!loaded ? 'Click to load' : undefined}
+            >
+              {ICON_CATEGORY_LABELS[category]} {loaded ? `(${count})` : ''}
+            </button>
+          );
+        })}
+
+        {/* Custom category if has items */}
+        {categories.custom && (
+          <button
+            className={`icon-picker-category ${selectedCategory === 'custom' ? 'active' : ''}`}
+            onClick={() => setSelectedCategory('custom')}
+          >
+            Custom ({categories.custom.count})
+          </button>
+        )}
       </div>
 
       {/* Error display */}
@@ -276,7 +325,7 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
           </button>
         )}
 
-        {isLoading ? (
+        {isLoading || isCategoryLoadingNow ? (
           <div className="icon-picker-loading">Loading...</div>
         ) : filteredIcons.length === 0 ? (
           <div className="icon-picker-empty">No icons found</div>

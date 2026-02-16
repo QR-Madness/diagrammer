@@ -12,6 +12,11 @@ export type IconType = 'builtin' | 'custom';
 
 /**
  * Categories for organizing icons.
+ *
+ * Core categories: arrows, shapes, symbols, tech, general
+ * Cloud categories: cloud-aws, cloud-azure, cloud-gcp
+ * Dev categories: devops, databases, languages, frameworks
+ * User category: custom
  */
 export type IconCategory =
   | 'arrows'
@@ -19,7 +24,57 @@ export type IconCategory =
   | 'symbols'
   | 'tech'
   | 'general'
+  | 'cloud-aws'
+  | 'cloud-azure'
+  | 'cloud-gcp'
+  | 'devops'
+  | 'databases'
+  | 'languages'
+  | 'frameworks'
   | 'custom';
+
+/**
+ * Categories that are loaded lazily (on-demand).
+ */
+export const LAZY_ICON_CATEGORIES: IconCategory[] = [
+  'cloud-aws',
+  'cloud-azure',
+  'cloud-gcp',
+  'devops',
+  'databases',
+  'languages',
+  'frameworks',
+];
+
+/**
+ * Categories that are loaded at startup (small, frequently used).
+ */
+export const EAGER_ICON_CATEGORIES: IconCategory[] = [
+  'arrows',
+  'shapes',
+  'symbols',
+  'tech',
+  'general',
+];
+
+/**
+ * Human-readable display names for icon categories.
+ */
+export const ICON_CATEGORY_LABELS: Record<IconCategory, string> = {
+  arrows: 'Arrows',
+  shapes: 'Shapes',
+  symbols: 'Symbols',
+  tech: 'Tech',
+  general: 'General',
+  'cloud-aws': 'AWS',
+  'cloud-azure': 'Azure',
+  'cloud-gcp': 'GCP',
+  devops: 'DevOps',
+  databases: 'Databases',
+  languages: 'Languages',
+  frameworks: 'Frameworks',
+  custom: 'Custom',
+};
 
 /**
  * Metadata for an icon in the library.
