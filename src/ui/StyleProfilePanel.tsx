@@ -8,6 +8,7 @@ import {
   extractStyleFromShape,
   getProfileUpdates,
   getERDProfileCustomProperties,
+  ExtractStyleOptions,
 } from '../store/styleProfileStore';
 import { useSettingsStore } from '../store/settingsStore';
 import './StyleProfilePanel.css';
@@ -51,6 +52,8 @@ export function StyleProfilePanel() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hideDefaultStyleProfiles = useSettingsStore((state) => state.hideDefaultStyleProfiles);
+  const saveIconStyleToProfile = useSettingsStore((state) => state.saveIconStyleToProfile);
+  const saveLabelStyleToProfile = useSettingsStore((state) => state.saveLabelStyleToProfile);
 
   // Filter and sort profiles: optionally hide defaults, apply search, favorites first (alphabetically), then non-favorites (alphabetically)
   const profiles = [...storeProfiles]
@@ -110,22 +113,30 @@ export function StyleProfilePanel() {
   const handleSaveProfile = useCallback(() => {
     if (!firstShape || !newProfileName.trim()) return;
 
-    const properties = extractStyleFromShape(firstShape);
+    const extractOptions: ExtractStyleOptions = {
+      includeIconStyle: saveIconStyleToProfile,
+      includeLabelStyle: saveLabelStyleToProfile,
+    };
+    const properties = extractStyleFromShape(firstShape, extractOptions);
 
     addProfile(newProfileName.trim(), properties);
     setNewProfileName('');
     setIsCreating(false);
-  }, [firstShape, newProfileName, addProfile]);
+  }, [firstShape, newProfileName, addProfile, saveIconStyleToProfile, saveLabelStyleToProfile]);
 
   // Overwrite a profile with current shape's style
   const handleOverwriteProfile = useCallback((profileId: string) => {
     if (!firstShape) return;
 
-    const properties = extractStyleFromShape(firstShape);
+    const extractOptions: ExtractStyleOptions = {
+      includeIconStyle: saveIconStyleToProfile,
+      includeLabelStyle: saveLabelStyleToProfile,
+    };
+    const properties = extractStyleFromShape(firstShape, extractOptions);
 
     updateProfile(profileId, { properties });
     setConfirmOverwriteId(null);
-  }, [firstShape, updateProfile]);
+  }, [firstShape, updateProfile, saveIconStyleToProfile, saveLabelStyleToProfile]);
 
   // Start editing a profile name
   const handleStartEdit = useCallback((profile: StyleProfile) => {

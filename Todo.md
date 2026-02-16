@@ -1174,7 +1174,7 @@ Expand and enhance the icon system with large tech icon libraries and flexible s
 
 #### Bug Fixes
 
-- [ ] **Icon style not saving to style profiles**
+- [x] **Icon style not saving to style profiles**
   - Setting "Save Icon Style to Style Profile" in Settings > Style Profile doesn't work.
   - Icon-related properties (iconId, iconSize, iconPadding) are not persisted when saving a style profile.
   - Fix StyleProfileProperties type and save/apply logic to include icon properties.

@@ -182,12 +182,78 @@ export interface RectangleShape extends BaseShape {
   iconColor?: string;
   /** Icon position (default: 'top-left') */
   iconPosition?: IconPosition;
+  /** Icon display mode (default: 'inside') */
+  iconDisplayMode?: IconDisplayMode;
+  /** Badge configuration (only used when iconDisplayMode = 'badge') */
+  iconBadge?: IconBadgeConfig;
+  /** Multiple icons configuration (overrides single icon properties when present) */
+  icons?: IconConfig[];
 }
 
 /**
  * Icon position options.
  */
 export type IconPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+
+/**
+ * Icon display mode options.
+ */
+export type IconDisplayMode = 'inside' | 'badge' | 'icon-only';
+
+/**
+ * Badge shape options for icon badges.
+ */
+export type IconBadgeShape = 'circle' | 'rounded-rect' | 'square';
+
+/**
+ * Configuration for icon badge styling.
+ */
+export interface IconBadgeConfig {
+  /** Badge shape (default: 'circle') */
+  shape: IconBadgeShape;
+  /** Badge background color (default: '#ffffff') */
+  backgroundColor: string;
+  /** Badge border color (null = no border) */
+  borderColor?: string;
+  /** Badge border width (default: 0) */
+  borderWidth?: number;
+  /** Internal padding between badge edge and icon (default: 4) */
+  padding?: number;
+  /** Whether to show drop shadow (default: false) */
+  shadow?: boolean;
+}
+
+/**
+ * Configuration for a single icon on a shape.
+ * Used in the icons[] array for multi-icon support.
+ */
+export interface IconConfig {
+  /** Icon ID (reference to icon library: 'builtin:name' or blob ID) */
+  iconId: string;
+  /** Icon size in pixels (default: 24) */
+  size?: number;
+  /** Icon padding from shape edge (default: 8) */
+  padding?: number;
+  /** Icon color override (default: uses stroke color) */
+  color?: string;
+  /** Icon position on shape (default: 'top-left') */
+  position: IconPosition;
+  /** Display mode (default: 'inside') */
+  displayMode?: IconDisplayMode;
+  /** Badge configuration (only used when displayMode = 'badge') */
+  badge?: IconBadgeConfig;
+}
+
+/**
+ * Default badge configuration.
+ */
+export const DEFAULT_BADGE_CONFIG: IconBadgeConfig = {
+  shape: 'circle',
+  backgroundColor: '#ffffff',
+  borderWidth: 0,
+  padding: 4,
+  shadow: false,
+};
 
 /**
  * Ellipse shape (circle when radiusX === radiusY).
@@ -220,6 +286,12 @@ export interface EllipseShape extends BaseShape {
   iconColor?: string;
   /** Icon position (default: 'top-left') */
   iconPosition?: IconPosition;
+  /** Icon display mode (default: 'inside') */
+  iconDisplayMode?: IconDisplayMode;
+  /** Badge configuration (only used when iconDisplayMode = 'badge') */
+  iconBadge?: IconBadgeConfig;
+  /** Multiple icons configuration (overrides single icon properties when present) */
+  icons?: IconConfig[];
 }
 
 /**
@@ -464,6 +536,12 @@ export interface LibraryShape extends Omit<BaseShape, 'type'> {
   iconColor?: string;
   /** Icon position (default: 'top-left') */
   iconPosition?: IconPosition;
+  /** Icon display mode (default: 'inside') */
+  iconDisplayMode?: IconDisplayMode;
+  /** Badge configuration (only used when iconDisplayMode = 'badge') */
+  iconBadge?: IconBadgeConfig;
+  /** Multiple icons configuration (overrides single icon properties when present) */
+  icons?: IconConfig[];
   /** Custom properties for specialized shapes (e.g., UML-specific data) */
   customProperties?: Record<string, unknown>;
 }

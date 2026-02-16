@@ -10,7 +10,7 @@ import {
   DEFAULT_RECTANGLE,
 } from './Shape';
 import { renderWrappedText } from '../utils/textUtils';
-import { drawIcon } from '../utils/iconCache';
+import { renderShapeIcons, isIconOnlyMode } from '../utils/iconRenderer';
 
 /**
  * Get the four corners of a rectangle in local space (before rotation).
@@ -98,56 +98,27 @@ export const rectangleHandler: ShapeHandler<RectangleShape> = {
 
     ctx.closePath();
 
-    // Fill
-    if (fill) {
+    // Check if this is icon-only mode (skip fill/stroke)
+    const iconOnly = isIconOnlyMode(shape);
+
+    // Fill (skip in icon-only mode)
+    if (fill && !iconOnly) {
       ctx.fillStyle = fill;
       ctx.fill();
     }
 
-    // Stroke
-    if (stroke && strokeWidth > 0) {
+    // Stroke (skip in icon-only mode)
+    if (stroke && strokeWidth > 0 && !iconOnly) {
       ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
     }
 
-    // Draw icon if present
-    if (shape.iconId) {
-      const iconSize = shape.iconSize || 24;
-      const iconPadding = shape.iconPadding || 8;
-      const iconPosition = shape.iconPosition || 'top-left';
-
-      // Calculate icon position based on iconPosition setting
-      let iconX: number;
-      let iconY: number;
-
-      switch (iconPosition) {
-        case 'top-right':
-          iconX = halfWidth - iconPadding - iconSize;
-          iconY = -halfHeight + iconPadding;
-          break;
-        case 'bottom-left':
-          iconX = -halfWidth + iconPadding;
-          iconY = halfHeight - iconPadding - iconSize;
-          break;
-        case 'bottom-right':
-          iconX = halfWidth - iconPadding - iconSize;
-          iconY = halfHeight - iconPadding - iconSize;
-          break;
-        case 'center':
-          iconX = -iconSize / 2;
-          iconY = -iconSize / 2;
-          break;
-        case 'top-left':
-        default:
-          iconX = -halfWidth + iconPadding;
-          iconY = -halfHeight + iconPadding;
-          break;
-      }
-
-      // Use explicit iconColor if set, otherwise fall back to stroke color
-      const iconColor = shape.iconColor || stroke || '#333333';
-      drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
+    // Draw icons using the IconRenderer
+    const hasIcon = shape.iconId || (shape.icons && shape.icons.length > 0);
+    if (hasIcon) {
+      const defaultColor = stroke || '#333333';
+      renderShapeIcons(ctx, shape, { halfWidth, halfHeight }, defaultColor);
     }
 
     // Draw label if present

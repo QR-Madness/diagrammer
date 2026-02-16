@@ -142,6 +142,10 @@ export class Engine {
   private unsubscribeDocument: (() => void) | null = null;
   private unsubscribeSession: (() => void) | null = null;
 
+  // Track previous shapes for incremental spatial index updates
+  private previousShapes: Record<string, Shape> = {};
+  private previousShapeOrder: string[] = [];
+
   // Keyboard panning state
   private activePanKeys: Set<string> = new Set();
   private panAnimationId: number | null = null;
@@ -422,10 +426,6 @@ export class Engine {
    * Subscribe to document and session store changes.
    */
   private subscribeToStores(): void {
-    // Track previous shapes for incremental spatial index updates
-    let previousShapes: Record<string, Shape> = {};
-    let previousShapeOrder: string[] = [];
-
     // Subscribe to document store
     this.unsubscribeDocument = useDocumentStore.subscribe((state) => {
       // Update connector endpoints when shapes move
@@ -435,9 +435,9 @@ export class Engine {
       this.renderer.setShapes(state.shapes, state.shapeOrder);
 
       // Incremental spatial index update
-      this.updateSpatialIndexIncremental(previousShapes, previousShapeOrder, state.shapes, state.shapeOrder);
-      previousShapes = state.shapes;
-      previousShapeOrder = state.shapeOrder;
+      this.updateSpatialIndexIncremental(this.previousShapes, this.previousShapeOrder, state.shapes, state.shapeOrder);
+      this.previousShapes = state.shapes;
+      this.previousShapeOrder = state.shapeOrder;
 
       // Request render
       this.renderer.requestRender();
@@ -501,6 +501,11 @@ export class Engine {
     this.renderer.setToolOverlayCallback(
       this.toolManager.getToolOverlayCallback()
     );
+
+    // Update previous state tracking to match current state
+    // This ensures incremental updates work correctly after async document loading
+    this.previousShapes = documentState.shapes;
+    this.previousShapeOrder = documentState.shapeOrder;
   }
 
   /**
