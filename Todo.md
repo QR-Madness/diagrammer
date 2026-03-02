@@ -1040,21 +1040,6 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 #### Performance & Optimization
 
-- [ ] **Dirty region tracking for canvas rendering**
-  - Currently the entire canvas is redrawn on each frame. Implement a dirty region system that tracks which areas need redrawing.
-  - Track bounding boxes of modified shapes and only repaint affected regions.
-  - Potential 2-5x performance improvement for large canvases with localized edits.
-
-- [ ] **Shape render caching with OffscreenCanvas**
-  - Cache complex shapes (groups with many children, shapes with shadows/patterns) to OffscreenCanvas.
-  - Invalidate cache only when shape properties change.
-  - Particularly beneficial for groups with background patterns and shadow effects.
-
-- [ ] **Virtual scrolling for LayerPanel**
-  - LayerPanel renders all shapes in the DOM, which degrades with 100+ shapes.
-  - Implement windowed rendering (react-window or custom) to only render visible items.
-  - Include smooth scroll position restoration when collapsing/expanding groups.
-
 - [x] **Lazy loading for shape libraries**
   - Load flowchart/UML/ERD shape handlers on-demand rather than at startup.
   - Use dynamic imports with loading states in ShapePicker.
@@ -1114,17 +1099,6 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
   - Display user-friendly error message with "Reload" option.
   - Log errors to console with stack trace for debugging.
 
-- [ ] **Performance regression benchmarks**
-  - Automated benchmark: render 1000/5000/10000 shapes, measure FPS.
-  - Track metrics over time to catch regressions.
-  - Alert if performance drops below threshold.
-
-- [ ] **Accessibility audit and improvements**
-  - ARIA labels for all interactive elements.
-  - Keyboard navigation through all panels and menus.
-  - High contrast mode support.
-  - Screen reader announcements for state changes.
-
 - [x] **Graceful WebSocket reconnection feedback**
   - Clear UI indication when connection is lost/reconnecting.
   - Queue indicator showing pending changes.
@@ -1149,10 +1123,10 @@ Improvement recommendations from Claude Opus to prepare for v1.0 release.
 
 #### Quality-of-Life Improvements
 
-- [ ] **Template gallery**
-  - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
-  - New document dialog with template selection.
-  - Allow users to save documents as custom templates.
+- [ ] **Full-Screen Rich-Text Editor**
+  - Add a button beside the collapse button to initiate full-screen.
+  - The rich-text editor should stretch over the canvas and property panel, and use comfortable margins and justification of content.
+  - Optional: Add a cool animation
 
 - [x] **Duplicate page functionality** _(Already implemented: `pageStore.duplicatePage()`)_
   - Right-click page tab → "Duplicate Page".
@@ -1175,27 +1149,28 @@ Expand and enhance the icon system with large tech icon libraries and flexible s
 
 #### Bug Fixes
 
-- [x] **Icon style not saving to style profiles**
+- [x] **Icon style not saving to style profiles** ⚠️ UNSTABLE
   - Setting "Save Icon Style to Style Profile" in Settings > Style Profile doesn't work.
   - Icon-related properties (iconId, iconSize, iconPadding) are not persisted when saving a style profile.
   - Fix StyleProfileProperties type and save/apply logic to include icon properties.
+  - ⚠️ **Known regression**: Applying a style profile clears/removes icons from shapes. See [#5](https://github.com/QR-Madness/diagrammer/issues/5).
 
 #### Icon Styles & Placement
 
-- [ ] **Icon placement modes**
+- [x] **Icon placement modes**
   - Current: Inside placement (icon badge in top-left corner).
   - Add new modes: badge overlay (with adjustable background), centered icon, icon-only (no shape background).
   - Badge mode: configurable background color, shape (circle, rounded-rect, square), and padding.
   - PropertyPanel dropdown for selecting icon placement mode.
 
-- [ ] **Icon badge backgrounds**
+- [x] **Icon badge backgrounds**
   - Solid color backgrounds for icon badges.
   - Optional border/outline for badges.
   - Transparency/opacity control.
 
 #### Tech Icon Library Expansion
 
-- [ ] **Large tech icon library with lazy loading**
+- [x] **Large tech icon library with lazy loading**
   - AWS architecture icons (compute, storage, database, networking, etc.).
   - Azure architecture icons.
   - Google Cloud Platform icons.
@@ -1205,7 +1180,7 @@ Expand and enhance the icon system with large tech icon libraries and flexible s
   - Use SVG sprite sheets or individual lazy-loaded SVGs to minimize bundle size.
   - Organize into searchable categories in IconPicker.
 
-- [ ] **Icon library loading optimization**
+- [x] **Icon library loading optimization**
   - Load icon categories on-demand (not at startup).
   - Implement icon search across all categories without loading full sets.
   - Cache loaded icons in memory with LRU eviction.
@@ -1258,6 +1233,43 @@ Tasks deferred from Phase 16.
   - No end-to-end tests for collaborative workflows.
   - Create test utilities for multi-client scenarios.
   - Add CI job for integration test suite.
+
+#### Performance & Optimization [from 16.5]
+
+- [ ] **Dirty region tracking for canvas rendering**
+  - Currently the entire canvas is redrawn on each frame. Implement a dirty region system that tracks which areas need redrawing.
+  - Track bounding boxes of modified shapes and only repaint affected regions.
+  - Potential 2-5x performance improvement for large canvases with localized edits.
+
+- [ ] **Shape render caching with OffscreenCanvas**
+  - Cache complex shapes (groups with many children, shapes with shadows/patterns) to OffscreenCanvas.
+  - Invalidate cache only when shape properties change.
+  - Particularly beneficial for groups with background patterns and shadow effects.
+
+- [ ] **Virtual scrolling for LayerPanel**
+  - LayerPanel renders all shapes in the DOM, which degrades with 100+ shapes.
+  - Implement windowed rendering (react-window or custom) to only render visible items.
+  - Include smooth scroll position restoration when collapsing/expanding groups.
+
+#### Stability & Quality [from 16.5]
+
+- [ ] **Performance regression benchmarks**
+  - Automated benchmark: render 1000/5000/10000 shapes, measure FPS.
+  - Track metrics over time to catch regressions.
+  - Alert if performance drops below threshold.
+
+- [ ] **Accessibility audit and improvements**
+  - ARIA labels for all interactive elements.
+  - Keyboard navigation through all panels and menus.
+  - High contrast mode support.
+  - Screen reader announcements for state changes.
+
+#### Quality-of-Life [from 16.5]
+
+- [ ] **Template gallery**
+  - Starter templates: Flowchart, Org Chart, ERD, Network Diagram, Wireframe.
+  - New document dialog with template selection.
+  - Allow users to save documents as custom templates.
 
 ### Phase 17: Embedded Files [RELEASE v1.2.0‑beta.1]
 
