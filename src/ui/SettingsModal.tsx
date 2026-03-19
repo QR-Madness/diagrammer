@@ -53,7 +53,7 @@ export interface SettingsModalProps {
   initialTab?: SettingsTab;
 }
 
-export function SettingsModal({ isOpen, onClose, initialTab = 'general' }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, initialTab = 'documents' }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
 
   // Reset to initial tab when modal opens

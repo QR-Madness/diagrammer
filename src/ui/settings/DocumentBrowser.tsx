@@ -291,7 +291,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           onClick={handleSave}
           title="Save current document"
         >
-          <span className="document-browser__action-icon">💾</span>
           Save
         </button>
         <button
@@ -299,7 +298,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           onClick={handleImport}
           title="Import .diagrammer file"
         >
-          <span className="document-browser__action-icon">📂</span>
           Import
         </button>
         <button
@@ -307,7 +305,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           onClick={handleExport}
           title="Export as .diagrammer"
         >
-          <span className="document-browser__action-icon">📤</span>
           Export
         </button>
         <button
@@ -315,7 +312,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           onClick={() => setPdfExportOpen(true)}
           title="Export as PDF"
         >
-          <span className="document-browser__action-icon">📄</span>
           PDF
         </button>
       </div>
@@ -353,7 +349,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       {/* Error display */}
       {error && (
         <div className="document-browser__error">
-          <span className="document-browser__error-icon">⚠</span>
+          <span className="document-browser__error-icon">!</span>
           {error}
         </div>
       )}

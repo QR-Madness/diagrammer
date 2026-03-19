@@ -4,6 +4,7 @@ import { Shape, isGroup, GroupShape } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { GroupShapeHandler } from '../shapes/Group';
 import { setLatexRenderCallback } from '../utils/textUtils';
+import { onIconLoad } from '../utils/iconCache';
 
 /**
  * Configuration options for the Renderer.
@@ -126,6 +127,9 @@ export class Renderer {
   // Tool overlay callback
   private toolOverlayCallback: ToolOverlayCallback | null = null;
 
+  // Cleanup callback for icon load subscription
+  private unsubscribeIconLoad: (() => void) | null = null;
+
   // Shape data for rendering
   private shapes: Record<string, Shape> = {};
   private shapeOrder: string[] = [];
@@ -163,6 +167,9 @@ export class Renderer {
 
     // Register LaTeX render callback for async equation rendering
     setLatexRenderCallback(() => this.requestRender());
+
+    // Re-render when icons finish loading asynchronously
+    this.unsubscribeIconLoad = onIconLoad(() => this.requestRender());
   }
 
   /**
@@ -306,6 +313,8 @@ export class Renderer {
     }
     this.needsRender = false;
     this.toolOverlayCallback = null;
+    this.unsubscribeIconLoad?.();
+    this.unsubscribeIconLoad = null;
   }
 
   /**

@@ -25,6 +25,7 @@ import {
   getLazyIconsByCategory,
   getLoadedLazyIcons,
   getLazyCategoryStates,
+  preloadAllLazyCategories,
 } from '../storage/builtinIcons';
 import { blobStorage } from '../storage/BlobStorage';
 import { sanitizeSvg, validateSvg, svgToDataUrl, extractViewBox } from '../utils/svgUtils';
@@ -222,6 +223,11 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
         let icon: IconMetadata | undefined;
         if (isBuiltinIcon(id)) {
           icon = getBuiltinIcon(id);
+          // If not found, the icon may belong to an unloaded lazy category
+          if (!icon) {
+            await preloadAllLazyCategories();
+            icon = getBuiltinIcon(id);
+          }
         } else {
           icon = get().customIcons.find((i) => i.id === id);
         }

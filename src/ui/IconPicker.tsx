@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 import { useIconLibraryStore, initializeIconLibrary } from '../store/iconLibraryStore';
 import type { IconMetadata, IconCategory } from '../storage/IconTypes';
 import { ICON_CATEGORY_LABELS } from '../storage/IconTypes';
-import { getIconCategories, isLazyCategory, isCategoryLoaded } from '../storage/builtinIcons';
+import { getIconCategories, isLazyCategory, isCategoryLoaded, preloadAllLazyCategories } from '../storage/builtinIcons';
 import './IconPicker.css';
 
 /**
@@ -93,6 +93,13 @@ export function IconPicker({ value, onChange, label = 'Icon' }: IconPickerProps)
       loadCategory(selectedCategory);
     }
   }, [selectedCategory, loadCategory]);
+
+  // Preload all lazy categories when searching so all icons are searchable
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      preloadAllLazyCategories();
+    }
+  }, [searchQuery]);
 
   // Filter icons by category and search
   const filteredIcons = useMemo(() => {

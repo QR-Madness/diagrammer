@@ -73,13 +73,13 @@ Comprehensive backup system for transferring and recovering all application data
 
 Per-document archive export (`.diagrammer` files) for sharing individual diagrams with all dependencies. Builds on the shared `ArchiveUtils` infrastructure from Phase 16.7.
 
-- [ ] **Document archive service**
+- [x] **Document archive service**
   - `DocumentArchiveService.exportDocument(docId)` — bundles one document + referenced blobs into a `.diagrammer` archive.
   - `DocumentArchiveService.importDocument(file)` — imports a `.diagrammer` file, creating a new local document with all blobs.
   - Reuses `ArchiveUtils` (ZIP, checksums, blob collection) — no new archive infrastructure needed.
   - Manifest `type: 'diagrammer-document-archive'` distinguishes from full backups.
 
-- [ ] **UI integration**
+- [x] **UI integration**
   - "Export as .diagrammer" option in document browser and context menu.
   - "Import .diagrammer" alongside existing JSON import.
   - Replaces/augments current JSON-only export (which loses blob data).
