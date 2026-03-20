@@ -12,7 +12,7 @@ import type { LibraryShape, Handle, HandleType, Anchor } from '../Shape';
 import { DEFAULT_LIBRARY_SHAPE } from '../Shape';
 import type { LibraryShapeDefinition } from './ShapeLibraryTypes';
 import { renderWrappedText } from '../../utils/textUtils';
-import { drawIcon } from '../../utils/iconCache';
+import { renderShapeIcons, isIconOnlyMode } from '../../utils/iconRenderer';
 
 /**
  * Transform a local point to world space.
@@ -98,64 +98,35 @@ export function createLibraryShapeHandler(
       // Build the path from the definition
       const path = definition.pathBuilder(width, height);
 
-      // Fill
-      if (fill) {
+      // Check if this is icon-only mode (skip fill/stroke)
+      const iconOnly = isIconOnlyMode(shape);
+
+      // Fill (skip in icon-only mode)
+      if (fill && !iconOnly) {
         ctx.fillStyle = fill;
         ctx.fill(path);
       }
 
-      // Stroke
-      if (stroke && strokeWidth > 0) {
+      // Stroke (skip in icon-only mode)
+      if (stroke && strokeWidth > 0 && !iconOnly) {
         ctx.strokeStyle = stroke;
         ctx.lineWidth = strokeWidth;
         ctx.stroke(path);
       }
 
-      // Call custom render if defined
-      if (definition.customRender) {
+      // Call custom render if defined (skip in icon-only mode)
+      if (definition.customRender && !iconOnly) {
         definition.customRender(ctx, shape, path);
       }
 
-      // Draw icon if present
+      // Draw icons using the IconRenderer
       const halfWidth = width / 2;
       const halfHeight = height / 2;
 
-      if (shape.iconId) {
-        const iconSize = shape.iconSize || DEFAULT_LIBRARY_SHAPE.iconSize;
-        const iconPadding = shape.iconPadding || DEFAULT_LIBRARY_SHAPE.iconPadding;
-        const iconPosition = shape.iconPosition || 'top-left';
-
-        // Calculate icon position based on iconPosition setting
-        let iconX: number;
-        let iconY: number;
-
-        switch (iconPosition) {
-          case 'top-right':
-            iconX = halfWidth - iconPadding - iconSize;
-            iconY = -halfHeight + iconPadding;
-            break;
-          case 'bottom-left':
-            iconX = -halfWidth + iconPadding;
-            iconY = halfHeight - iconPadding - iconSize;
-            break;
-          case 'bottom-right':
-            iconX = halfWidth - iconPadding - iconSize;
-            iconY = halfHeight - iconPadding - iconSize;
-            break;
-          case 'center':
-            iconX = -iconSize / 2;
-            iconY = -iconSize / 2;
-            break;
-          case 'top-left':
-          default:
-            iconX = -halfWidth + iconPadding;
-            iconY = -halfHeight + iconPadding;
-            break;
-        }
-
-        // Use explicit iconColor if set, otherwise fall back to stroke color
-        const iconColor = shape.iconColor || stroke || '#333333';
-        drawIcon(ctx, shape.iconId, iconX, iconY, iconSize, iconColor);
+      const hasIcon = shape.iconId || (shape.icons && shape.icons.length > 0);
+      if (hasIcon) {
+        const defaultColor = stroke || '#333333';
+        renderShapeIcons(ctx, shape, { halfWidth, halfHeight }, defaultColor);
       }
 
       // Draw label if present (unless custom rendering handles it)

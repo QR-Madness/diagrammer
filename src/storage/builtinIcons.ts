@@ -3,18 +3,24 @@
  *
  * Icons use 24x24 viewBox and currentColor for fill/stroke
  * to allow dynamic coloring when rendered.
+ *
+ * Core categories (arrows, shapes, symbols, tech, general) are loaded eagerly.
+ * Extended categories (cloud providers, devops, etc.) are loaded on-demand.
  */
 
 import type { IconMetadata, IconCategory } from './IconTypes';
+import { LAZY_ICON_CATEGORIES } from './IconTypes';
+import { CATEGORY_LOADERS, type BuiltinIcon } from './icons/index';
 
 /**
- * Built-in icon definition.
+ * Cache for lazily loaded icon categories.
  */
-interface BuiltinIcon {
-  name: string;
-  category: IconCategory;
-  svg: string;
-}
+const lazyIconCache = new Map<IconCategory, IconMetadata[]>();
+
+/**
+ * Loading state for categories.
+ */
+const loadingCategories = new Map<IconCategory, Promise<IconMetadata[]>>();
 
 /**
  * Arrow icons.
@@ -233,9 +239,9 @@ const allBuiltinIcons: BuiltinIcon[] = [
 ];
 
 /**
- * Convert built-in icon to IconMetadata.
+ * Convert built-in icon to IconMetadata (local helper for core icons).
  */
-function toMetadata(icon: BuiltinIcon): IconMetadata {
+function toMetadataLocal(icon: { name: string; category: IconCategory; svg: string }): IconMetadata {
   const id = `builtin:${icon.name.toLowerCase().replace(/\s+/g, '-')}`;
   return {
     id,
@@ -247,23 +253,30 @@ function toMetadata(icon: BuiltinIcon): IconMetadata {
 }
 
 /**
- * Get all built-in icons as IconMetadata.
+ * Get all core built-in icons as IconMetadata.
+ * Does not include lazy-loaded categories.
  */
 export function getBuiltinIcons(): IconMetadata[] {
-  return allBuiltinIcons.map(toMetadata);
+  return allBuiltinIcons.map(toMetadataLocal);
 }
 
 /**
- * Get built-in icons by category.
+ * Get core built-in icons by category.
+ * For lazy categories, use loadLazyCategory instead.
  */
 export function getBuiltinIconsByCategory(category: IconCategory): IconMetadata[] {
+  // Check if this is a lazy category
+  if (isLazyCategory(category)) {
+    return getLazyIconsByCategory(category);
+  }
   return allBuiltinIcons
     .filter((icon) => icon.category === category)
-    .map(toMetadata);
+    .map(toMetadataLocal);
 }
 
 /**
  * Get a specific built-in icon by ID.
+ * Searches both core icons and lazy-loaded icons.
  */
 export function getBuiltinIcon(id: string): IconMetadata | undefined {
   if (!id.startsWith('builtin:')) return undefined;
@@ -273,7 +286,10 @@ export function getBuiltinIcon(id: string): IconMetadata | undefined {
     (i) => i.name.toLowerCase() === name
   );
 
-  return icon ? toMetadata(icon) : undefined;
+  if (icon) return toMetadataLocal(icon);
+
+  // Also search lazy-loaded icons
+  return getLazyIcon(id);
 }
 
 /**
@@ -285,21 +301,133 @@ export function isBuiltinIcon(id: string): boolean {
 
 /**
  * Get all icon categories with counts.
+ * Includes lazy categories (with count 0 if not loaded).
  */
-export function getIconCategories(): Array<{ category: IconCategory; count: number }> {
+export function getIconCategories(): Array<{ category: IconCategory; count: number; lazy: boolean }> {
   const counts = new Map<IconCategory, number>();
 
+  // Count core icons
   for (const icon of allBuiltinIcons) {
     counts.set(icon.category, (counts.get(icon.category) || 0) + 1);
   }
 
-  return Array.from(counts.entries()).map(([category, count]) => ({
+  // Build result with core categories
+  const result: Array<{ category: IconCategory; count: number; lazy: boolean }> = Array.from(
+    counts.entries()
+  ).map(([category, count]) => ({
     category,
     count,
+    lazy: false,
   }));
+
+  // Add lazy categories
+  for (const category of LAZY_ICON_CATEGORIES) {
+    const cached = lazyIconCache.get(category);
+    result.push({
+      category,
+      count: cached?.length || 0,
+      lazy: true,
+    });
+  }
+
+  return result;
 }
 
 /**
- * Total count of built-in icons.
+ * Total count of core built-in icons (eagerly loaded).
  */
 export const BUILTIN_ICON_COUNT = allBuiltinIcons.length;
+
+/**
+ * Load icons for a lazy-loadable category.
+ * Returns cached icons if already loaded.
+ */
+export async function loadLazyCategory(category: IconCategory): Promise<IconMetadata[]> {
+  // Check if already cached
+  const cached = lazyIconCache.get(category);
+  if (cached) return cached;
+
+  // Check if already loading
+  const loading = loadingCategories.get(category);
+  if (loading) return loading;
+
+  // Find the loader
+  const loader = CATEGORY_LOADERS.find((l) => l.category === category);
+  if (!loader) return [];
+
+  // Start loading — loaders now return IconMetadata[] directly
+  const loadPromise = loader.load().then((metadata) => {
+    lazyIconCache.set(category, metadata);
+    loadingCategories.delete(category);
+    return metadata;
+  });
+
+  loadingCategories.set(category, loadPromise);
+  return loadPromise;
+}
+
+/**
+ * Check if a category is lazily loaded.
+ */
+export function isLazyCategory(category: IconCategory): boolean {
+  return LAZY_ICON_CATEGORIES.includes(category);
+}
+
+/**
+ * Check if a lazy category has been loaded.
+ */
+export function isCategoryLoaded(category: IconCategory): boolean {
+  return lazyIconCache.has(category);
+}
+
+/**
+ * Get all loaded lazy icons (for search across all categories).
+ */
+export function getLoadedLazyIcons(): IconMetadata[] {
+  return Array.from(lazyIconCache.values()).flat();
+}
+
+/**
+ * Get icons from a lazy category (returns empty if not loaded).
+ */
+export function getLazyIconsByCategory(category: IconCategory): IconMetadata[] {
+  return lazyIconCache.get(category) || [];
+}
+
+/**
+ * Preload all lazy categories in the background.
+ */
+export async function preloadAllLazyCategories(): Promise<void> {
+  await Promise.all(LAZY_ICON_CATEGORIES.map(loadLazyCategory));
+}
+
+/**
+ * Get a lazy-loaded icon by ID.
+ */
+export function getLazyIcon(id: string): IconMetadata | undefined {
+  if (!id.startsWith('builtin:')) return undefined;
+
+  for (const icons of lazyIconCache.values()) {
+    const icon = icons.find((i) => i.id === id);
+    if (icon) return icon;
+  }
+
+  return undefined;
+}
+
+/**
+ * Get lazy icon categories with their loading state.
+ */
+export function getLazyCategoryStates(): Array<{
+  category: IconCategory;
+  loaded: boolean;
+  loading: boolean;
+  count: number;
+}> {
+  return LAZY_ICON_CATEGORIES.map((category) => ({
+    category,
+    loaded: lazyIconCache.has(category),
+    loading: loadingCategories.has(category),
+    count: lazyIconCache.get(category)?.length || 0,
+  }));
+}

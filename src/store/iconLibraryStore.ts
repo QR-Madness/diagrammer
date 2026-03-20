@@ -19,6 +19,13 @@ import {
   getBuiltinIcon,
   isBuiltinIcon,
   BUILTIN_ICON_COUNT,
+  loadLazyCategory,
+  isLazyCategory,
+  isCategoryLoaded,
+  getLazyIconsByCategory,
+  getLoadedLazyIcons,
+  getLazyCategoryStates,
+  preloadAllLazyCategories,
 } from '../storage/builtinIcons';
 import { blobStorage } from '../storage/BlobStorage';
 import { sanitizeSvg, validateSvg, svgToDataUrl, extractViewBox } from '../utils/svgUtils';
@@ -35,6 +42,10 @@ export interface IconLibraryState {
   isLoading: boolean;
   /** Error message */
   error: string | null;
+  /** Categories currently being loaded */
+  loadingCategories: IconCategory[];
+  /** Categories that have been loaded */
+  loadedCategories: IconCategory[];
 }
 
 /**
@@ -82,6 +93,23 @@ export interface IconLibraryActions {
 
   /** Clear error */
   clearError: () => void;
+
+  /** Load a lazy category (cloud providers, devops, etc.) */
+  loadCategory: (category: IconCategory) => Promise<IconMetadata[]>;
+
+  /** Check if a category is loaded */
+  isCategoryLoaded: (category: IconCategory) => boolean;
+
+  /** Check if a category is loading */
+  isCategoryLoading: (category: IconCategory) => boolean;
+
+  /** Get lazy category states */
+  getCategoryStates: () => Array<{
+    category: IconCategory;
+    loaded: boolean;
+    loading: boolean;
+    count: number;
+  }>;
 }
 
 /**
@@ -92,7 +120,14 @@ const initialState: IconLibraryState = {
   selectedIconId: null,
   isLoading: false,
   error: null,
+  loadingCategories: [],
+  loadedCategories: [],
 };
+
+/**
+ * In-memory cache for fetched SVG content (file-based icons).
+ */
+const svgContentCache = new Map<string, string>();
 
 /**
  * Icon library store.
@@ -153,15 +188,26 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
 
       getAllIcons: () => {
         const { customIcons } = get();
-        return [...getBuiltinIcons(), ...customIcons];
+        // Include core builtin icons + any loaded lazy icons + custom icons
+        return [...getBuiltinIcons(), ...getLoadedLazyIcons(), ...customIcons];
       },
 
       getIconsByCategory: (category: IconCategory) => {
         const { customIcons } = get();
+
+        // Handle lazy categories
+        if (isLazyCategory(category)) {
+          return getLazyIconsByCategory(category);
+        }
+
+        // Handle custom category
+        if (category === 'custom') {
+          return customIcons;
+        }
+
+        // Handle core builtin categories
         const builtin = getBuiltinIcons().filter((i) => i.category === category);
-        const custom = category === 'custom'
-          ? customIcons
-          : customIcons.filter((i) => i.category === category);
+        const custom = customIcons.filter((i) => i.category === category);
         return [...builtin, ...custom];
       },
 
@@ -177,6 +223,11 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
         let icon: IconMetadata | undefined;
         if (isBuiltinIcon(id)) {
           icon = getBuiltinIcon(id);
+          // If not found, the icon may belong to an unloaded lazy category
+          if (!icon) {
+            await preloadAllLazyCategories();
+            icon = getBuiltinIcon(id);
+          }
         } else {
           icon = get().customIcons.find((i) => i.id === id);
         }
@@ -185,7 +236,23 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
 
         let content: string;
 
-        if (icon.type === 'builtin' && icon.svgContent) {
+        if (icon.assetPath) {
+          // File-based icon — fetch SVG from static assets
+          // Check in-memory cache first
+          const cached = svgContentCache.get(id);
+          if (cached) {
+            content = cached;
+          } else {
+            try {
+              const resp = await fetch(icon.assetPath);
+              if (!resp.ok) return undefined;
+              content = await resp.text();
+              svgContentCache.set(id, content);
+            } catch {
+              return undefined;
+            }
+          }
+        } else if (icon.type === 'builtin' && icon.svgContent) {
           content = icon.svgContent;
         } else if (icon.type === 'custom' && icon.blobId) {
           try {
@@ -201,10 +268,10 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
 
         const viewBox = extractViewBox(content);
 
-        // Replace currentColor with a neutral gray for preview rendering
-        // Icons use currentColor for themability, but when rendered as images
-        // currentColor doesn't work - it defaults to black which is invisible in dark mode
-        const previewContent = content.replace(/currentColor/g, '#666666');
+        // Only replace currentColor for single-color icons (not multi-color cloud icons)
+        const previewContent = icon.multiColor
+          ? content
+          : content.replace(/currentColor/g, '#666666');
 
         const result: IconData = {
           ...icon,
@@ -394,6 +461,65 @@ export const useIconLibraryStore = create<IconLibraryState & IconLibraryActions>
 
       clearError: () => {
         set({ error: null });
+      },
+
+      loadCategory: async (category: IconCategory): Promise<IconMetadata[]> => {
+        // If not a lazy category, return empty
+        if (!isLazyCategory(category)) {
+          return [];
+        }
+
+        // If already loaded, return cached
+        if (isCategoryLoaded(category)) {
+          return getLazyIconsByCategory(category);
+        }
+
+        // If already loading, wait for it
+        const state = get();
+        if (state.loadingCategories.includes(category)) {
+          // Wait for the category to be loaded by checking the cache
+          return new Promise((resolve) => {
+            const checkInterval = setInterval(() => {
+              if (isCategoryLoaded(category)) {
+                clearInterval(checkInterval);
+                resolve(getLazyIconsByCategory(category));
+              }
+            }, 50);
+          });
+        }
+
+        // Start loading
+        set((s) => ({
+          loadingCategories: [...s.loadingCategories, category],
+        }));
+
+        try {
+          const icons = await loadLazyCategory(category);
+          set((s) => ({
+            loadingCategories: s.loadingCategories.filter((c) => c !== category),
+            loadedCategories: [...s.loadedCategories, category],
+          }));
+          return icons;
+        } catch (error) {
+          set((s) => ({
+            loadingCategories: s.loadingCategories.filter((c) => c !== category),
+            error: error instanceof Error ? error.message : 'Failed to load category',
+          }));
+          return [];
+        }
+      },
+
+      isCategoryLoaded: (category: IconCategory): boolean => {
+        if (!isLazyCategory(category)) return true; // Core categories are always loaded
+        return isCategoryLoaded(category);
+      },
+
+      isCategoryLoading: (category: IconCategory): boolean => {
+        return get().loadingCategories.includes(category);
+      },
+
+      getCategoryStates: () => {
+        return getLazyCategoryStates();
       },
     }),
     {

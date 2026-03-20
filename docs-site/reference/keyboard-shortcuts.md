@@ -13,6 +13,7 @@ Master Diagrammer with these keyboard shortcuts.
 | Connector | `C` |
 | Text | `T` |
 | Hand (pan) | `H` |
+| Command Pallette | `Ctrl + K` |
 
 ## Canvas Navigation
 

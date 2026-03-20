@@ -153,6 +153,22 @@
   color: white;
 }
 
+.icon-picker-category.lazy {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.icon-picker-category.lazy:hover {
+  opacity: 1;
+}
+
+.icon-picker-category-sep {
+  color: var(--border-color);
+  font-size: 10px;
+  align-self: center;
+  padding: 0 4px;
+}
+
 /* Error */
 .icon-picker-error {
   padding: 8px;
@@ -221,6 +237,50 @@
   padding: 16px;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* Icon preview states */
+.icon-preview-loading {
+  animation: icon-preview-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes icon-preview-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.icon-preview-error {
+  background: var(--bg-tertiary);
+  position: relative;
+}
+
+.icon-preview-error::after {
+  content: '!';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.icon-picker-loading::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: icon-picker-spin 0.6s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes icon-picker-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* Icon preview */

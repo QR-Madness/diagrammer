@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware';
 import { nanoid } from 'nanoid';
 
 /**
+ * Icon position options for shapes.
+ */
+export type IconPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+
+/**
  * Style properties that can be saved in a profile.
  * These are the common style properties across all shape types.
  */
@@ -56,6 +61,18 @@ export interface StyleProfileProperties {
   attributePaddingHorizontal?: number;
   /** Optional - vertical padding for attributes */
   attributePaddingVertical?: number;
+
+  // Icon properties (Rectangle, Ellipse, LibraryShape)
+  /** Optional - icon ID reference */
+  iconId?: string;
+  /** Optional - icon size in pixels */
+  iconSize?: number;
+  /** Optional - icon padding from corner */
+  iconPadding?: number;
+  /** Optional - icon color override */
+  iconColor?: string;
+  /** Optional - icon position */
+  iconPosition?: IconPosition;
 }
 
 /**
@@ -263,11 +280,34 @@ export const useStyleProfileStore = create<StyleProfileState & StyleProfileActio
 );
 
 /**
+ * Options for extracting style properties from a shape.
+ */
+export interface ExtractStyleOptions {
+  /** Include icon properties (iconId, iconSize, iconPadding, iconColor, iconPosition) */
+  includeIconStyle?: boolean;
+  /** Include label properties (labelFontSize, labelColor) */
+  includeLabelStyle?: boolean;
+}
+
+/**
+ * Default options for extractStyleFromShape.
+ */
+const DEFAULT_EXTRACT_OPTIONS: ExtractStyleOptions = {
+  includeIconStyle: true,
+  includeLabelStyle: true,
+};
+
+/**
  * Extract style properties from a shape for creating a profile.
  * Extracts all applicable properties based on the shape type.
+ *
+ * @param shape - The shape to extract styles from
+ * @param options - Options for what to include (default: include all)
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function extractStyleFromShape(shape: any): StyleProfileProperties {
+export function extractStyleFromShape(shape: any, options?: ExtractStyleOptions): StyleProfileProperties {
+  const opts = { ...DEFAULT_EXTRACT_OPTIONS, ...options };
+
   const properties: StyleProfileProperties = {
     fill: shape.fill ?? null,
     stroke: shape.stroke ?? null,
@@ -280,12 +320,14 @@ export function extractStyleFromShape(shape: any): StyleProfileProperties {
     properties.cornerRadius = shape.cornerRadius;
   }
 
-  // Label properties
-  if (typeof shape.labelFontSize === 'number') {
-    properties.labelFontSize = shape.labelFontSize;
-  }
-  if (typeof shape.labelColor === 'string') {
-    properties.labelColor = shape.labelColor;
+  // Label properties (conditionally included)
+  if (opts.includeLabelStyle) {
+    if (typeof shape.labelFontSize === 'number') {
+      properties.labelFontSize = shape.labelFontSize;
+    }
+    if (typeof shape.labelColor === 'string') {
+      properties.labelColor = shape.labelColor;
+    }
   }
 
   // Text shape properties
@@ -338,6 +380,25 @@ export function extractStyleFromShape(shape: any): StyleProfileProperties {
     }
   }
 
+  // Icon properties (conditionally included)
+  if (opts.includeIconStyle) {
+    if (typeof shape.iconId === 'string') {
+      properties.iconId = shape.iconId;
+    }
+    if (typeof shape.iconSize === 'number') {
+      properties.iconSize = shape.iconSize;
+    }
+    if (typeof shape.iconPadding === 'number') {
+      properties.iconPadding = shape.iconPadding;
+    }
+    if (typeof shape.iconColor === 'string') {
+      properties.iconColor = shape.iconColor;
+    }
+    if (typeof shape.iconPosition === 'string') {
+      properties.iconPosition = shape.iconPosition as IconPosition;
+    }
+  }
+
   return properties;
 }
 
@@ -359,6 +420,8 @@ const SHAPE_CATEGORIES = {
   groups: new Set(['group']),
   /** ERD entity shapes with table styling */
   erdEntities: new Set(['erd-entity', 'erd-weak-entity']),
+  /** Shapes that support icons */
+  withIcons: new Set(['rectangle', 'ellipse']),
 } as const;
 
 /**
@@ -477,6 +540,26 @@ export function getProfileUpdates(
     }
   }
 
+  // Icon properties - rectangles, ellipses, and library shapes
+  const supportsIcons = SHAPE_CATEGORIES.withIcons.has(shapeType) || isLibraryShape(shapeType);
+  if (supportsIcons) {
+    if (props.iconId !== undefined) {
+      updates.iconId = props.iconId;
+    }
+    if (props.iconSize !== undefined) {
+      updates.iconSize = props.iconSize;
+    }
+    if (props.iconPadding !== undefined) {
+      updates.iconPadding = props.iconPadding;
+    }
+    if (props.iconColor !== undefined) {
+      updates.iconColor = props.iconColor;
+    }
+    if (props.iconPosition !== undefined) {
+      updates.iconPosition = props.iconPosition;
+    }
+  }
+
   return updates;
 }
 
@@ -549,6 +632,11 @@ export function getApplicablePropertyNames(shapeType: string): string[] {
 
   if (isERDEntityShape(shapeType)) {
     names.push('Row Colors', 'Padding', 'Separator Inset');
+  }
+
+  const supportsIcons = SHAPE_CATEGORIES.withIcons.has(shapeType) || isLibraryShape(shapeType);
+  if (supportsIcons) {
+    names.push('Icon', 'Icon Size', 'Icon Position');
   }
 
   return names;

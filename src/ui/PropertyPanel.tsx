@@ -17,6 +17,10 @@ import {
   VerticalAlign,
   RoutingMode,
   IconPosition,
+  IconDisplayMode,
+  IconBadgeShape,
+  IconConfig,
+  DEFAULT_BADGE_CONFIG,
   ERDCardinality,
   ConnectorType,
   LineStyle,
@@ -34,6 +38,7 @@ import { PatternPicker } from './PatternPicker';
 import { ShadowEditor } from './ShadowEditor';
 import { BorderStylePicker } from './BorderStylePicker';
 import { LabelPositionPicker } from './LabelPositionPicker';
+import { IconListEditor } from './IconListEditor';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 // GroupStyles types are used via the PatternPicker, ShadowEditor, LabelPositionPicker components
 import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
@@ -373,57 +378,202 @@ function LibraryShapeProperties({
 
       {/* Icon Section */}
       {metadata.supportsIcon && (
-        <PropertySection id="icon" title={SECTION_LABELS.icon} defaultExpanded={false}>
-          <IconPicker
-            value={shape.iconId}
-            onChange={(iconId: string | undefined) => handleUpdate('iconId', iconId || '')}
-          />
-          {shape.iconId && (
+        <PropertySection id="icon" title="Icons" defaultExpanded={false}>
+          {/* Multi-icon mode: shape has icons array */}
+          {(shape.icons && shape.icons.length > 0) ? (
+            <IconListEditor
+              icons={shape.icons}
+              defaultColor={shape.stroke || '#333333'}
+              onChange={(icons) => handleUpdate('icons', icons)}
+            />
+          ) : (
+            /* Legacy single-icon mode or no icons */
             <>
-              <CompactNumberInput
-                label="Size"
-                value={shape.iconSize || 24}
-                onChange={(val) => handleUpdate('iconSize', val)}
-                min={12}
-                max={64}
+              <IconPicker
+                value={shape.iconId}
+                onChange={(iconId: string | undefined) => handleUpdate('iconId', iconId || '')}
               />
-              <CompactNumberInput
-                label="Padding"
-                value={shape.iconPadding || 8}
-                onChange={(val) => handleUpdate('iconPadding', val)}
-                min={0}
-                max={32}
-              />
-              <div className="compact-select-row">
-                <label className="compact-select-label">Position</label>
-                <select
-                  value={shape.iconPosition || 'top-left'}
-                  onChange={(e) => handleUpdate('iconPosition', e.target.value as IconPosition)}
-                  className="compact-select"
-                >
-                  <option value="top-left">Top Left</option>
-                  <option value="top-right">Top Right</option>
-                  <option value="bottom-left">Bottom Left</option>
-                  <option value="bottom-right">Bottom Right</option>
-                  <option value="center">Center</option>
-                </select>
-              </div>
-              <div className="icon-color-row">
-                <CompactColorInput
-                  label="Color"
-                  value={shape.iconColor || shape.stroke || '#333333'}
-                  onChange={(color) => handleUpdate('iconColor', color)}
-                />
-                {shape.iconColor && (
+              {shape.iconId && (
+                <>
+                  {/* Migrate to multi-icon button */}
                   <button
-                    className="icon-color-reset"
-                    onClick={() => handleUpdate('iconColor', '')}
-                    title="Reset to stroke color"
+                    className="migrate-to-multi-icon"
+                    onClick={() => {
+                      // Convert legacy icon to icons array
+                      const legacyIcon: IconConfig = {
+                        iconId: shape.iconId!,
+                        position: shape.iconPosition || 'top-left',
+                      };
+                      if (shape.iconSize) legacyIcon.size = shape.iconSize;
+                      if (shape.iconPadding) legacyIcon.padding = shape.iconPadding;
+                      if (shape.iconColor) legacyIcon.color = shape.iconColor;
+                      if (shape.iconDisplayMode) legacyIcon.displayMode = shape.iconDisplayMode;
+                      if (shape.iconBadge) legacyIcon.badge = shape.iconBadge;
+
+                      handleUpdate('icons', [legacyIcon]);
+                      handleUpdate('iconId', '');
+                    }}
+                    title="Convert to multi-icon mode to add more icons"
                   >
-                    Reset
+                    + Add More Icons
                   </button>
-                )}
-              </div>
+
+                  {/* Display Mode */}
+                  <div className="compact-select-row">
+                    <label className="compact-select-label">Mode</label>
+                    <select
+                      value={shape.iconDisplayMode || 'inside'}
+                      onChange={(e) => handleUpdate('iconDisplayMode', e.target.value as IconDisplayMode)}
+                      className="compact-select"
+                    >
+                      <option value="inside">Inside</option>
+                      <option value="badge">Badge</option>
+                      <option value="icon-only">Icon Only</option>
+                    </select>
+                  </div>
+
+                  <CompactNumberInput
+                    label="Size"
+                    value={shape.iconSize || 24}
+                    onChange={(val) => handleUpdate('iconSize', val)}
+                    min={12}
+                    max={64}
+                  />
+
+                  {/* Hide padding/position for icon-only mode */}
+                  {shape.iconDisplayMode !== 'icon-only' && (
+                    <>
+                      <CompactNumberInput
+                        label="Padding"
+                        value={shape.iconPadding || 8}
+                        onChange={(val) => handleUpdate('iconPadding', val)}
+                        min={0}
+                        max={32}
+                      />
+                      <div className="compact-select-row">
+                        <label className="compact-select-label">Position</label>
+                        <select
+                          value={shape.iconPosition || 'top-left'}
+                          onChange={(e) => handleUpdate('iconPosition', e.target.value as IconPosition)}
+                          className="compact-select"
+                        >
+                          <optgroup label="Corners">
+                            <option value="top-left">Top Left</option>
+                            <option value="top-right">Top Right</option>
+                            <option value="bottom-left">Bottom Left</option>
+                            <option value="bottom-right">Bottom Right</option>
+                          </optgroup>
+                          <optgroup label="Edges">
+                            <option value="top">Top Center</option>
+                            <option value="bottom">Bottom Center</option>
+                            <option value="left">Left Center</option>
+                            <option value="right">Right Center</option>
+                          </optgroup>
+                          <optgroup label="Other">
+                            <option value="center">Center</option>
+                          </optgroup>
+                          <optgroup label="Outside">
+                            <option value="top-left-outer">Top Left (Outside)</option>
+                            <option value="top-right-outer">Top Right (Outside)</option>
+                            <option value="bottom-left-outer">Bottom Left (Outside)</option>
+                            <option value="bottom-right-outer">Bottom Right (Outside)</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="icon-color-row">
+                    <CompactColorInput
+                      label="Color"
+                      value={shape.iconColor || shape.stroke || '#333333'}
+                      onChange={(color) => handleUpdate('iconColor', color)}
+                    />
+                    {shape.iconColor && (
+                      <button
+                        className="icon-color-reset"
+                        onClick={() => handleUpdate('iconColor', '')}
+                        title="Reset to stroke color"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Badge Options */}
+                  {shape.iconDisplayMode === 'badge' && (
+                    <div className="badge-options">
+                      <div className="badge-options-header">Badge Options</div>
+                      <div className="compact-select-row">
+                        <label className="compact-select-label">Shape</label>
+                        <select
+                          value={shape.iconBadge?.shape || 'circle'}
+                          onChange={(e) => {
+                            const currentBadge = shape.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                            handleUpdate('iconBadge', { ...currentBadge, shape: e.target.value as IconBadgeShape });
+                          }}
+                          className="compact-select"
+                        >
+                          <option value="circle">Circle</option>
+                          <option value="rounded-rect">Rounded</option>
+                          <option value="square">Square</option>
+                        </select>
+                      </div>
+                      <CompactColorInput
+                        label="Background"
+                        value={shape.iconBadge?.backgroundColor || '#ffffff'}
+                        onChange={(color) => {
+                          const currentBadge = shape.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                          handleUpdate('iconBadge', { ...currentBadge, backgroundColor: color });
+                        }}
+                      />
+                      <CompactColorInput
+                        label="Border"
+                        value={shape.iconBadge?.borderColor || ''}
+                        onChange={(color) => {
+                          const currentBadge = shape.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                          const updatedBadge = {
+                            ...currentBadge,
+                            borderWidth: color ? (currentBadge.borderWidth || 1) : 0,
+                          };
+                          if (color) {
+                            updatedBadge.borderColor = color;
+                          } else {
+                            delete updatedBadge.borderColor;
+                          }
+                          handleUpdate('iconBadge', updatedBadge);
+                        }}
+                      />
+                      {shape.iconBadge?.borderColor && (
+                        <CompactNumberInput
+                          label="Border Width"
+                          value={shape.iconBadge?.borderWidth || 1}
+                          onChange={(val) => {
+                            const currentBadge = shape.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                            handleUpdate('iconBadge', { ...currentBadge, borderWidth: val });
+                          }}
+                          min={0}
+                          max={4}
+                          suffix="px"
+                        />
+                      )}
+                      <div className="compact-checkbox-row">
+                        <label className="compact-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={shape.iconBadge?.shadow || false}
+                            onChange={(e) => {
+                              const currentBadge = shape.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                              handleUpdate('iconBadge', { ...currentBadge, shadow: e.target.checked });
+                            }}
+                          />
+                          Shadow
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
         </PropertySection>
@@ -1445,98 +1595,291 @@ export function PropertyPanel() {
 
         {/* Icon Section for Rectangle and Ellipse */}
         {(isRectangle(shape) || isEllipse(shape)) && (
-          <PropertySection id="icon" title="Icon" defaultExpanded={false}>
-            <IconPicker
-              value={shape.iconId}
-              onChange={(iconId: string | undefined) => {
-                selectedShapes.forEach((s) => {
-                  if (isRectangle(s) || isEllipse(s)) {
-                    // Use empty string to clear icon (falsy in render check)
-                    updateShape(s.id, { iconId: iconId || '' });
-                  }
-                });
-              }}
-            />
-            {shape.iconId && (
+          <PropertySection id="icon" title="Icons" defaultExpanded={false}>
+            {/* Multi-icon mode: shape has icons array */}
+            {(shape.icons && shape.icons.length > 0) ? (
+              <IconListEditor
+                icons={shape.icons}
+                defaultColor={shape.stroke || '#333333'}
+                onChange={(icons) => {
+                  selectedShapes.forEach((s) => {
+                    if (isRectangle(s) || isEllipse(s)) {
+                      updateShape(s.id, { icons });
+                    }
+                  });
+                }}
+              />
+            ) : (
+              /* Legacy single-icon mode or no icons */
               <>
-                <CompactNumberInput
-                  label="Size"
-                  value={shape.iconSize || 24}
-                  onChange={(val) => {
+                <IconPicker
+                  value={shape.iconId}
+                  onChange={(iconId: string | undefined) => {
                     selectedShapes.forEach((s) => {
                       if (isRectangle(s) || isEllipse(s)) {
-                        updateShape(s.id, { iconSize: val });
+                        updateShape(s.id, { iconId: iconId || '' });
                       }
                     });
                   }}
-                  min={12}
-                  max={64}
-                  suffix="px"
                 />
-                <CompactNumberInput
-                  label="Padding"
-                  value={shape.iconPadding || 8}
-                  onChange={(val) => {
-                    selectedShapes.forEach((s) => {
-                      if (isRectangle(s) || isEllipse(s)) {
-                        updateShape(s.id, { iconPadding: val });
-                      }
-                    });
-                  }}
-                  min={0}
-                  max={32}
-                  suffix="px"
-                />
-                <div className="compact-select-row">
-                  <label className="compact-select-label">Position</label>
-                  <select
-                    value={shape.iconPosition || 'top-left'}
-                    onChange={(e) => {
-                      const val = e.target.value as IconPosition;
-                      selectedShapes.forEach((s) => {
-                        if (isRectangle(s) || isEllipse(s)) {
-                          updateShape(s.id, { iconPosition: val });
-                        }
-                      });
-                    }}
-                    className="compact-select"
-                  >
-                    <option value="top-left">Top Left</option>
-                    <option value="top-right">Top Right</option>
-                    <option value="bottom-left">Bottom Left</option>
-                    <option value="bottom-right">Bottom Right</option>
-                    <option value="center">Center</option>
-                  </select>
-                </div>
-                <div className="icon-color-row">
-                  <CompactColorInput
-                    label="Color"
-                    value={shape.iconColor || shape.stroke || '#333333'}
-                    onChange={(color) => {
-                      selectedShapes.forEach((s) => {
-                        if (isRectangle(s) || isEllipse(s)) {
-                          updateShape(s.id, { iconColor: color });
-                        }
-                      });
-                    }}
-                  />
-                  {shape.iconColor && (
+                {shape.iconId && (
+                  <>
+                    {/* Migrate to multi-icon button */}
                     <button
-                      className="icon-color-reset"
+                      className="migrate-to-multi-icon"
                       onClick={() => {
                         selectedShapes.forEach((s) => {
-                          if (isRectangle(s) || isEllipse(s)) {
-                            // Use empty string to reset - falsy value triggers stroke fallback
-                            updateShape(s.id, { iconColor: '' });
+                          if ((isRectangle(s) || isEllipse(s)) && s.iconId) {
+                            // Convert legacy icon to icons array
+                            const legacyIcon: IconConfig = {
+                              iconId: s.iconId,
+                              position: s.iconPosition || 'top-left',
+                            };
+                            if (s.iconSize) legacyIcon.size = s.iconSize;
+                            if (s.iconPadding) legacyIcon.padding = s.iconPadding;
+                            if (s.iconColor) legacyIcon.color = s.iconColor;
+                            if (s.iconDisplayMode) legacyIcon.displayMode = s.iconDisplayMode;
+                            if (s.iconBadge) legacyIcon.badge = s.iconBadge;
+
+                            updateShape(s.id, {
+                              icons: [legacyIcon],
+                              // Clear legacy properties
+                              iconId: '',
+                            });
                           }
                         });
                       }}
-                      title="Reset to stroke color"
+                      title="Convert to multi-icon mode to add more icons"
                     >
-                      Reset
+                      + Add More Icons
                     </button>
-                  )}
-                </div>
+
+                    {/* Display Mode Selector */}
+                    <div className="compact-select-row">
+                      <label className="compact-select-label">Mode</label>
+                      <select
+                        value={shape.iconDisplayMode || 'inside'}
+                        onChange={(e) => {
+                          const val = e.target.value as IconDisplayMode;
+                          selectedShapes.forEach((s) => {
+                            if (isRectangle(s) || isEllipse(s)) {
+                              updateShape(s.id, { iconDisplayMode: val });
+                            }
+                          });
+                        }}
+                        className="compact-select"
+                      >
+                        <option value="inside">Inside</option>
+                        <option value="badge">Badge</option>
+                        <option value="icon-only">Icon Only</option>
+                      </select>
+                    </div>
+
+                    <CompactNumberInput
+                      label="Size"
+                      value={shape.iconSize || 24}
+                      onChange={(val) => {
+                        selectedShapes.forEach((s) => {
+                          if (isRectangle(s) || isEllipse(s)) {
+                            updateShape(s.id, { iconSize: val });
+                          }
+                        });
+                      }}
+                      min={12}
+                      max={64}
+                      suffix="px"
+                    />
+
+                    {/* Hide padding/position for icon-only mode */}
+                    {shape.iconDisplayMode !== 'icon-only' && (
+                      <>
+                        <CompactNumberInput
+                          label="Padding"
+                          value={shape.iconPadding || 8}
+                          onChange={(val) => {
+                            selectedShapes.forEach((s) => {
+                              if (isRectangle(s) || isEllipse(s)) {
+                                updateShape(s.id, { iconPadding: val });
+                              }
+                            });
+                          }}
+                          min={0}
+                          max={32}
+                          suffix="px"
+                        />
+                        <div className="compact-select-row">
+                          <label className="compact-select-label">Position</label>
+                          <select
+                            value={shape.iconPosition || 'top-left'}
+                            onChange={(e) => {
+                              const val = e.target.value as IconPosition;
+                              selectedShapes.forEach((s) => {
+                                if (isRectangle(s) || isEllipse(s)) {
+                                  updateShape(s.id, { iconPosition: val });
+                                }
+                              });
+                            }}
+                            className="compact-select"
+                          >
+                            <optgroup label="Corners">
+                              <option value="top-left">Top Left</option>
+                              <option value="top-right">Top Right</option>
+                              <option value="bottom-left">Bottom Left</option>
+                              <option value="bottom-right">Bottom Right</option>
+                            </optgroup>
+                            <optgroup label="Edges">
+                              <option value="top">Top Center</option>
+                              <option value="bottom">Bottom Center</option>
+                              <option value="left">Left Center</option>
+                              <option value="right">Right Center</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                              <option value="center">Center</option>
+                            </optgroup>
+                            <optgroup label="Outside">
+                              <option value="top-left-outer">Top Left (Outside)</option>
+                              <option value="top-right-outer">Top Right (Outside)</option>
+                              <option value="bottom-left-outer">Bottom Left (Outside)</option>
+                              <option value="bottom-right-outer">Bottom Right (Outside)</option>
+                            </optgroup>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="icon-color-row">
+                      <CompactColorInput
+                        label="Color"
+                        value={shape.iconColor || shape.stroke || '#333333'}
+                        onChange={(color) => {
+                          selectedShapes.forEach((s) => {
+                            if (isRectangle(s) || isEllipse(s)) {
+                              updateShape(s.id, { iconColor: color });
+                            }
+                          });
+                        }}
+                      />
+                      {shape.iconColor && (
+                        <button
+                          className="icon-color-reset"
+                          onClick={() => {
+                            selectedShapes.forEach((s) => {
+                              if (isRectangle(s) || isEllipse(s)) {
+                                updateShape(s.id, { iconColor: '' });
+                              }
+                            });
+                          }}
+                          title="Reset to stroke color"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Badge Options (when mode = 'badge') */}
+                    {shape.iconDisplayMode === 'badge' && (
+                      <div className="badge-options">
+                        <div className="badge-options-header">Badge Options</div>
+                        <div className="compact-select-row">
+                          <label className="compact-select-label">Shape</label>
+                          <select
+                            value={shape.iconBadge?.shape || 'circle'}
+                            onChange={(e) => {
+                              const badgeShape = e.target.value as IconBadgeShape;
+                              selectedShapes.forEach((s) => {
+                                if (isRectangle(s) || isEllipse(s)) {
+                                  const currentBadge = s.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                                  updateShape(s.id, {
+                                    iconBadge: { ...currentBadge, shape: badgeShape },
+                                  });
+                                }
+                              });
+                            }}
+                            className="compact-select"
+                          >
+                            <option value="circle">Circle</option>
+                            <option value="rounded-rect">Rounded</option>
+                            <option value="square">Square</option>
+                          </select>
+                        </div>
+                        <CompactColorInput
+                          label="Background"
+                          value={shape.iconBadge?.backgroundColor || '#ffffff'}
+                          onChange={(color) => {
+                            selectedShapes.forEach((s) => {
+                              if (isRectangle(s) || isEllipse(s)) {
+                                const currentBadge = s.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                                updateShape(s.id, {
+                                  iconBadge: { ...currentBadge, backgroundColor: color },
+                                });
+                              }
+                            });
+                          }}
+                        />
+                        <CompactColorInput
+                          label="Border"
+                          value={shape.iconBadge?.borderColor || ''}
+                          onChange={(color) => {
+                            selectedShapes.forEach((s) => {
+                              if (isRectangle(s) || isEllipse(s)) {
+                                const currentBadge = s.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                                const updatedBadge = {
+                                  ...currentBadge,
+                                  borderWidth: color ? (currentBadge.borderWidth || 1) : 0,
+                                };
+                                if (color) {
+                                  updatedBadge.borderColor = color;
+                                } else {
+                                  delete updatedBadge.borderColor;
+                                }
+                                updateShape(s.id, { iconBadge: updatedBadge });
+                              }
+                            });
+                          }}
+                        />
+                        {shape.iconBadge?.borderColor && (
+                          <CompactNumberInput
+                            label="Border Width"
+                            value={shape.iconBadge?.borderWidth || 1}
+                            onChange={(val) => {
+                              selectedShapes.forEach((s) => {
+                                if (isRectangle(s) || isEllipse(s)) {
+                                  const currentBadge = s.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                                  updateShape(s.id, {
+                                    iconBadge: { ...currentBadge, borderWidth: val },
+                                  });
+                                }
+                              });
+                            }}
+                            min={0}
+                            max={4}
+                            suffix="px"
+                          />
+                        )}
+                        <div className="compact-checkbox-row">
+                          <label className="compact-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={shape.iconBadge?.shadow || false}
+                              onChange={(e) => {
+                                const shadow = e.target.checked;
+                                selectedShapes.forEach((s) => {
+                                  if (isRectangle(s) || isEllipse(s)) {
+                                    const currentBadge = s.iconBadge || { ...DEFAULT_BADGE_CONFIG };
+                                    updateShape(s.id, {
+                                      iconBadge: { ...currentBadge, shadow },
+                                    });
+                                  }
+                                });
+                              }}
+                            />
+                            Shadow
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </>
             )}
           </PropertySection>
