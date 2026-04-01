@@ -96,49 +96,53 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
 - **Lazy loading tiers**: Off-screen (nothing) → On-screen (thumbnail) → Modal open (full content)
 - **Separate blob sync**: HTTP endpoints for large files, WebSocket for shape metadata only
 
-#### Phase 17.1: Core Infrastructure
+#### Phase 17.1: Core Infrastructure ✅
 
-- [ ] **FileShape type definition** (`src/types/FileShape.ts`)
-  - Extends BaseShape with: `blobRef`, `fileName`, `mimeType`, `fileSize`
+- [x] **FileShape type definition** (`src/shapes/Shape.ts`)
+  - Extends BaseShape with: `blobRef`, `fileName`, `mimeType`, `fileSize`, `fileCategory`
   - Preview metadata: `thumbnail` (base64), `pageCount`, `dimensions`
-  - Supported categories: `pdf`, `spreadsheet`, `generic`
+  - Supported categories: `pdf`, `spreadsheet`, `image`, `text`, `generic`
 
-- [ ] **File shape handlers** (`src/shapes/files/`)
-  - `BaseFileHandler.ts` — Common: bounds, selection, download action
-  - `PdfHandler.ts` — PDF icon, page count badge, thumbnail render
-  - `SpreadsheetHandler.ts` — Table icon, row/column count badge
-  - `GenericFileHandler.ts` — File type icon + filename fallback
-  - Register all handlers in ShapeRegistry
+- [x] **File shape handler** (`src/shapes/FileShape.ts`)
+  - Unified handler: thumbnail card rendering, bounds, hitTest, handles, anchors
+  - Registered in ShapeRegistry with PropertyPanel metadata
 
-- [ ] **Thumbnail generation service** (`src/services/ThumbnailGenerator.ts`)
-  - Web Worker for non-blocking generation
-  - PDF: Render page 1 at ~400px width via pdf.js → JPEG blob
-  - XLSX/CSV: Generate mini-table preview or use generic icon
+- [x] **File utility functions** (`src/utils/fileUtils.ts`)
+  - MIME type detection, file category mapping, size formatting, icon lookup
+
+- [x] **Thumbnail generation service** (`src/services/ThumbnailGenerator.ts`)
+  - Async main-thread generation (images via canvas, PDFs via pdf.js, text preview)
   - Store thumbnail in shape's `preview.thumbnail` field
 
-#### Phase 17.2: Content Viewer Modal
+- [x] **Blob reference tracking**
+  - Extended `persistenceStore`, `AssetBundler`, `ArchiveUtils`, `StorageManager`, `StorageSettings`
+  - FileShape `blobRef` fields scanned for GC protection
 
-- [ ] **FileViewerModal component** (`src/ui/FileViewerModal.tsx`)
-  - Full-screen modal with close button, download, replace actions
-  - File type detection and appropriate viewer dispatch
+#### Phase 17.2: Content Viewer Modal ✅
 
-- [ ] **PDF viewer** (`src/ui/viewers/PdfViewer.tsx`)
-  - pdf.js integration for rendering
+- [x] **FileViewerModal component** (`src/ui/FileViewerModal.tsx`)
+  - Full-screen modal with close button, download action
+  - File type detection and lazy viewer dispatch via `React.lazy()`
+  - Double-click on FileShape opens modal (via ToolContext + SelectTool)
+
+- [x] **PDF viewer** (`src/ui/viewers/PdfViewer.tsx`)
+  - pdf.js integration for rendering (lazy-loaded)
   - Page navigation (prev/next, page number input)
-  - Zoom controls
-  - Lazy page loading (render visible pages only)
-  - BONUS: Cache the viewer's position in the document upon close
+  - Zoom controls (fit-width, fit-page, manual ±25%)
 
-- [ ] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
-  - SheetJS (xlsx) for parsing XLSX/CSV
+- [x] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
+  - SheetJS (xlsx) for parsing XLSX/CSV (lazy-loaded)
   - Table rendering with virtual scrolling for large datasets
   - Sheet tabs for multi-sheet workbooks
-  - Basic cell formatting preservation
 
-- [ ] **Generic file viewer** (`src/ui/viewers/GenericFileViewer.tsx`)
-  - File icon, name, size, type display
-  - Download button
-  - "No preview available" message
+- [x] **Image viewer** (`src/ui/viewers/ImageViewer.tsx`)
+  - Full-resolution display with zoom (fit/100%/manual) and pan
+
+- [x] **Text viewer** (`src/ui/viewers/TextViewer.tsx`)
+  - Monospace rendering with line numbers and word wrap toggle
+
+- [x] **Generic file viewer** (`src/ui/viewers/GenericFileViewer.tsx`)
+  - File icon, name, size, type display, "No preview available" message
 
 #### Phase 17.3: File Import Flow
 
