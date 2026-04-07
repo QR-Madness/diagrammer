@@ -184,24 +184,24 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
   - `BlobGarbageCollector` already scans FileShape `blobRef` fields
   - `extractShapeBlobIds()` in persistenceStore, StorageManager, StorageSettings
 
-#### Phase 17.5: Collaboration Support
+#### Phase 17.5: Collaboration Support ✅
 
-- [ ] **HTTP blob endpoints** (Rust backend)
+- [x] **HTTP blob endpoints** (Rust backend)
   - `POST /api/blobs/:hash` — Upload blob with hash verification
   - `GET /api/blobs/:hash` — Download blob by hash
   - `HEAD /api/blobs/:hash` — Check blob existence
-  - Chunked upload/download for large files (>10MB)
+  - Standard HTTP streaming (retry logic handles failed uploads)
   - Authentication via JWT token header
 
-- [ ] **Blob sync protocol**
+- [x] **Blob sync protocol**
   - On shape sync, client checks if blob exists locally
   - If missing, fetch via HTTP endpoint
-  - Progress indicator for large file downloads
+  - Progress indicator in status bar during file sync
   - Retry logic with exponential backoff
 
-- [ ] **AssetBundler extension**
-  - Update `bundleDocumentWithAssets()` to include file blobs
-  - Handle large files (consider compression or external references)
+- [x] **AssetBundler extension**
+  - Added `mode` option: 'embed' (base64) or 'reference' (keep hash refs)
+  - Reference mode for collaboration (blobs synced via HTTP separately)
 
 #### Phase 17.6: Polish & Edge Cases
 

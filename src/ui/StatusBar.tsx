@@ -7,11 +7,25 @@
  * - Current active tool
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSessionStore } from '../store/sessionStore';
 import { useDocumentStore } from '../store/documentStore';
 import { calculateCombinedBounds } from '../shapes/utils/bounds';
 import './StatusBar.css';
+
+/**
+ * Format blob sync phase for display.
+ */
+function formatSyncPhase(phase: 'checking' | 'uploading' | 'downloading'): string {
+  switch (phase) {
+    case 'checking':
+      return 'Checking';
+    case 'uploading':
+      return 'Uploading';
+    case 'downloading':
+      return 'Downloading';
+  }
+}
 
 /**
  * Zoom preset values.
@@ -26,7 +40,14 @@ export function StatusBar() {
   const setCamera = useSessionStore((state) => state.setCamera);
   const activeTool = useSessionStore((state) => state.activeTool);
   const cursorWorldPosition = useSessionStore((state) => state.cursorWorldPosition);
+  const blobSyncProgress = useSessionStore((state) => state.blobSyncProgress);
   const shapeCount = useDocumentStore((state) => state.shapeOrder.length);
+
+  // Memoize sync status text
+  const syncStatusText = useMemo(() => {
+    if (!blobSyncProgress) return null;
+    return `${formatSyncPhase(blobSyncProgress.phase)} files: ${blobSyncProgress.current}/${blobSyncProgress.total}`;
+  }, [blobSyncProgress]);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
@@ -120,6 +141,15 @@ export function StatusBar() {
 
       {/* Right Section: Info */}
       <div className="status-bar-section status-bar-right">
+        {/* Blob Sync Progress */}
+        {syncStatusText && (
+          <>
+            <span className="status-bar-sync" title="File sync in progress">
+              {syncStatusText}
+            </span>
+            <div className="status-bar-divider" />
+          </>
+        )}
         <span className="status-bar-info">
           <span className="status-bar-label">Shapes:</span>
           <span className="status-bar-value">{shapeCount.toLocaleString()}</span>

@@ -41,3 +41,7 @@ export type {
 
 export { SyncStateManager, getSyncStateManager, resetSyncStateManager } from './SyncStateManager';
 export type { SyncStateManagerOptions, SyncManagerState } from './SyncStateManager';
+
+// Blob sync service (Phase 17.5)
+export { BlobSyncService } from './BlobSyncService';
+export type { BlobSyncServiceOptions, BlobSyncProgress, BlobSyncResult } from './BlobSyncService';

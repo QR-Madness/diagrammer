@@ -33,6 +33,23 @@ export interface BundleResult {
 }
 
 /**
+ * Options for bundling documents.
+ */
+export interface BundleOptions {
+  /**
+   * Bundling mode:
+   * - 'embed': Convert blob refs to base64 data URLs (for export/offline)
+   * - 'reference': Keep blob refs as-is (for collaboration via HTTP blob sync)
+   */
+  mode?: 'embed' | 'reference' | undefined;
+  /**
+   * In 'reference' mode, optionally embed small files under this size (bytes).
+   * Default: 0 (don't embed anything in reference mode)
+   */
+  maxEmbedSize?: number | undefined;
+}
+
+/**
  * Result of extracting assets from a bundled document.
  */
 export interface ExtractResult {
@@ -216,11 +233,69 @@ async function extractEmbeddedAssets(
  * to other clients.
  *
  * @param document - The document to bundle
+ * @param options - Bundling options
  * @returns Bundled document with embedded assets
  */
 export async function bundleDocumentWithAssets(
-  document: DiagramDocument
+  document: DiagramDocument,
+  options: BundleOptions = {}
 ): Promise<BundleResult> {
+  const mode = options.mode ?? 'embed';
+  const maxEmbedSize = options.maxEmbedSize ?? 0;
+
+  // In reference mode, skip embedding (blobs are synced via HTTP)
+  if (mode === 'reference') {
+    // Find all blob references to report count
+    const blobIds = new Set<string>();
+    findBlobReferences(document, blobIds);
+
+    if (document.blobReferences) {
+      for (const id of document.blobReferences) {
+        blobIds.add(id);
+      }
+    }
+
+    // If maxEmbedSize is set, embed only small files
+    if (maxEmbedSize > 0) {
+      const replacements = new Map<string, string>();
+      let totalSize = 0;
+
+      for (const blobId of blobIds) {
+        try {
+          const metadata = await blobStorage.getBlobMetadata(blobId);
+          if (metadata && metadata.size <= maxEmbedSize) {
+            const blob = await blobStorage.loadBlob(blobId);
+            if (blob) {
+              const dataUrl = await blobToDataUrl(blob);
+              replacements.set(blobId, dataUrl);
+              totalSize += blob.size;
+            }
+          }
+        } catch (error) {
+          // Skip this blob
+        }
+      }
+
+      if (replacements.size > 0) {
+        const bundledDoc = replaceReferences(document, replacements) as DiagramDocument;
+        return {
+          document: bundledDoc,
+          assetCount: replacements.size,
+          totalSize,
+        };
+      }
+    }
+
+    // Return document unchanged - blob refs stay as-is for HTTP sync
+    return {
+      document,
+      assetCount: 0,
+      totalSize: 0,
+    };
+  }
+
+  // Embed mode: Convert all blob refs to data URLs
+
   // Find all blob references in the document
   const blobIds = new Set<string>();
   findBlobReferences(document, blobIds);

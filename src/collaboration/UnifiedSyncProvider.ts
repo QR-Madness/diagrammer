@@ -55,6 +55,8 @@ import {
   type DocTransferResponse,
 } from './protocol';
 import { useConnectionStore, type ConnectionStatus, type AuthenticatedUser } from '../store/connectionStore';
+import { useSessionStore } from '../store/sessionStore';
+import { BlobSyncService, type BlobSyncProgress } from './BlobSyncService';
 
 // ============ Types ============
 
@@ -98,6 +100,8 @@ export interface UnifiedSyncProviderOptions {
   onSynced?: (() => void) | undefined;
   /** Called when authentication completes */
   onAuthenticated?: ((success: boolean, user?: AuthenticatedUser) => void) | undefined;
+  /** Called during blob sync operations (upload/download progress) */
+  onBlobSyncProgress?: ((progress: BlobSyncProgress) => void) | undefined;
   /** Called when document event received */
   onDocumentEvent?: ((event: DocEvent) => void) | undefined;
 }
@@ -117,6 +121,7 @@ interface ResolvedSyncProviderOptions {
   onSynced: () => void;
   onAuthenticated: (success: boolean, user?: AuthenticatedUser) => void;
   onDocumentEvent: (event: DocEvent) => void;
+  onBlobSyncProgress: ((progress: BlobSyncProgress) => void) | null;
 }
 
 /** Pending request tracking */
@@ -161,6 +166,9 @@ export class UnifiedSyncProvider {
   /** Pending login cleanup function (for disconnect cleanup) */
   private pendingLoginCleanup: (() => void) | null = null;
 
+  /** Blob sync service for HTTP-based file transfer */
+  private blobSyncService: BlobSyncService | null = null;
+
   constructor(doc: Y.Doc, options: UnifiedSyncProviderOptions) {
     this.doc = doc;
     this.options = {
@@ -177,6 +185,7 @@ export class UnifiedSyncProvider {
       onSynced: options.onSynced ?? (() => {}),
       onAuthenticated: options.onAuthenticated ?? (() => {}),
       onDocumentEvent: options.onDocumentEvent ?? (() => {}),
+      onBlobSyncProgress: options.onBlobSyncProgress ?? null,
     };
 
     // Create awareness instance
@@ -204,6 +213,34 @@ export class UnifiedSyncProvider {
   /** Check if authenticated */
   isAuthenticated(): boolean {
     return this.authenticated;
+  }
+
+  /**
+   * Initialize or update BlobSyncService after authentication.
+   * Converts WebSocket URL to HTTP URL for blob transfers.
+   */
+  private initBlobSyncService(): void {
+    // Convert ws:// to http:// or wss:// to https://
+    const httpUrl = this.options.url
+      .replace(/^ws:\/\//, 'http://')
+      .replace(/^wss:\/\//, 'https://')
+      .replace(/\/ws$/, ''); // Remove /ws suffix if present
+
+    this.blobSyncService = new BlobSyncService({
+      serverUrl: httpUrl,
+      token: this.options.token,
+      onProgress: (progress: BlobSyncProgress) => {
+        // Update session store for status bar display
+        useSessionStore.getState().setBlobSyncProgress({
+          phase: progress.phase,
+          current: progress.current,
+          total: progress.total,
+        });
+
+        // Also call user-provided callback if present
+        this.options.onBlobSyncProgress?.(progress);
+      },
+    });
   }
 
   /** Check if ready (connected and authenticated) */
@@ -354,6 +391,22 @@ export class UnifiedSyncProvider {
       throw new Error(response.error ?? 'Document not found');
     }
 
+    // Download missing blobs after receiving document
+    if (this.blobSyncService) {
+      try {
+        const blobHashes = this.blobSyncService.extractBlobReferences(response.document);
+        if (blobHashes.length > 0) {
+          await this.blobSyncService.downloadMissingBlobs(blobHashes);
+        }
+      } catch (error) {
+        console.error('[UnifiedSyncProvider] Blob download failed:', error);
+        // Continue - blobs may be downloaded later or already exist locally
+      } finally {
+        // Clear progress indicator
+        useSessionStore.getState().setBlobSyncProgress(null);
+      }
+    }
+
     const result: { document: DiagramDocument; serverVersion?: number } = {
       document: response.document,
     };
@@ -373,6 +426,22 @@ export class UnifiedSyncProvider {
     document: DiagramDocument,
     expectedVersion?: number
   ): Promise<{ newVersion?: number }> {
+    // Sync blobs to server before saving document
+    if (this.blobSyncService) {
+      try {
+        const blobHashes = this.blobSyncService.extractBlobReferences(document);
+        if (blobHashes.length > 0) {
+          await this.blobSyncService.ensureBlobsUploaded(blobHashes);
+        }
+      } catch (error) {
+        console.error('[UnifiedSyncProvider] Blob sync failed:', error);
+        // Continue with document save - blobs may already exist on server
+      } finally {
+        // Clear progress indicator
+        useSessionStore.getState().setBlobSyncProgress(null);
+      }
+    }
+
     const requestId = generateRequestId();
     const request: DocSaveRequest = {
       requestId,
@@ -563,6 +632,9 @@ export class UnifiedSyncProvider {
               useConnectionStore.getState().setToken(response.token, response.tokenExpiresAt ?? null);
               this.options.token = response.token;
             }
+
+            // Initialize blob sync service for HTTP-based file transfers
+            this.initBlobSyncService();
 
             this.options.onAuthenticated?.(true, user);
 
@@ -812,6 +884,10 @@ export class UnifiedSyncProvider {
           : undefined;
 
         useConnectionStore.getState().setUser(user ?? null);
+
+        // Initialize blob sync service for HTTP-based file transfers
+        this.initBlobSyncService();
+
         this.options.onAuthenticated?.(true, user);
       } else {
         this.setStatus('error', response.error ?? 'Authentication failed');

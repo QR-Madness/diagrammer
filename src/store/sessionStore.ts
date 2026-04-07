@@ -131,6 +131,12 @@ export interface SessionState {
   emphasizedShapeId: string | null;
   /** Current cursor position in world coordinates (for status bar display) */
   cursorWorldPosition: { x: number; y: number } | null;
+  /** Blob sync progress (for status bar display during file sync) */
+  blobSyncProgress: {
+    phase: 'checking' | 'uploading' | 'downloading';
+    current: number;
+    total: number;
+  } | null;
 }
 
 /**
@@ -186,6 +192,10 @@ export interface SessionActions {
   /** Set cursor world position (for status bar display) */
   setCursorWorldPosition: (pos: { x: number; y: number } | null) => void;
 
+  // Blob Sync Progress
+  /** Set blob sync progress (for status bar display) */
+  setBlobSyncProgress: (progress: { phase: 'checking' | 'uploading' | 'downloading'; current: number; total: number } | null) => void;
+
   // Page Camera
   /** Save current camera state for a page */
   savePageCamera: (pageId: string) => void;
@@ -235,6 +245,7 @@ const initialState: SessionState = {
   snapGuides: {},
   emphasizedShapeId: null,
   cursorWorldPosition: null,
+  blobSyncProgress: null,
 };
 
 /**
@@ -426,6 +437,11 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   // Cursor Position
   setCursorWorldPosition: (pos: { x: number; y: number } | null) => {
     set({ cursorWorldPosition: pos });
+  },
+
+  // Blob Sync Progress
+  setBlobSyncProgress: (progress: { phase: 'checking' | 'uploading' | 'downloading'; current: number; total: number } | null) => {
+    set({ blobSyncProgress: progress });
   },
 
   // Page Camera
