@@ -17,7 +17,8 @@ export type ShapeLibraryCategory =
   | 'erd'          // Entity-Relationship diagrams (Crow's Foot)
   | 'uml-class'    // Class diagrams
   | 'uml-usecase'  // Use case diagrams
-  | 'uml-sequence' // Future: Sequence diagrams
+  | 'uml-sequence' // Sequence diagrams
+  | 'uml-activity' // UML Activity diagrams
   | 'custom';      // User-defined shapes
 
 /**

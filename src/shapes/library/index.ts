@@ -66,3 +66,69 @@ export {
   umlNoteShape,
   umlClassShapes,
 } from './umlClassShapes';
+
+// UML Sequence Diagram shapes
+export {
+  seqLifelineShape,
+  seqActivationShape,
+  seqFragmentShape,
+  seqActorShape,
+  seqDestructionShape,
+  seqStateInvariantShape,
+  seqTimeConstraintShape,
+  seqCoregionShape,
+  seqContinuationShape,
+  sequenceDiagramShapes,
+} from './sequenceDiagramShapes';
+export type {
+  LifelineHeadType,
+  LifelineProperties,
+  ActivationProperties,
+  FragmentOperand,
+  FragmentProperties,
+  FragmentType,
+  ActorType,
+  StateInvariantProperties,
+  TimeConstraintProperties,
+  CoregionProperties,
+  ContinuationProperties,
+} from './sequenceDiagramShapes';
+
+// Activity Diagram shapes
+export {
+  activityActionShape,
+  activityInitialShape,
+  activityFinalShape,
+  activityFlowFinalShape,
+  activityForkJoinShape,
+  activitySendSignalShape,
+  activityReceiveSignalShape,
+  activitySwimlaneShape,
+  activityDecisionShape,
+  activityMergeShape,
+  activityAcceptEventShape,
+  activityTimeEventShape,
+  activityObjectShape,
+  activityDataStoreShape,
+  activityCentralBufferShape,
+  activityPinShape,
+  activityExpansionRegionShape,
+  activityInterruptibleRegionShape,
+  activityParameterShape,
+  activityDiagramShapes,
+} from './activityDiagramShapes';
+export type {
+  ActionType,
+  ActionProperties,
+  ForkJoinProperties,
+  PartitionType,
+  SwimlaneProperties,
+  DecisionProperties,
+  TimeEventProperties,
+  ObjectNodeProperties,
+  DataStoreProperties,
+  CentralBufferProperties,
+  PinProperties,
+  ExpansionRegionProperties,
+  ActivityParameterProperties,
+} from './activityDiagramShapes';

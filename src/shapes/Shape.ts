@@ -364,6 +364,12 @@ export type ConnectorType =
 export type LineStyle = 'solid' | 'dashed';
 
 /**
+ * Flow type for activity diagram connectors.
+ * Control flow is solid line, object flow is dashed.
+ */
+export type FlowType = 'control' | 'object';
+
+/**
  * UML Class Diagram marker styles for connector endpoints.
  * Used for start and end markers on UML class connectors.
  */
@@ -376,6 +382,20 @@ export type UMLClassMarker =
   | 'diamond-filled'    // Filled diamond - for composition
   | 'circle'            // Small circle - for interface ball notation
   | 'socket';           // Arc/socket - for interface socket notation
+
+/**
+ * UML Sequence Diagram marker styles for connector endpoints.
+ * Used for message arrows in sequence diagrams.
+ */
+export type UMLSequenceMarker =
+  | 'none'              // No marker
+  | 'sync'              // Filled triangle arrow - synchronous call
+  | 'async'             // Open arrow (V shape) - asynchronous message
+  | 'reply'             // Open arrow with dashed line - return message
+  | 'create'            // Dashed line with filled arrow - object creation
+  | 'destroy'           // X marker - object destruction
+  | 'lost'              // Filled circle - lost message
+  | 'found';            // Filled circle at start - found message
 
 /**
  * Connector shape that connects two shapes.
@@ -428,6 +448,20 @@ export interface ConnectorShape extends BaseShape {
   startUMLMarker?: UMLClassMarker;
   /** UML Class marker at end point (used when connectorType is 'uml-class') */
   endUMLMarker?: UMLClassMarker;
+  /** UML Sequence marker at start point (used when connectorType is 'uml-sequence') */
+  startSequenceMarker?: UMLSequenceMarker;
+  /** UML Sequence marker at end point (used when connectorType is 'uml-sequence') */
+  endSequenceMarker?: UMLSequenceMarker;
+  /** Guard condition label (shown as [condition]) for activity diagrams */
+  guardCondition?: string;
+  /** Guard condition position along path, 0-1 (default: 0.2 = near start) */
+  guardPosition?: number;
+  /** Flow type for activity diagrams: control (solid) or object (dashed) */
+  flowType?: FlowType;
+  /** Message number for sequence diagrams (e.g., "1", "2.1") */
+  messageNumber?: string;
+  /** Self-message loop width when startShapeId === endShapeId (default: 30) */
+  selfMessageWidth?: number;
 }
 
 /**

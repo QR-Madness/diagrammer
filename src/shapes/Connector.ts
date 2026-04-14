@@ -9,6 +9,7 @@ import {
   DEFAULT_CONNECTOR,
   ERDCardinality,
   UMLClassMarker,
+  UMLSequenceMarker,
 } from './Shape';
 
 /**
@@ -419,6 +420,127 @@ function drawUMLClassMarker(
 }
 
 /**
+ * Draw UML sequence marker at a connector endpoint.
+ * The symbol is drawn aligned with the line direction.
+ *
+ * @param ctx - Canvas context
+ * @param point - The endpoint position
+ * @param angle - The angle of the line approaching this point (in radians)
+ * @param marker - The UML sequence marker type to draw
+ * @param strokeWidth - Base stroke width for scaling
+ * @param strokeColor - Stroke color for the marker
+ * @param fillColor - Fill color for markers (typically background or stroke color)
+ */
+function drawUMLSequenceMarker(
+  ctx: CanvasRenderingContext2D,
+  point: Vec2,
+  angle: number,
+  marker: UMLSequenceMarker,
+  strokeWidth: number,
+  strokeColor: string,
+  _fillColor: string | null
+): void {
+  if (marker === 'none') return;
+
+  const size = Math.max(12, strokeWidth * 4);
+
+  ctx.save();
+  ctx.translate(point.x, point.y);
+  ctx.rotate(angle);
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  switch (marker) {
+    case 'sync': {
+      // Filled triangle arrow - synchronous call
+      const arrowAngle = Math.PI / 6; // 30 degrees
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-size * Math.cos(arrowAngle), -size * Math.sin(arrowAngle));
+      ctx.lineTo(-size * Math.cos(arrowAngle), size * Math.sin(arrowAngle));
+      ctx.closePath();
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      break;
+    }
+
+    case 'async': {
+      // Open arrow (V shape) - asynchronous message
+      const arrowAngle = Math.PI / 6; // 30 degrees
+      ctx.beginPath();
+      ctx.moveTo(-size * Math.cos(arrowAngle), -size * Math.sin(arrowAngle));
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-size * Math.cos(arrowAngle), size * Math.sin(arrowAngle));
+      ctx.stroke();
+      break;
+    }
+
+    case 'reply': {
+      // Open arrow with dashed line indicator - return message
+      // The dashed line is handled by lineStyle, just draw open arrow
+      const arrowAngle = Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(-size * Math.cos(arrowAngle), -size * Math.sin(arrowAngle));
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-size * Math.cos(arrowAngle), size * Math.sin(arrowAngle));
+      ctx.stroke();
+      break;
+    }
+
+    case 'create': {
+      // Dashed line with filled arrow - object creation
+      // Similar to sync but used with dashed line style
+      const arrowAngle = Math.PI / 6;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-size * Math.cos(arrowAngle), -size * Math.sin(arrowAngle));
+      ctx.lineTo(-size * Math.cos(arrowAngle), size * Math.sin(arrowAngle));
+      ctx.closePath();
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      break;
+    }
+
+    case 'destroy': {
+      // X marker - object destruction
+      const xSize = size * 0.6;
+      ctx.beginPath();
+      ctx.moveTo(-xSize, -xSize);
+      ctx.lineTo(xSize, xSize);
+      ctx.moveTo(-xSize, xSize);
+      ctx.lineTo(xSize, -xSize);
+      ctx.stroke();
+      break;
+    }
+
+    case 'lost': {
+      // Filled circle at end - lost message
+      const radius = size / 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      break;
+    }
+
+    case 'found': {
+      // Filled circle at start - found message
+      const radius = size / 3;
+      ctx.beginPath();
+      ctx.arc(-size / 2, 0, radius, 0, Math.PI * 2);
+      ctx.fillStyle = strokeColor;
+      ctx.fill();
+      break;
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
  * Get all points in the connector path (start, waypoints, end).
  */
 function getPathPoints(shape: ConnectorShape): Vec2[] {
@@ -583,13 +705,30 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
    * The actual rendering uses cached x, y, x2, y2 values.
    */
   render(ctx: CanvasRenderingContext2D, shape: ConnectorShape): void {
-    const { stroke, strokeWidth, opacity, startArrow, endArrow, lineStyle } = shape;
+    const { stroke, strokeWidth, opacity, startArrow, endArrow, lineStyle, flowType } = shape;
 
     ctx.save();
     ctx.globalAlpha = opacity;
 
-    // Get all path points
-    const points = getPathPoints(shape);
+    // Get all path points (handle self-message routing)
+    let points = getPathPoints(shape);
+
+    // Self-message routing: when both endpoints connect to the same shape
+    // Route the connector as a loop to the right
+    if (shape.startShapeId && shape.startShapeId === shape.endShapeId && points.length === 2) {
+      const start = points[0]!;
+      const end = points[1]!;
+      const loopWidth = shape.selfMessageWidth ?? 30;
+      const loopHeight = Math.abs(end.y - start.y) || 40;
+
+      // Create a loop that goes to the right and down
+      points = [
+        start,
+        new Vec2(start.x + loopWidth, start.y),
+        new Vec2(start.x + loopWidth, start.y + loopHeight),
+        new Vec2(end.x, end.y),
+      ];
+    }
 
     // Draw the line(s)
     if (stroke && strokeWidth > 0 && points.length >= 2) {
@@ -598,8 +737,9 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // Apply line style (solid or dashed)
-      if (lineStyle === 'dashed') {
+      // Apply line style: flowType 'object' uses dashed, otherwise use lineStyle
+      const effectiveLineStyle = flowType === 'object' ? 'dashed' : lineStyle;
+      if (effectiveLineStyle === 'dashed') {
         ctx.setLineDash([8, 4]);
       } else {
         ctx.setLineDash([]);
@@ -623,20 +763,26 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       const arrowSize = strokeWidth * 4;
 
       // Infer connectorType for backwards compatibility
+      // Priority: sequence markers > cardinality > UML class markers
+      // If sequence markers are set but no connectorType, treat as 'uml-sequence'
       // If cardinality is set but no connectorType, treat as 'erd'
-      // If UML markers are set but no connectorType, treat as 'uml-class'
+      // If UML class markers are set but no connectorType, treat as 'uml-class'
       const connectorType = shape.connectorType ||
+        ((shape.startSequenceMarker || shape.endSequenceMarker) ? 'uml-sequence' :
         ((shape.startCardinality || shape.endCardinality) ? 'erd' :
-        ((shape.startUMLMarker || shape.endUMLMarker) ? 'uml-class' : 'default'));
+        ((shape.startUMLMarker || shape.endUMLMarker) ? 'uml-class' : 'default')));
 
       // Draw start endpoint
-      // Priority: UML markers > ERD cardinality > arrows
+      // Priority: UML sequence markers > UML class markers > ERD cardinality > arrows
       if (points.length >= 2) {
         const p0 = points[0]!;
         const p1 = points[1]!;
         const startAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
 
-        if (connectorType === 'uml-class' && shape.startUMLMarker && shape.startUMLMarker !== 'none') {
+        if (connectorType === 'uml-sequence' && shape.startSequenceMarker && shape.startSequenceMarker !== 'none') {
+          // Draw UML sequence marker
+          drawUMLSequenceMarker(ctx, p0, startAngle + Math.PI, shape.startSequenceMarker, strokeWidth, stroke, shape.fill);
+        } else if (connectorType === 'uml-class' && shape.startUMLMarker && shape.startUMLMarker !== 'none') {
           // Draw UML class marker
           drawUMLClassMarker(ctx, p0, startAngle + Math.PI, shape.startUMLMarker, strokeWidth, stroke, shape.fill);
         } else if (connectorType === 'erd' && shape.startCardinality && shape.startCardinality !== 'none') {
@@ -650,14 +796,17 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       }
 
       // Draw end endpoint
-      // Priority: UML markers > ERD cardinality > arrows
+      // Priority: UML sequence markers > UML class markers > ERD cardinality > arrows
       if (points.length >= 2) {
         const lastIdx = points.length - 1;
         const lastPt = points[lastIdx]!;
         const secondLastPt = points[lastIdx - 1]!;
         const endAngle = Math.atan2(lastPt.y - secondLastPt.y, lastPt.x - secondLastPt.x);
 
-        if (connectorType === 'uml-class' && shape.endUMLMarker && shape.endUMLMarker !== 'none') {
+        if (connectorType === 'uml-sequence' && shape.endSequenceMarker && shape.endSequenceMarker !== 'none') {
+          // Draw UML sequence marker
+          drawUMLSequenceMarker(ctx, lastPt, endAngle, shape.endSequenceMarker, strokeWidth, stroke, shape.fill);
+        } else if (connectorType === 'uml-class' && shape.endUMLMarker && shape.endUMLMarker !== 'none') {
           // Draw UML class marker
           drawUMLClassMarker(ctx, lastPt, endAngle, shape.endUMLMarker, strokeWidth, stroke, shape.fill);
         } else if (connectorType === 'erd' && shape.endCardinality && shape.endCardinality !== 'none') {
@@ -671,6 +820,29 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       }
     }
 
+    // Draw message number if present (for sequence diagrams)
+    if (shape.messageNumber && shape.messageNumber.trim()) {
+      const { point, angle } = getPointAlongPath(points, 0.1); // Near the start
+      const fontSize = shape.labelFontSize ?? 12;
+      const color = shape.labelColor ?? stroke ?? '#000000';
+
+      ctx.save();
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = color;
+
+      // Position above the line
+      const offsetY = -8;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const perpX = -sin * offsetY;
+      const perpY = cos * offsetY;
+
+      ctx.fillText(shape.messageNumber + ':', point.x + perpX, point.y + perpY);
+      ctx.restore();
+    }
+
     // Draw label if present
     if (shape.label && shape.label.trim()) {
       const labelPosition = shape.labelPosition ?? 0.5;
@@ -682,6 +854,38 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       const offsetY = shape.labelOffsetY ?? 0;
 
       renderConnectorLabel(ctx, shape.label, point, fontSize, color, backgroundColor, offsetX, offsetY);
+    }
+
+    // Draw guard condition if present (for activity diagrams)
+    if (shape.guardCondition && shape.guardCondition.trim()) {
+      const guardPosition = shape.guardPosition ?? 0.2; // Near the start by default
+      const { point } = getPointAlongPath(points, guardPosition);
+      const fontSize = shape.labelFontSize ?? 12;
+      const color = shape.labelColor ?? stroke ?? '#000000';
+      const guardText = `[${shape.guardCondition}]`;
+
+      ctx.save();
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+
+      // Draw with white background for readability
+      const metrics = ctx.measureText(guardText);
+      const padding = 2;
+      const bgWidth = metrics.width + padding * 2;
+      const bgHeight = fontSize + padding;
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(
+        point.x - bgWidth / 2,
+        point.y - bgHeight - 4,
+        bgWidth,
+        bgHeight
+      );
+
+      ctx.fillStyle = color;
+      ctx.fillText(guardText, point.x, point.y - 6);
+      ctx.restore();
     }
 
     ctx.restore();

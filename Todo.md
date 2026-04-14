@@ -224,45 +224,207 @@ File embedding system for PDFs, spreadsheets, and other assets. Uses reference-b
 
 ### Phase 18: Advanced Diagram Patterns [RELEASE v1.3.0‑beta.1]
 
-- [ ] Sequence diagram patterns
-- [ ] Activity diagram patterns + Swimlane customization
+Professional diagram patterns including UML Sequence Diagrams, Activity Diagrams with Swimlanes, and a Whiteboard for idea tracking.
 
-#### Phase 18.1: Sticky Notes
+#### Phase 18.1: Sequence Diagram Patterns ✅
 
-- [ ] **StickyNote shape type** (`src/shapes/StickyNote.ts`)
-  - Postit-like appearance with folded corner effect
-  - Configurable background color (default yellow palette: yellow, pink, blue, green, orange)
-  - Rich text content support (bold, italic, bullet lists)
-  - Auto-resize based on content or fixed size with overflow handling
-  - Drop shadow for "lifted paper" effect
+- [x] **UML Sequence connector type** (`src/shapes/Shape.ts`, `src/shapes/Connector.ts`)
+  - Added `UMLSequenceMarker` type with markers: `sync`, `async`, `reply`, `create`, `destroy`, `lost`, `found`
+  - Added `startSequenceMarker` and `endSequenceMarker` properties to `ConnectorShape`
+  - Implemented `drawUMLSequenceMarker()` function in `Connector.ts`
+  - Auto-detects `uml-sequence` connector type when sequence markers are set
 
-- [ ] **Anchor modes**
-  - **Canvas mode** (default): Note exists in world space, moves with pan/zoom like other shapes
-  - **Screen mode**: Note anchored to viewport corner (top-left, top-right, bottom-left, bottom-right)
-  - Screen-anchored notes persist across pages and zoom levels
-  - Toggle anchor mode via context menu or PropertyPanel
+- [x] **Sequence Lifeline shape** (`src/shapes/library/sequenceDiagramShapes.ts`)
+  - Actor/object header rectangle at top
+  - Dashed vertical line extending downward (`lifelineLength` property)
+  - Dynamic anchors along the lifeline for message attachment
+  - Custom render function for header + dashed line
+  - **Enhanced**: 6 head type variants (`headType`: object, actor, component, interface, database, queue)
+  - **Enhanced**: Stereotype support (`stereotype`, `showStereotype` properties)
 
-- [ ] **StickyNoteTool** (`src/tools/StickyNoteTool.ts`)
-  - Click-to-place with default size
-  - Drag-to-size for custom dimensions
-  - Immediate inline editing on creation
+- [x] **Sequence Activation shape**
+  - Thin filled rectangle representing method execution
+  - Positions on lifeline based on Y coordinate
+  - Left/right edge anchors for messages
+  - **Enhanced**: Nesting support (`nestLevel`, `isRecursive` properties)
 
-- [ ] **PropertyPanel integration**
-  - Color picker with sticky note palette
-  - Anchor mode toggle (canvas/screen + corner selector for screen mode)
-  - Font size and alignment controls
-  - Transparency/opacity slider
+- [x] **Sequence Fragment shape**
+  - Interaction frame for grouping (loop, alt, opt, par, break, critical, strict, seq)
+  - Corner label with frame type and optional guard condition
+  - Custom render with label in top-left corner
+  - **Enhanced**: Multiple operands with dividers (`operands[]`, `showDividers` properties)
 
-- [ ] **Screen-anchored note rendering**
-  - Render after main canvas in screen space (not affected by camera transform)
-  - Maintain position relative to viewport on resize
-  - Z-order always above canvas content
-  - Draggable within viewport bounds
+- [x] **Sequence Actor shape**
+  - UML stick figure representation
+  - Standard 5-point anchors
+  - Label below figure
+  - **Enhanced**: Actor type variants (`actorType`: person, system, external)
 
-- [ ] **Persistence**
-  - Canvas notes: stored in document like other shapes
-  - Screen notes: stored in document metadata with viewport-relative positions
-  - Export: include canvas notes in PNG/SVG; exclude or optionally include screen notes
+- [x] **Sequence Destruction shape**
+  - X marker for object destruction
+  - Top/center/bottom anchors only
+
+- [x] **NEW: State Invariant shape** (`seq-state-invariant`)
+  - Constraint text in curly braces notation
+  - Properties: `constraint` (string)
+
+- [x] **NEW: Time Constraint shape** (`seq-time-constraint`)
+  - Duration annotation shape
+  - Properties: `duration`, `minTime`, `maxTime`, `unit` (ms/s/min/h)
+
+- [x] **NEW: Coregion shape** (`seq-coregion`)
+  - Bracketed region indicating unordered messages
+  - Properties: `patternType` (stripes/dots/bracket)
+
+- [x] **NEW: Continuation shape** (`seq-continuation`)
+  - Rounded frame for cross-diagram continuation
+  - Properties: `continuationLabel`
+
+- [x] **Library registration** (`src/store/shapeLibraryStore.ts`)
+  - Added `'uml-sequence'` category loader
+  - Exported shapes from `src/shapes/library/index.ts`
+
+- [x] **Tests** for sequence shapes (57 tests in `sequenceDiagramShapes.test.ts`)
+
+#### Phase 18.2: Activity Diagram Patterns + Swimlanes ✅
+
+- [x] **Activity Action shape** (`src/shapes/library/activityDiagramShapes.ts`)
+  - Rounded rectangle for activity nodes
+  - Label support with custom rendering
+  - Standard 5-point anchors
+  - **Enhanced**: Call behavior/operation support (`actionType`, `behaviorName`, `operationName`, `showRake`)
+  - **Enhanced**: Pre/post conditions (`precondition`, `postcondition`)
+
+- [x] **Activity Initial/Final nodes**
+  - `activity-initial`: Filled black circle (start)
+  - `activity-final`: Double circle with filled inner (end)
+  - `activity-flow-final`: Circle with X (flow termination)
+
+- [x] **Fork/Join Bar shape**
+  - Thick solid black bar
+  - Auto-detects orientation based on width/height
+  - Dynamic anchors along bar length (top/bottom or left/right)
+  - **Enhanced**: Join specification support (`joinSpec` property)
+
+- [x] **Send/Receive Signal shapes**
+  - `activity-send-signal`: Pentagon pointing right
+  - `activity-receive-signal`: Concave pentagon (notched)
+  - Label support with custom rendering
+
+- [x] **Swimlane shape** (`src/shapes/library/activityDiagramShapes.ts`)
+  - Implemented as library shape with custom properties
+  - Properties: `orientation` (horizontal/vertical), `laneHeaders[]`, `headerSize`, `headerBackground`
+  - Renders lane dividers and header cells
+  - Dynamic anchors at lane centers
+  - **Enhanced**: Custom lane widths (`laneWidths[]`) and colors (`laneColors[]`)
+  - **Enhanced**: Partition type support (`partitionType`: dimension/external)
+
+- [x] **NEW: Decision Node shape** (`uml-activity-decision`)
+  - Diamond shape (40x40, aspect locked)
+  - Properties: `decisionInput` (optional text)
+  - 4-point anchors at diamond corners
+
+- [x] **NEW: Merge Node shape** (`uml-activity-merge`)
+  - Diamond geometry (semantically different from decision)
+
+- [x] **NEW: Accept Event shape** (`uml-activity-accept-event`)
+  - Concave pentagon for event reception
+
+- [x] **NEW: Accept Time Event shape** (`uml-activity-time-event`)
+  - Hourglass symbol
+  - Properties: `timeExpression` (e.g., "after(5s)")
+
+- [x] **NEW: Object Node shape** (`uml-activity-object`)
+  - Rectangle with name:Type[state]
+  - Properties: `objectName`, `objectType`, `state`, `ordering` (FIFO/LIFO/ordered/unordered)
+
+- [x] **NEW: Data Store shape** (`uml-activity-datastore`)
+  - Rectangle with <<datastore>> stereotype
+  - Properties: `storeName`
+
+- [x] **NEW: Central Buffer shape** (`uml-activity-buffer`)
+  - Rectangle with <<centralBuffer>> stereotype
+  - Properties: `bufferName`, `ordering`
+
+- [x] **NEW: Input/Output Pin shape** (`uml-activity-pin`)
+  - Small square (16x16)
+  - Properties: `pinType` (input/output), `pinName`, `dataType`
+
+- [x] **NEW: Expansion Region shape** (`uml-activity-expansion`)
+  - Rounded dashed container
+  - Properties: `mode` (parallel/iterative/stream)
+
+- [x] **NEW: Interruptible Region shape** (`uml-activity-interruptible`)
+  - Dashed rounded rectangle with lightning bolt indicator
+
+- [x] **NEW: Activity Parameter Node shape** (`uml-activity-parameter`)
+  - Pin-like shape at activity boundary
+  - Properties: `direction` (in/out/inout), `name`, `type`
+
+- [x] **Library registration** (`src/store/shapeLibraryStore.ts`)
+  - Renamed category to `'uml-activity'` for consistency
+  - Reuses `diamondShape` from flowchart for decisions
+
+- [x] **Tests** for activity shapes and swimlanes (71 tests in `activityDiagramShapes.test.ts`)
+
+#### Phase 18.2.1: Connector Enhancements ✅
+
+- [x] **Guard conditions** (`src/shapes/Shape.ts`, `src/shapes/Connector.ts`)
+  - Added `guardCondition` property for activity diagram connectors
+  - Added `guardPosition` property (0-1, default 0.2) for label placement
+  - Renders as `[condition]` text with white background near connector start
+
+- [x] **Flow type for activity diagrams**
+  - Added `FlowType` type: `'control'` (solid) | `'object'` (dashed)
+  - Added `flowType` property to `ConnectorShape`
+  - Object flow automatically uses dashed line style
+
+- [x] **Message numbering for sequence diagrams**
+  - Added `messageNumber` property (e.g., "1", "2.1", "3.1.2")
+  - Renders number with colon near connector start
+
+- [x] **Self-message routing**
+  - Added `selfMessageWidth` property (default: 30)
+  - Auto-detects when `startShapeId === endShapeId`
+  - Routes connector as a loop to the right of the lifeline
+
+- [x] **Tests** for connector enhancements (36 tests in `Connector.test.ts`)
+
+#### Phase 18.3: Whiteboard (Sticky Notes)
+
+Document-global whiteboard for sticky notes, accessible via **Ctrl+W**. Intended for idea tracking, not optimized for PDF export.
+
+- [ ] **Whiteboard store** (`src/store/whiteboardStore.ts`)
+  - Notes collection with CRUD operations
+  - Visibility toggle state (`isVisible`)
+  - Note z-order management
+
+- [ ] **Whiteboard overlay** (`src/ui/Whiteboard.tsx`, `src/ui/Whiteboard.css`)
+  - Full-viewport overlay (hidden by default)
+  - Semi-transparent backdrop with grid pattern
+  - "Add Note" button, close button (Esc or click outside)
+
+- [ ] **StickyNote component** (`src/ui/StickyNote.tsx`)
+  - Draggable within whiteboard bounds
+  - Resizable via corner handles
+  - Color picker (yellow, pink, blue, green, orange)
+  - contentEditable with basic formatting (Ctrl+B bold, Ctrl+I italic)
+  - Delete button
+
+- [ ] **Keyboard shortcut**
+  - `Ctrl+W` toggles whiteboard visibility
+  - Register in `InputHandler.ts` or global keydown handler
+
+- [ ] **Persistence** (`src/types/Document.ts`, `src/store/persistenceStore.ts`)
+  - Add `whiteboard` field to `DiagramDocument`
+  - Store notes with position, size, color, content
+  - Load/save whiteboard with document
+
+- [ ] **Export handling** (`src/utils/exportUtils.ts`)
+  - Add "Include whiteboard notes" checkbox in export dialog
+  - Default: excluded (whiteboard is for drafting)
+
+- [ ] **Tests** for whiteboard functionality
 
 ### Phase 18.9: Performance & Polish
 
@@ -513,7 +675,7 @@ A commercially licensed tier targeting teams and organizations, built on top of 
 - Update this file as new tasks are discovered
 - Each task should be small enough to complete in one session
 - Test each component before moving to the next phase
-- Total tests: 1045 passing (32 test files)
+- Total tests: 1408 passing (44 test files)
 
 ## Test Coverage by Module
 
@@ -526,17 +688,20 @@ A commercially licensed tier targeting teams and organizations, built on top of 
 | SpatialIndex                     | 24      |
 | HitTester                        | 24      |
 | DocumentStore                    | 37      |
-| SessionStore                     | 37      |
+| SessionStore                     | 41      |
 | PageStore                        | 32      |
 | HistoryStore                     | 19      |
 | Rectangle                        | 21      |
 | Ellipse                          | 25      |
 | Line                             | 23      |
+| Connector                        | 36      |
 | Shape transforms                 | 31      |
 | Shape bounds                     | 24      |
 | Collaboration (protocol, sync)   | 200+    |
 | Storage (cache, trash, versions) | 80+     |
 | connectionStore                  | 26      |
+| Sequence Diagram Shapes          | 57      |
+| Activity Diagram Shapes          | 71      |
 |                                  |         |
-| **Total**                        | **1045**|
+| **Total**                        | **1408**|
 

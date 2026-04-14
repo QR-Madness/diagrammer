@@ -42,6 +42,14 @@ const LIBRARY_LOADERS: LibraryLoader[] = [
     category: 'uml-class',
     load: () => import('../shapes/library/umlClassShapes').then((m) => m.umlClassShapes),
   },
+  {
+    category: 'uml-sequence',
+    load: () => import('../shapes/library/sequenceDiagramShapes').then((m) => m.sequenceDiagramShapes),
+  },
+  {
+    category: 'uml-activity',
+    load: () => import('../shapes/library/activityDiagramShapes').then((m) => m.activityDiagramShapes),
+  },
 ];
 
 /**
