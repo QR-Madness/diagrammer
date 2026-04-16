@@ -1127,6 +1127,175 @@ function UMLClassProperties({
 }
 
 /**
+ * Swimlane properties interface matching the shape's customProperties.
+ */
+interface SwimlaneCustomProps {
+  orientation?: 'horizontal' | 'vertical';
+  laneHeaders?: string[];
+  headerSize?: number;
+  headerBackground?: string;
+  separatorColor?: string;
+  separatorWidth?: number;
+  laneWidths?: number[];
+  laneColors?: string[];
+  partitionType?: 'dimension' | 'external';
+  showNestedPartitions?: boolean;
+}
+
+/**
+ * Swimlane properties editor for managing lanes.
+ */
+function SwimlaneProperties({
+  shape,
+  updateShape,
+}: {
+  shape: LibraryShape;
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  // Get custom properties with defaults
+  const customProps = (shape.customProperties || {}) as SwimlaneCustomProps;
+  const laneHeaders = customProps.laneHeaders || ['Lane 1', 'Lane 2'];
+  const laneWidths = customProps.laneWidths || [];
+
+  const updateCustomProps = useCallback((updates: Partial<SwimlaneCustomProps>) => {
+    updateShape(shape.id, {
+      customProperties: {
+        ...customProps,
+        ...updates,
+      },
+    } as Partial<Shape>);
+  }, [shape.id, customProps, updateShape]);
+
+  // Lane management handlers
+  const handleAddLane = useCallback(() => {
+    const newHeaders = [...laneHeaders, `Lane ${laneHeaders.length + 1}`];
+    // Add proportional width for new lane
+    const newWidths = laneWidths.length > 0
+      ? [...laneWidths, 1]
+      : []; // Empty means equal distribution
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths,
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  const handleRemoveLane = useCallback((index: number) => {
+    if (laneHeaders.length <= 1) return; // Keep at least one lane
+    const newHeaders = laneHeaders.filter((_, i) => i !== index);
+    const newWidths = laneWidths.length > 0
+      ? laneWidths.filter((_, i) => i !== index)
+      : [];
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths,
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  const handleUpdateHeader = useCallback((index: number, value: string) => {
+    const newHeaders = laneHeaders.map((h, i) => (i === index ? value : h));
+    updateCustomProps({ laneHeaders: newHeaders });
+  }, [laneHeaders, updateCustomProps]);
+
+  const handleResetWidths = useCallback(() => {
+    // Reset to equal distribution by clearing widths array
+    updateCustomProps({ laneWidths: [] });
+  }, [updateCustomProps]);
+
+  const handleMoveLane = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= laneHeaders.length) return;
+    const newHeaders = [...laneHeaders];
+    const [movedHeader] = newHeaders.splice(fromIndex, 1);
+    if (movedHeader !== undefined) {
+      newHeaders.splice(toIndex, 0, movedHeader);
+    }
+
+    // Also move widths if they exist
+    let newWidths: number[] = [];
+    if (laneWidths.length === laneHeaders.length) {
+      newWidths = [...laneWidths];
+      const [movedWidth] = newWidths.splice(fromIndex, 1);
+      if (movedWidth !== undefined) {
+        newWidths.splice(toIndex, 0, movedWidth);
+      }
+    }
+
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths.length > 0 ? newWidths : [],
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  // Drag state for reordering
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  return (
+    <PropertySection id="swimlane-lanes" title="Lanes" defaultExpanded>
+      <div className="swimlane-lanes-list">
+        {laneHeaders.map((header, index) => (
+          <div
+            key={index}
+            className={`swimlane-lane-row${dragIndex === index ? ' dragging' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
+            draggable
+            onDragStart={(e) => {
+              setDragIndex(index);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => {
+              if (dragIndex !== null && dragOverIndex !== null) {
+                handleMoveLane(dragIndex, dragOverIndex);
+              }
+              setDragIndex(null);
+              setDragOverIndex(null);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              setDragOverIndex(index);
+            }}
+            onDragLeave={() => {
+              setDragOverIndex(null);
+            }}
+          >
+            <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
+            <input
+              type="text"
+              value={header}
+              onChange={(e) => handleUpdateHeader(index, e.target.value)}
+              className="swimlane-lane-name"
+              placeholder={`Lane ${index + 1}`}
+            />
+            <button
+              className="swimlane-lane-remove"
+              onClick={() => handleRemoveLane(index)}
+              title="Remove lane"
+              disabled={laneHeaders.length <= 1}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="swimlane-actions">
+        <button className="swimlane-add-lane" onClick={handleAddLane}>
+          + Add Lane
+        </button>
+        <button
+          className="swimlane-reset-widths"
+          onClick={handleResetWidths}
+          title="Reset all lanes to equal width"
+        >
+          Reset Widths
+        </button>
+      </div>
+      <div className="property-hint">
+        Drag to reorder lanes. Use canvas handles to resize widths.
+      </div>
+    </PropertySection>
+  );
+}
+
+/**
  * FileShape properties editor with file info and replace button.
  */
 function FileShapeProperties({
@@ -1371,6 +1540,14 @@ export function PropertyPanel() {
           shape.type === 'uml-abstract-class'
         ) && (
           <UMLClassProperties
+            shape={shape as LibraryShape}
+            updateShape={updateShape}
+          />
+        )}
+
+        {/* Swimlane properties - lane management */}
+        {isLibraryShapeSelected && shape.type === 'activity-swimlane' && (
+          <SwimlaneProperties
             shape={shape as LibraryShape}
             updateShape={updateShape}
           />

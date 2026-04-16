@@ -1263,3 +1263,160 @@
 [data-theme="dark"] .file-info-card {
   background: var(--bg-secondary, #252526);
 }
+
+/* Swimlane Lanes List */
+.swimlane-lanes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.swimlane-lane-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: grab;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.swimlane-lane-row:active {
+  cursor: grabbing;
+}
+
+.swimlane-lane-row.dragging {
+  opacity: 0.5;
+  background: var(--bg-tertiary);
+}
+
+.swimlane-lane-row.drag-over {
+  background: var(--color-primary-light, rgba(33, 150, 243, 0.15));
+}
+
+.swimlane-lane-name {
+  flex: 1;
+  min-width: 60px;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-primary);
+}
+
+.swimlane-lane-name:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.swimlane-width-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.swimlane-width-slider {
+  width: 50px;
+  height: 4px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+  border-radius: 2px;
+}
+
+.swimlane-width-value {
+  font-size: 0.625rem;
+  color: var(--text-secondary);
+  min-width: 28px;
+  text-align: right;
+  font-family: monospace;
+}
+
+.swimlane-lane-remove {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+}
+
+.swimlane-lane-remove:hover {
+  opacity: 1;
+  color: var(--color-error, #e53e3e);
+  background: rgba(229, 62, 62, 0.1);
+}
+
+.swimlane-lane-remove:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+.swimlane-lane-remove:disabled:hover {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.swimlane-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.swimlane-add-lane {
+  flex: 1;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.swimlane-add-lane:hover {
+  background: rgba(33, 150, 243, 0.05);
+  border-color: var(--color-primary);
+}
+
+.swimlane-reset-widths {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.swimlane-reset-widths:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .swimlane-lane-name {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .swimlane-reset-widths {
+  background: var(--bg-secondary, #252526);
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .swimlane-reset-widths:hover {
+  background: var(--bg-tertiary, #333333);
+}

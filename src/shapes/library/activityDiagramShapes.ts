@@ -14,7 +14,8 @@ import type { LibraryShapeDefinition, CustomRenderFunction, AnchorDefinition } f
 import { createStandardAnchors } from './ShapeLibraryTypes';
 import { createStandardProperties } from '../ShapeMetadata';
 import type { PropertyDefinition } from '../ShapeMetadata';
-import type { LibraryShape } from '../Shape';
+import type { LibraryShape, Handle } from '../Shape';
+import { Vec2 } from '../../math/Vec2';
 
 // ============================================================================
 // Type Definitions
@@ -805,6 +806,38 @@ function calculateLaneSizes(totalSize: number, numLanes: number, weights: number
 }
 
 /**
+ * Truncate text with ellipsis if it exceeds maxWidth.
+ * Returns the truncated text that fits within the specified width.
+ */
+function truncateTextWithEllipsis(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string {
+  const ellipsis = '…';
+
+  // If text fits, return as-is
+  if (ctx.measureText(text).width <= maxWidth) {
+    return text;
+  }
+
+  // Binary search for optimal truncation point
+  let low = 0;
+  let high = text.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    const truncated = text.slice(0, mid) + ellipsis;
+    if (ctx.measureText(truncated).width <= maxWidth) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return low > 0 ? text.slice(0, low) + ellipsis : ellipsis;
+}
+
+/**
  * Custom render function for swimlane.
  * Draws a container with labeled lanes.
  */
@@ -875,13 +908,15 @@ const renderSwimlane: CustomRenderFunction = (ctx, shape) => {
         ctx.stroke();
       }
 
-      // Draw header text
+      // Draw header text with ellipsis if needed
       const header = props.laneHeaders[i] || `Lane ${i + 1}`;
       ctx.fillStyle = shape.labelColor || stroke || '#000000';
       ctx.font = `${shape.labelFontSize || 12}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(header, laneX + laneWidth / 2, -hh + headerHeight / 2, laneWidth - 8);
+      const maxTextWidth = laneWidth - 8;
+      const displayText = truncateTextWithEllipsis(ctx, header, maxTextWidth);
+      ctx.fillText(displayText, laneX + laneWidth / 2, -hh + headerHeight / 2);
 
       laneX += laneWidth;
     }
@@ -935,13 +970,15 @@ const renderSwimlane: CustomRenderFunction = (ctx, shape) => {
         ctx.stroke();
       }
 
-      // Draw header text
+      // Draw header text with ellipsis if needed
       const header = props.laneHeaders[i] || `Lane ${i + 1}`;
       ctx.fillStyle = shape.labelColor || stroke || '#000000';
       ctx.font = `${shape.labelFontSize || 12}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(header, -hw + headerWidth / 2, laneY + laneHeight / 2, headerWidth - 8);
+      const maxTextWidthV = headerWidth - 8;
+      const displayTextV = truncateTextWithEllipsis(ctx, header, maxTextWidthV);
+      ctx.fillText(displayTextV, -hw + headerWidth / 2, laneY + laneHeight / 2);
 
       laneY += laneHeight;
     }
@@ -1088,6 +1125,84 @@ const swimlaneProperties: PropertyDefinition[] = [
 ];
 
 /**
+ * Transform a local point to world space for handle positioning.
+ */
+function localToWorld(local: Vec2, shape: LibraryShape): Vec2 {
+  const rotated = local.rotate(shape.rotation);
+  return new Vec2(rotated.x + shape.x, rotated.y + shape.y);
+}
+
+/**
+ * Create custom handles for swimlane (lane dividers and header resize).
+ */
+function createSwimlaneCustomHandles(shape: LibraryShape): Handle[] {
+  const props = getSwimlaneProps(shape);
+  const { width, height } = shape;
+  const hw = width / 2;
+  const hh = height / 2;
+  const numLanes = props.laneHeaders.length || 2;
+  const handles: Handle[] = [];
+
+  if (props.orientation === 'horizontal') {
+    // Vertical lanes (columns) - lane dividers are vertical lines
+    const laneSizes = calculateLaneSizes(width, numLanes, props.laneWidths);
+
+    // Lane divider handles (n-1 dividers for n lanes)
+    let laneX = -hw;
+    for (let i = 0; i < numLanes - 1; i++) {
+      laneX += laneSizes[i] ?? width / numLanes;
+      const world = localToWorld(new Vec2(laneX, 0), shape);
+      handles.push({
+        type: `lane-divider-${i}`,
+        x: world.x,
+        y: world.y,
+        cursor: 'col-resize',
+        metadata: { data: { index: i }, style: 'line' },
+      });
+    }
+
+    // Header resize handle (on the header/content separator line)
+    const headerWorld = localToWorld(new Vec2(0, -hh + props.headerSize), shape);
+    handles.push({
+      type: 'header-resize',
+      x: headerWorld.x,
+      y: headerWorld.y,
+      cursor: 'row-resize',
+      metadata: { style: 'line' },
+    });
+  } else {
+    // Horizontal lanes (rows) - lane dividers are horizontal lines
+    const laneSizes = calculateLaneSizes(height, numLanes, props.laneWidths);
+
+    // Lane divider handles
+    let laneY = -hh;
+    for (let i = 0; i < numLanes - 1; i++) {
+      laneY += laneSizes[i] ?? height / numLanes;
+      const world = localToWorld(new Vec2(0, laneY), shape);
+      handles.push({
+        type: `lane-divider-${i}`,
+        x: world.x,
+        y: world.y,
+        cursor: 'row-resize',
+        metadata: { data: { index: i }, style: 'line' },
+      });
+    }
+
+    // Header resize handle (on the header/content separator line)
+    const headerWorld = localToWorld(new Vec2(-hw + props.headerSize, 0), shape);
+    handles.push({
+      type: 'header-resize',
+      x: headerWorld.x,
+      y: headerWorld.y,
+      cursor: 'col-resize',
+      metadata: { style: 'line' },
+    });
+  }
+
+  return handles;
+}
+
+/**
  * Swimlane shape - container with labeled vertical or horizontal lanes.
  */
 export const activitySwimlaneShape: LibraryShapeDefinition = {
@@ -1114,6 +1229,7 @@ export const activitySwimlaneShape: LibraryShapeDefinition = {
   customRender: renderSwimlane,
   customLabelRendering: true,
   hitTestMode: 'bounds',
+  customHandles: createSwimlaneCustomHandles,
 };
 
 // ============================================================================

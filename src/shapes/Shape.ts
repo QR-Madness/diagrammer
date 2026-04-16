@@ -7,21 +7,43 @@
  */
 
 /**
- * Handle types for resize/rotate operations.
+ * Standard handle types for resize/rotate operations.
  */
-export type HandleType =
-  | 'top-left'
-  | 'top'
-  | 'top-right'
-  | 'right'
-  | 'bottom-right'
-  | 'bottom'
-  | 'bottom-left'
-  | 'left'
-  | 'rotation';
+export const STANDARD_HANDLE_TYPES = [
+  'top-left',
+  'top',
+  'top-right',
+  'right',
+  'bottom-right',
+  'bottom',
+  'bottom-left',
+  'left',
+  'rotation',
+] as const;
+
+export type StandardHandleType = (typeof STANDARD_HANDLE_TYPES)[number];
 
 /**
- * A handle represents a control point for resizing or rotating shapes.
+ * Handle type - string to allow custom handle types beyond standard resize/rotate.
+ * Standard types: 'top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left', 'rotation'
+ * Custom types: 'lane-divider-{n}', 'header-resize', etc.
+ */
+export type HandleType = string;
+
+/**
+ * Metadata for custom handle behavior.
+ */
+export interface HandleMetadata {
+  /** Shape-specific data (e.g., lane index for lane dividers) */
+  data?: unknown;
+  /** Visual style hint for rendering */
+  style?: 'square' | 'line';
+  /** Whether this is a standard resize/rotate handle */
+  isStandard?: boolean;
+}
+
+/**
+ * A handle represents a control point for resizing, rotating, or custom shape operations.
  */
 export interface Handle {
   /** Handle identifier */
@@ -31,6 +53,8 @@ export interface Handle {
   y: number;
   /** Cursor to show when hovering */
   cursor: string;
+  /** Optional metadata for custom handle behavior */
+  metadata?: HandleMetadata;
 }
 
 /** File category for embedded file shapes */

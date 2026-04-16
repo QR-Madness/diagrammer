@@ -16,7 +16,8 @@ import type { LibraryShapeDefinition, CustomRenderFunction, AnchorDefinition } f
 import { createStandardAnchors } from './ShapeLibraryTypes';
 import { createStandardProperties } from '../ShapeMetadata';
 import type { PropertyDefinition } from '../ShapeMetadata';
-import type { LibraryShape } from '../Shape';
+import type { LibraryShape, Handle } from '../Shape';
+import { Vec2 } from '../../math/Vec2';
 
 // ============================================================================
 // Type Definitions
@@ -389,6 +390,37 @@ const lifelineProperties: PropertyDefinition[] = [
 ];
 
 /**
+ * Transform a local point to world space for handle positioning.
+ */
+function localToWorldLifeline(local: Vec2, shape: LibraryShape): Vec2 {
+  const rotated = local.rotate(shape.rotation);
+  return new Vec2(rotated.x + shape.x, rotated.y + shape.y);
+}
+
+/**
+ * Create custom handle for lifeline tail (to resize lifelineLength).
+ */
+function createLifelineCustomHandles(shape: LibraryShape): Handle[] {
+  const customProps = shape.customProperties as LifelineProperties | undefined;
+  const lifelineLength = customProps?.lifelineLength ?? 200;
+  const headerHeight = Math.min(50, shape.height);
+  const lineStartY = -shape.height / 2 + headerHeight;
+  const lineEndY = lineStartY + lifelineLength;
+
+  // Handle at the bottom of the lifeline tail
+  const world = localToWorldLifeline(new Vec2(0, lineEndY), shape);
+  return [
+    {
+      type: 'lifeline-tail',
+      x: world.x,
+      y: world.y,
+      cursor: 'ns-resize',
+      metadata: { style: 'line' },
+    },
+  ];
+}
+
+/**
  * Lifeline shape - header box with dashed vertical line.
  */
 export const seqLifelineShape: LibraryShapeDefinition = {
@@ -419,6 +451,7 @@ export const seqLifelineShape: LibraryShapeDefinition = {
   customRender: renderLifeline,
   customLabelRendering: true,
   hitTestMode: 'bounds',
+  customHandles: createLifelineCustomHandles,
 };
 
 // ============================================================================
