@@ -390,41 +390,52 @@ Professional diagram patterns including UML Sequence Diagrams, Activity Diagrams
 
 - [x] **Tests** for connector enhancements (36 tests in `Connector.test.ts`)
 
-#### Phase 18.3: Whiteboard (Sticky Notes)
+#### Phase 18.3: Whiteboard (Sticky Notes) ✅
 
-Document-global whiteboard for sticky notes, accessible via **Ctrl+W**. Intended for idea tracking, not optimized for PDF export.
+Document-global whiteboard for sticky notes, accessible via **Ctrl+I**. Intended for idea tracking, not optimized for PDF export.
 
-- [ ] **Whiteboard store** (`src/store/whiteboardStore.ts`)
+- [x] **Whiteboard store** (`src/store/whiteboardStore.ts`)
   - Notes collection with CRUD operations
   - Visibility toggle state (`isVisible`)
   - Note z-order management
 
-- [ ] **Whiteboard overlay** (`src/ui/Whiteboard.tsx`, `src/ui/Whiteboard.css`)
+- [x] **Whiteboard overlay** (`src/ui/Whiteboard.tsx`, `src/ui/Whiteboard.css`)
   - Full-viewport overlay (hidden by default)
   - Semi-transparent backdrop with grid pattern
   - "Add Note" button, close button (Esc or click outside)
 
-- [ ] **StickyNote component** (`src/ui/StickyNote.tsx`)
+- [x] **StickyNote component** (`src/ui/StickyNote.tsx`)
   - Draggable within whiteboard bounds
   - Resizable via corner handles
-  - Color picker (yellow, pink, blue, green, orange)
+  - Customizable hex colors via color picker with 12 presets + recent colors from color palette store
+  - Uses `getContrastColor()` and `darken()` from `src/utils/color.ts` for dynamic header/text colors
   - contentEditable with basic formatting (Ctrl+B bold, Ctrl+I italic)
   - Delete button
 
-- [ ] **Keyboard shortcut**
-  - `Ctrl+W` toggles whiteboard visibility
-  - Register in `InputHandler.ts` or global keydown handler
+- [x] **Keyboard shortcut**
+  - `Ctrl+I` toggles whiteboard visibility (Ideas)
+  - Registered in `Engine.ts` global keydown handler
 
-- [ ] **Persistence** (`src/types/Document.ts`, `src/store/persistenceStore.ts`)
+- [x] **Toolbar button** (`src/ui/UnifiedToolbar.tsx`, `src/ui/UnifiedToolbar.css`)
+  - Whiteboard icon button in toolbar right section
+  - Tooltip with shortcut hint
+  - Light + dark mode styling
+
+- [x] **Toolbar button** (`src/ui/UnifiedToolbar.tsx`, `src/ui/UnifiedToolbar.css`)
+  - Whiteboard icon button in toolbar right section
+  - Tooltip with shortcut hint
+  - Light + dark mode styling
+
+- [x] **Persistence** (`src/types/Document.ts`, `src/store/persistenceStore.ts`)
   - Add `whiteboard` field to `DiagramDocument`
   - Store notes with position, size, color, content
   - Load/save whiteboard with document
 
-- [ ] **Export handling** (`src/utils/exportUtils.ts`)
-  - Add "Include whiteboard notes" checkbox in export dialog
+- [x] **Export handling** (`src/utils/exportUtils.ts`)
+  - Add "Include whiteboard notes" option
   - Default: excluded (whiteboard is for drafting)
 
-- [ ] **Tests** for whiteboard functionality
+- [x] **Tests** for whiteboard functionality (19 tests)
 
 ### Phase 18.9: Performance & Polish
 

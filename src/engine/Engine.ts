@@ -23,6 +23,7 @@ import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore
 import { useHistoryStore, pushHistory } from '../store/historyStore';
 import { useShapeLibraryStore } from '../store/shapeLibraryStore';
 import { useCustomShapeLibraryStore } from '../store/customShapeLibraryStore';
+import { useWhiteboardStore } from '../store/whiteboardStore';
 import { nanoid } from 'nanoid';
 
 // Import shape handlers to register them
@@ -693,6 +694,13 @@ export class Engine {
           this.renderer.requestRender();
         }
       }
+      return;
+    }
+
+    // Ctrl+I: Toggle whiteboard (Ideas)
+    if (isCtrl && event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      useWhiteboardStore.getState().toggleVisibility();
       return;
     }
   }

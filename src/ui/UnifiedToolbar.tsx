@@ -13,6 +13,7 @@ import { useSessionStore, ToolType } from '../store/sessionStore';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { usePersistenceStore } from '../store/persistenceStore';
+import { useWhiteboardStore } from '../store/whiteboardStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { ShapePicker } from './ShapePicker';
 import { CustomShapePicker } from './CustomShapePicker';
@@ -505,10 +506,18 @@ export function UnifiedToolbar({ onOpenSettings, onRebuildConnectors, getImportC
         <DocumentInfo />
       </div>
 
-      {/* Right Section: Page Tabs + Help + Settings */}
+      {/* Right Section: Page Tabs + Whiteboard + Help + Settings */}
       <div className="unified-toolbar-right">
         <InlinePageTabs />
         <div className="toolbar-divider" />
+        <button
+          className="toolbar-whiteboard-btn"
+          onClick={() => useWhiteboardStore.getState().toggleVisibility()}
+          title="Whiteboard — sticky notes for brainstorming (Ctrl+I)"
+          aria-label="Whiteboard"
+        >
+          <WhiteboardIcon />
+        </button>
         <button
           className="toolbar-help-btn"
           onClick={() => void openDocsHandler()}
@@ -550,6 +559,18 @@ function SettingsIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
       <circle cx="8" cy="8" r="2.5" />
       <path d="M8 1v2M8 13v2M1 8h2M13 8h2M2.5 2.5l1.4 1.4M12.1 12.1l1.4 1.4M2.5 13.5l1.4-1.4M12.1 3.9l1.4-1.4" />
+    </svg>
+  );
+}
+
+// Icon component for whiteboard button
+function WhiteboardIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="5" height="5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="9" y="2" width="5" height="5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="2" y="9" width="5" height="5" rx="0.5" fill="currentColor" opacity="0.3" />
+      <rect x="9" y="9" width="5" height="5" rx="0.5" fill="currentColor" opacity="0.3" />
     </svg>
   );
 }

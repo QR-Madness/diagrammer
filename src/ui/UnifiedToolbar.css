@@ -499,6 +499,68 @@
   height: 16px;
 }
 
+/* Whiteboard button */
+.toolbar-whiteboard-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-whiteboard-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--color-primary, #2196f3);
+}
+
+.toolbar-whiteboard-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.toolbar-whiteboard-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Whiteboard button */
+.toolbar-whiteboard-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--text-primary, #495057);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-whiteboard-btn:hover {
+  background: var(--bg-hover, #e9ecef);
+  color: var(--color-primary, #2196f3);
+}
+
+.toolbar-whiteboard-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.toolbar-whiteboard-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Full-size settings button */
 .toolbar-settings-btn {
   display: flex;
@@ -720,4 +782,24 @@
   background: var(--bg-hover, #3c3c3c);
   color: var(--color-primary, #60a5fa);
   border-color: var(--color-primary, #60a5fa);
+}
+
+/* Dark mode for whiteboard button */
+[data-theme="dark"] .toolbar-whiteboard-btn {
+  color: var(--text-secondary, #8b8b8b);
+}
+
+[data-theme="dark"] .toolbar-whiteboard-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--color-primary, #60a5fa);
+}
+
+/* Dark mode for whiteboard button */
+[data-theme="dark"] .toolbar-whiteboard-btn {
+  color: var(--text-secondary, #8b8b8b);
+}
+
+[data-theme="dark"] .toolbar-whiteboard-btn:hover {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--color-primary, #60a5fa);
 }

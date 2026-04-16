@@ -5,6 +5,7 @@
 import { Shape } from '../shapes/Shape';
 import { RichTextContent } from './RichText';
 import type { RichTextPage } from '../store/richTextPagesStore';
+import type { WhiteboardState } from './Whiteboard';
 
 /**
  * A single page within a document.
@@ -79,6 +80,10 @@ export interface DiagramDocument {
   // Version tracking fields (Phase 14.9.2)
   /** Server-confirmed version for conflict detection */
   serverVersion?: number;
+
+  // Whiteboard fields (Phase 18.3)
+  /** Whiteboard state for sticky notes */
+  whiteboard?: WhiteboardState;
 }
 
 /**

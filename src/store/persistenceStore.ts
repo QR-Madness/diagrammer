@@ -25,6 +25,7 @@ import { useSessionStore } from './sessionStore';
 import { useHistoryStore } from './historyStore';
 import { useDocumentRegistry } from './documentRegistry';
 import { useCollaborationStore } from '../collaboration';
+import { useWhiteboardStore } from './whiteboardStore';
 import { blobStorage } from '../storage/BlobStorage';
 import { isTauri } from '../tauri/commands';
 
@@ -212,6 +213,7 @@ function createDocumentFromPageStore(
   const pageSnapshot = usePageStore.getState().getSnapshot();
   const richTextContent = useRichTextStore.getState().getContent();
   const richTextPages = useRichTextPagesStore.getState().serialize();
+  const whiteboardSnapshot = useWhiteboardStore.getState().getSnapshot();
 
   const doc: DiagramDocument = {
     id,
@@ -224,6 +226,7 @@ function createDocumentFromPageStore(
     version: 1,
     richTextContent,
     richTextPages,
+    whiteboard: whiteboardSnapshot,
   };
 
   // Preserve team-related fields from existing document
@@ -281,6 +284,13 @@ function loadDocumentToPageStore(doc: DiagramDocument): void {
     // Backwards compatibility: reset to default page
     useRichTextPagesStore.setState({ pages: {}, pageOrder: [], activePageId: null });
     useRichTextPagesStore.getState().initializeDefaultPage();
+  }
+
+  // Load whiteboard state (or initialize with defaults if not present)
+  if (doc.whiteboard) {
+    useWhiteboardStore.getState().loadSnapshot(doc.whiteboard);
+  } else {
+    useWhiteboardStore.getState().reset();
   }
 }
 

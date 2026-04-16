@@ -15,6 +15,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ConnectionStatusBanner } from './ConnectionStatusBanner';
 import { CommandPalette } from './CommandPalette';
 import { ShapeSearchPanel } from './ShapeSearchPanel';
+import { Whiteboard } from './Whiteboard';
 import { usePageStore } from '../store/pageStore';
 import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
@@ -225,6 +226,9 @@ function App() {
 
         {/* Shape Search (Ctrl+F) */}
         <ShapeSearchPanel isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+        {/* Whiteboard overlay (Ctrl+I) */}
+        <Whiteboard />
 
         {/* Toast notifications */}
         <NotificationToast />
