@@ -278,7 +278,7 @@
   padding: var(--note-content-top-padding) 12px 10px;
   font-size: 13px;
   line-height: 1.55;
-  color: #2c2c2c;
+  color: var(--note-text, #2c2c2c);
   overflow: auto;
   cursor: text;
   outline: none;
@@ -290,7 +290,8 @@
 
 .note-content:empty::before {
   content: 'Type something…';
-  color: rgba(0, 0, 0, 0.25);
+  color: var(--note-text, #2c2c2c);
+  opacity: 0.3;
   font-style: italic;
   pointer-events: none;
 }
@@ -388,14 +389,6 @@
 
 .dark-mode .note-color-section-label {
   color: #888;
-}
-
-.dark-mode .note-content {
-  color: #e0e0e0;
-}
-
-.dark-mode .note-content:empty::before {
-  color: rgba(255, 255, 255, 0.2);
 }
 
 .dark-mode .note-toolbar {
