@@ -102,11 +102,14 @@ export const StickyNote: React.FC<StickyNoteProps> = ({ id }) => {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest('.note-controls')) return;
-      if ((e.target as HTMLElement).closest('.note-resize-handle')) return;
-      if ((e.target as HTMLElement).closest('.note-color-picker')) return;
-      if ((e.target as HTMLElement).closest('.note-content')) return;
-      if ((e.target as HTMLElement).closest('.note-toolbar')) return;
+      if (e.button !== 0) return;
+
+      const target = e.target as HTMLElement;
+      if (target.closest('.note-controls')) return;
+      if (target.closest('.note-format-btn')) return;
+      if (target.closest('.note-resize-handle')) return;
+      if (target.closest('.note-color-picker')) return;
+      if (target.closest('.note-content')) return;
       if (!note) return;
 
       e.preventDefault();
