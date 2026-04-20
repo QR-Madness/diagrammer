@@ -41,13 +41,14 @@ const CATEGORY_LABELS: Record<ShapeLibraryCategory, string> = {
   'uml-class': 'UML Class',
   'uml-usecase': 'UML Use Case',
   'uml-sequence': 'UML Sequence',
+  'uml-activity': 'UML Activity',
   custom: 'Custom',
 };
 
 /**
  * Categories to show in the picker (ordered).
  */
-const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'erd', 'uml-class', 'uml-usecase'];
+const PICKER_CATEGORIES: ShapeLibraryCategory[] = ['flowchart', 'erd', 'uml-class', 'uml-usecase', 'uml-sequence', 'uml-activity'];
 
 /**
  * ShapePicker component.
@@ -97,6 +98,7 @@ export function ShapePicker() {
       'uml-class': 0,
       'uml-usecase': 0,
       'uml-sequence': 0,
+      'uml-activity': 0,
       custom: 0,
     };
     for (const cat of PICKER_CATEGORIES) {

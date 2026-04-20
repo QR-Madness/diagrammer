@@ -33,6 +33,23 @@ export interface BundleResult {
 }
 
 /**
+ * Options for bundling documents.
+ */
+export interface BundleOptions {
+  /**
+   * Bundling mode:
+   * - 'embed': Convert blob refs to base64 data URLs (for export/offline)
+   * - 'reference': Keep blob refs as-is (for collaboration via HTTP blob sync)
+   */
+  mode?: 'embed' | 'reference' | undefined;
+  /**
+   * In 'reference' mode, optionally embed small files under this size (bytes).
+   * Default: 0 (don't embed anything in reference mode)
+   */
+  maxEmbedSize?: number | undefined;
+}
+
+/**
  * Result of extracting assets from a bundled document.
  */
 export interface ExtractResult {
@@ -78,15 +95,19 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 /**
  * Recursively find and replace blob:// references in an object.
+ * Also detects FileShape blobRef fields (raw hashes without blob:// prefix).
  * Returns the modified object and a set of blob IDs found.
  */
-function findBlobReferences(obj: unknown, blobIds: Set<string>): void {
+function findBlobReferences(obj: unknown, blobIds: Set<string>, parentKey?: string): void {
   if (obj === null || obj === undefined) return;
 
   if (typeof obj === 'string') {
     if (obj.startsWith(BLOB_PREFIX)) {
       const blobId = obj.slice(BLOB_PREFIX.length);
       blobIds.add(blobId);
+    } else if (parentKey === 'blobRef' && obj.length > 0) {
+      // FileShape stores blobRef as a raw SHA-256 hash
+      blobIds.add(obj);
     }
     return;
   }
@@ -99,18 +120,20 @@ function findBlobReferences(obj: unknown, blobIds: Set<string>): void {
   }
 
   if (typeof obj === 'object') {
-    for (const value of Object.values(obj)) {
-      findBlobReferences(value, blobIds);
+    for (const [key, value] of Object.entries(obj)) {
+      findBlobReferences(value, blobIds, key);
     }
   }
 }
 
 /**
  * Recursively replace blob:// references with data URLs in an object.
+ * Also handles FileShape blobRef fields (raw hashes without blob:// prefix).
  */
 function replaceReferences(
   obj: unknown,
-  replacements: Map<string, string>
+  replacements: Map<string, string>,
+  parentKey?: string
 ): unknown {
   if (obj === null || obj === undefined) return obj;
 
@@ -118,6 +141,11 @@ function replaceReferences(
     if (obj.startsWith(BLOB_PREFIX)) {
       const blobId = obj.slice(BLOB_PREFIX.length);
       const replacement = replacements.get(blobId);
+      return replacement ?? obj;
+    }
+    // FileShape blobRef: replace raw hash with data URL
+    if (parentKey === 'blobRef' && obj.length > 0) {
+      const replacement = replacements.get(obj);
       return replacement ?? obj;
     }
     return obj;
@@ -130,7 +158,7 @@ function replaceReferences(
   if (typeof obj === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
-      result[key] = replaceReferences(value, replacements);
+      result[key] = replaceReferences(value, replacements, key);
     }
     return result;
   }
@@ -140,10 +168,12 @@ function replaceReferences(
 
 /**
  * Recursively find and extract embedded data URLs, storing them as blobs.
+ * Also handles FileShape blobRef fields containing embedded data URLs.
  */
 async function extractEmbeddedAssets(
   obj: unknown,
-  assetMap: Map<string, string>
+  assetMap: Map<string, string>,
+  parentKey?: string
 ): Promise<unknown> {
   if (obj === null || obj === undefined) return obj;
 
@@ -152,7 +182,8 @@ async function extractEmbeddedAssets(
       // Check if we've already processed this data URL
       const existing = assetMap.get(obj);
       if (existing) {
-        return BLOB_PREFIX + existing;
+        // FileShape blobRef stores raw hash, not blob:// prefixed
+        return parentKey === 'blobRef' ? existing : BLOB_PREFIX + existing;
       }
 
       try {
@@ -165,7 +196,8 @@ async function extractEmbeddedAssets(
 
         const blobId = await blobStorage.saveBlob(blob, filename);
         assetMap.set(obj, blobId);
-        return BLOB_PREFIX + blobId;
+        // FileShape blobRef stores raw hash, not blob:// prefixed
+        return parentKey === 'blobRef' ? blobId : BLOB_PREFIX + blobId;
       } catch (error) {
         console.error('Failed to extract embedded asset:', error);
         return obj; // Keep original on failure
@@ -185,7 +217,7 @@ async function extractEmbeddedAssets(
   if (typeof obj === 'object') {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
-      result[key] = await extractEmbeddedAssets(value, assetMap);
+      result[key] = await extractEmbeddedAssets(value, assetMap, key);
     }
     return result;
   }
@@ -201,11 +233,69 @@ async function extractEmbeddedAssets(
  * to other clients.
  *
  * @param document - The document to bundle
+ * @param options - Bundling options
  * @returns Bundled document with embedded assets
  */
 export async function bundleDocumentWithAssets(
-  document: DiagramDocument
+  document: DiagramDocument,
+  options: BundleOptions = {}
 ): Promise<BundleResult> {
+  const mode = options.mode ?? 'embed';
+  const maxEmbedSize = options.maxEmbedSize ?? 0;
+
+  // In reference mode, skip embedding (blobs are synced via HTTP)
+  if (mode === 'reference') {
+    // Find all blob references to report count
+    const blobIds = new Set<string>();
+    findBlobReferences(document, blobIds);
+
+    if (document.blobReferences) {
+      for (const id of document.blobReferences) {
+        blobIds.add(id);
+      }
+    }
+
+    // If maxEmbedSize is set, embed only small files
+    if (maxEmbedSize > 0) {
+      const replacements = new Map<string, string>();
+      let totalSize = 0;
+
+      for (const blobId of blobIds) {
+        try {
+          const metadata = await blobStorage.getBlobMetadata(blobId);
+          if (metadata && metadata.size <= maxEmbedSize) {
+            const blob = await blobStorage.loadBlob(blobId);
+            if (blob) {
+              const dataUrl = await blobToDataUrl(blob);
+              replacements.set(blobId, dataUrl);
+              totalSize += blob.size;
+            }
+          }
+        } catch (error) {
+          // Skip this blob
+        }
+      }
+
+      if (replacements.size > 0) {
+        const bundledDoc = replaceReferences(document, replacements) as DiagramDocument;
+        return {
+          document: bundledDoc,
+          assetCount: replacements.size,
+          totalSize,
+        };
+      }
+    }
+
+    // Return document unchanged - blob refs stay as-is for HTTP sync
+    return {
+      document,
+      assetCount: 0,
+      totalSize: 0,
+    };
+  }
+
+  // Embed mode: Convert all blob refs to data URLs
+
   // Find all blob references in the document
   const blobIds = new Set<string>();
   findBlobReferences(document, blobIds);

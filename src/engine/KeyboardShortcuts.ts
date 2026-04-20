@@ -63,6 +63,7 @@ export const KEYBOARD_SHORTCUTS: ShortcutEntry[] = [
   { keys: '?', description: 'Keyboard shortcuts', category: 'View' },
   { keys: 'Ctrl+K', description: 'Command palette', category: 'View' },
   { keys: 'Ctrl+F', description: 'Search shapes', category: 'View' },
+  { keys: 'Ctrl+I', description: 'Toggle whiteboard (Ideas)', category: 'View' },
 ];
 
 /**

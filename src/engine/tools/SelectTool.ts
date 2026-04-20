@@ -4,7 +4,7 @@ import { Vec2 } from '../../math/Vec2';
 import { Box } from '../../math/Box';
 import { ToolType, CursorStyle } from '../../store/sessionStore';
 import { MiddleClickPanHandler } from './PanTool';
-import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isGroup, isConnector, isLibraryShape, Anchor, AnchorPosition } from '../../shapes/Shape';
+import { Handle, HandleType, Shape, isRectangle, isEllipse, isLine, isText, isFile, isGroup, isConnector, isLibraryShape, Anchor, AnchorPosition } from '../../shapes/Shape';
 import { useDocumentStore } from '../../store/documentStore';
 import { snapBounds, snap, SnapResult } from '../Snapping';
 import { shapeRegistry } from '../../shapes/ShapeRegistry';
@@ -655,17 +655,19 @@ export class SelectTool extends BaseTool {
   private handleClick(event: NormalizedPointerEvent, ctx: ToolContext): void {
     const now = Date.now();
 
-    // Check for double-click on editable shape (Text, Rectangle, Ellipse)
+    // Check for double-click on editable shape (Text, Rectangle, Ellipse) or file shape
     if (this.hitShapeId) {
       const shape = ctx.getShapes()[this.hitShapeId];
 
       // Check if this shape supports label editing
       const supportsLabelEditing =
         shape && (isText(shape) || isRectangle(shape) || isEllipse(shape));
+      const isFileShape = shape && isFile(shape);
+      const supportsDoubleClick = supportsLabelEditing || isFileShape;
 
       // Check if this is a double-click on the same shape
       const isDoubleClick =
-        supportsLabelEditing &&
+        supportsDoubleClick &&
         this.lastClickShapeId === this.hitShapeId &&
         this.lastClickPoint !== null &&
         now - this.lastClickTime < DOUBLE_CLICK_THRESHOLD;
@@ -677,8 +679,11 @@ export class SelectTool extends BaseTool {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < DOUBLE_CLICK_DISTANCE) {
-          // Double-click - start text/label editing
-          ctx.startTextEdit(this.hitShapeId);
+          if (isFileShape) {
+            ctx.openFileViewer(this.hitShapeId);
+          } else {
+            ctx.startTextEdit(this.hitShapeId);
+          }
           this.resetClickTracking();
           ctx.requestRender();
           return;
@@ -862,12 +867,33 @@ export class SelectTool extends BaseTool {
    * Handle mouse move during resize operation.
    */
   private handleResizingMove(event: NormalizedPointerEvent, ctx: ToolContext): void {
-    if (!this.activeHandle || !this.resizeShapeId || !this.resizeOriginalShape || !this.resizeAnchorPoint) {
+    if (!this.activeHandle || !this.resizeShapeId || !this.resizeOriginalShape) {
       return;
     }
 
     const original = this.resizeOriginalShape;
     const handleType = this.activeHandle.type;
+
+    // Handle custom swimlane handles
+    if (handleType.startsWith('lane-divider-')) {
+      this.handleLaneDividerDrag(event, ctx);
+      return;
+    }
+    if (handleType === 'header-resize') {
+      this.handleHeaderResizeDrag(event, ctx);
+      return;
+    }
+    // Handle lifeline tail drag
+    if (handleType === 'lifeline-tail') {
+      this.handleLifelineTailDrag(event, ctx);
+      return;
+    }
+
+    // Standard resize handles require anchor point
+    if (!this.resizeAnchorPoint) {
+      return;
+    }
+
     let currentPoint = event.worldPoint;
 
     // For connectors, check for anchor snapping
@@ -938,6 +964,209 @@ export class SelectTool extends BaseTool {
       ctx.updateShape(this.resizeShapeId, updates);
       ctx.requestRender();
     }
+  }
+
+  /**
+   * Handle lane divider drag to adjust swimlane lane widths.
+   */
+  private handleLaneDividerDrag(event: NormalizedPointerEvent, ctx: ToolContext): void {
+    if (!this.activeHandle || !this.resizeShapeId || !this.resizeOriginalShape) return;
+
+    const shape = this.resizeOriginalShape;
+    if (!isLibraryShape(shape) || shape.type !== 'activity-swimlane') return;
+
+    // Extract lane index from handle type: 'lane-divider-0' -> 0
+    const laneIndex = parseInt(this.activeHandle.type.split('-')[2] || '0', 10);
+
+    // Get current custom properties
+    const customProps = (shape.customProperties || {}) as {
+      orientation?: 'horizontal' | 'vertical';
+      laneHeaders?: string[];
+      laneWidths?: number[];
+      headerSize?: number;
+    };
+    const orientation = customProps.orientation ?? 'horizontal';
+    const laneHeaders = customProps.laneHeaders || ['Lane 1', 'Lane 2'];
+    const numLanes = laneHeaders.length;
+
+    // Transform mouse position to local space
+    const local = this.worldToLocal(event.worldPoint, shape);
+
+    if (orientation === 'horizontal') {
+      // Dragging vertical divider - affects lane widths
+      const totalWidth = shape.width;
+      const hw = totalWidth / 2;
+
+      // Calculate new position as cumulative ratio
+      const dividerX = local.x + hw; // Convert from centered to left-origin
+      const cumulativeRatio = Math.max(0.1, Math.min(0.9, dividerX / totalWidth));
+
+      // Redistribute widths
+      const newWidths = this.redistributeLaneWidths(
+        numLanes,
+        laneIndex,
+        cumulativeRatio,
+        customProps.laneWidths || []
+      );
+
+      ctx.updateShape(this.resizeShapeId, {
+        customProperties: {
+          ...customProps,
+          laneWidths: newWidths,
+        },
+      } as Partial<Shape>);
+    } else {
+      // Dragging horizontal divider - affects lane heights (stored as laneWidths)
+      const totalHeight = shape.height;
+      const hh = totalHeight / 2;
+
+      const dividerY = local.y + hh;
+      const cumulativeRatio = Math.max(0.1, Math.min(0.9, dividerY / totalHeight));
+
+      const newWidths = this.redistributeLaneWidths(
+        numLanes,
+        laneIndex,
+        cumulativeRatio,
+        customProps.laneWidths || []
+      );
+
+      ctx.updateShape(this.resizeShapeId, {
+        customProperties: {
+          ...customProps,
+          laneWidths: newWidths,
+        },
+      } as Partial<Shape>);
+    }
+
+    ctx.requestRender();
+  }
+
+  /**
+   * Handle header resize drag to adjust swimlane header size.
+   */
+  private handleHeaderResizeDrag(event: NormalizedPointerEvent, ctx: ToolContext): void {
+    if (!this.resizeShapeId || !this.resizeOriginalShape) return;
+
+    const shape = this.resizeOriginalShape;
+    if (!isLibraryShape(shape) || shape.type !== 'activity-swimlane') return;
+
+    const customProps = (shape.customProperties || {}) as {
+      orientation?: 'horizontal' | 'vertical';
+      headerSize?: number;
+      laneHeaders?: string[];
+      laneWidths?: number[];
+    };
+    const orientation = customProps.orientation ?? 'horizontal';
+
+    const local = this.worldToLocal(event.worldPoint, shape);
+
+    let newHeaderSize: number;
+    const minHeader = 20;
+    const maxHeader = 100;
+
+    if (orientation === 'horizontal') {
+      // Header is at top - drag Y affects headerSize
+      const hh = shape.height / 2;
+      newHeaderSize = Math.max(minHeader, Math.min(maxHeader, local.y + hh));
+    } else {
+      // Header is at left - drag X affects headerSize
+      const hw = shape.width / 2;
+      newHeaderSize = Math.max(minHeader, Math.min(maxHeader, local.x + hw));
+    }
+
+    ctx.updateShape(this.resizeShapeId, {
+      customProperties: {
+        ...customProps,
+        headerSize: newHeaderSize,
+      },
+    } as Partial<Shape>);
+
+    ctx.requestRender();
+  }
+
+  /**
+   * Handle lifeline tail drag to adjust lifelineLength.
+   */
+  private handleLifelineTailDrag(event: NormalizedPointerEvent, ctx: ToolContext): void {
+    if (!this.resizeShapeId || !this.resizeOriginalShape) return;
+
+    const shape = this.resizeOriginalShape;
+    if (!isLibraryShape(shape) || shape.type !== 'seq-lifeline') return;
+
+    const customProps = (shape.customProperties || {}) as {
+      lifelineLength?: number;
+      headType?: string;
+      stereotype?: string;
+    };
+
+    const local = this.worldToLocal(event.worldPoint, shape);
+
+    // Calculate header height and line start position
+    const headerHeight = Math.min(50, shape.height);
+    const lineStartY = -shape.height / 2 + headerHeight;
+
+    // New lifeline length is the distance from lineStartY to current mouse Y
+    const newLifelineLength = Math.max(50, local.y - lineStartY);
+
+    ctx.updateShape(this.resizeShapeId, {
+      customProperties: {
+        ...customProps,
+        lifelineLength: newLifelineLength,
+      },
+    } as Partial<Shape>);
+
+    ctx.requestRender();
+  }
+
+  /**
+   * Transform a world point to local shape space.
+   */
+  private worldToLocal(worldPoint: Vec2, shape: Shape): Vec2 {
+    const translated = new Vec2(worldPoint.x - shape.x, worldPoint.y - shape.y);
+    return translated.rotate(-shape.rotation);
+  }
+
+  /**
+   * Redistribute lane widths when a divider is dragged.
+   * Scales lanes on each side of the divider to achieve the target cumulative ratio.
+   */
+  private redistributeLaneWidths(
+    numLanes: number,
+    dividerIndex: number,
+    cumulativeRatio: number,
+    currentWidths: number[]
+  ): number[] {
+    // Initialize weights if empty or wrong length
+    let weights =
+      currentWidths.length === numLanes ? [...currentWidths] : Array(numLanes).fill(1);
+
+    // Calculate current cumulative ratio up to dividerIndex
+    const total = weights.reduce((a, b) => a + b, 0);
+    let leftTotal = 0;
+    for (let i = 0; i <= dividerIndex; i++) {
+      leftTotal += weights[i] ?? 0;
+    }
+
+    // Scale left lanes and right lanes to achieve new ratio
+    const newLeftTotal = cumulativeRatio * total;
+    const newRightTotal = (1 - cumulativeRatio) * total;
+
+    // Scale factors
+    const leftScale = leftTotal > 0 ? newLeftTotal / leftTotal : 1;
+    const rightTotal = total - leftTotal;
+    const rightScale = rightTotal > 0 ? newRightTotal / rightTotal : 1;
+
+    // Apply scaling
+    for (let i = 0; i <= dividerIndex; i++) {
+      weights[i] = (weights[i] ?? 1) * leftScale;
+    }
+    for (let i = dividerIndex + 1; i < numLanes; i++) {
+      weights[i] = (weights[i] ?? 1) * rightScale;
+    }
+
+    // Normalize to keep weights reasonable (sum to numLanes)
+    const newTotal = weights.reduce((a, b) => a + b, 0);
+    return weights.map((w) => (w / newTotal) * numLanes);
   }
 
   /**
@@ -1082,7 +1311,7 @@ export class SelectTool extends BaseTool {
       const halfHeight = shape.height / 2;
 
       // Get the opposite corner/edge point
-      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+      const anchorOffsets: Record<string, { x: number; y: number }> = {
         'top-left': { x: halfWidth, y: halfHeight },
         'top': { x: 0, y: halfHeight },
         'top-right': { x: -halfWidth, y: halfHeight },
@@ -1094,7 +1323,7 @@ export class SelectTool extends BaseTool {
         'rotation': { x: 0, y: 0 },
       };
 
-      const offset = anchorOffsets[handleType];
+      const offset = anchorOffsets[handleType] ?? { x: 0, y: 0 };
       // Apply rotation to the offset
       const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
       return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
@@ -1102,7 +1331,7 @@ export class SelectTool extends BaseTool {
 
     if (isEllipse(shape)) {
       // For ellipse, use the opposite point on the ellipse
-      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+      const anchorOffsets: Record<string, { x: number; y: number }> = {
         'top-left': { x: shape.radiusX, y: shape.radiusY },
         'top': { x: 0, y: shape.radiusY },
         'top-right': { x: -shape.radiusX, y: shape.radiusY },
@@ -1114,7 +1343,7 @@ export class SelectTool extends BaseTool {
         'rotation': { x: 0, y: 0 },
       };
 
-      const offset = anchorOffsets[handleType];
+      const offset = anchorOffsets[handleType] ?? { x: 0, y: 0 };
       const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
       return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
     }
@@ -1145,7 +1374,7 @@ export class SelectTool extends BaseTool {
       const halfWidth = shape.width / 2;
       const halfHeight = height / 2;
 
-      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+      const anchorOffsets: Record<string, { x: number; y: number }> = {
         'top-left': { x: halfWidth, y: halfHeight },
         'top': { x: 0, y: halfHeight },
         'top-right': { x: -halfWidth, y: halfHeight },
@@ -1157,7 +1386,7 @@ export class SelectTool extends BaseTool {
         'rotation': { x: 0, y: 0 },
       };
 
-      const offset = anchorOffsets[handleType];
+      const offset = anchorOffsets[handleType] ?? { x: 0, y: 0 };
       const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
       return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
     }
@@ -1167,7 +1396,7 @@ export class SelectTool extends BaseTool {
       const halfWidth = shape.width / 2;
       const halfHeight = shape.height / 2;
 
-      const anchorOffsets: Record<HandleType, { x: number; y: number }> = {
+      const anchorOffsets: Record<string, { x: number; y: number }> = {
         'top-left': { x: halfWidth, y: halfHeight },
         'top': { x: 0, y: halfHeight },
         'top-right': { x: -halfWidth, y: halfHeight },
@@ -1179,7 +1408,7 @@ export class SelectTool extends BaseTool {
         'rotation': { x: 0, y: 0 },
       };
 
-      const offset = anchorOffsets[handleType];
+      const offset = anchorOffsets[handleType] ?? { x: 0, y: 0 };
       const rotatedOffset = new Vec2(offset.x, offset.y).rotate(shape.rotation);
       return new Vec2(shape.x + rotatedOffset.x, shape.y + rotatedOffset.y);
     }

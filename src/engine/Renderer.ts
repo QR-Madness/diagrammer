@@ -1,6 +1,6 @@
 import { Camera } from './Camera';
 import { Box } from '../math/Box';
-import { Shape, isGroup, GroupShape } from '../shapes/Shape';
+import { Shape, isGroup, GroupShape, Handle } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { GroupShapeHandler } from '../shapes/Group';
 import { setLatexRenderCallback } from '../utils/textUtils';
@@ -710,6 +710,12 @@ export class Renderer {
             topHandle = { x: handle.x, y: handle.y };
           }
 
+          // Check for custom line-style handles (lane dividers, header resize)
+          if (handle.metadata?.style === 'line') {
+            this.drawLineHandle(ctx, handle, zoom, options);
+            continue;
+          }
+
           // Draw resize handles as squares
           ctx.beginPath();
           ctx.fillStyle = options.handleFillColor;
@@ -749,6 +755,56 @@ export class Renderer {
       } catch {
         // Shape type not registered - skip silently
       }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw a line-style handle for custom shape operations (lane dividers, header resize).
+   * Renders as a short line with grip dots to indicate draggability.
+   */
+  private drawLineHandle(
+    ctx: CanvasRenderingContext2D,
+    handle: Handle,
+    zoom: number,
+    options: Required<RendererOptions>
+  ): void {
+    const lineLength = 24 / zoom;
+    const lineWidth = 3 / zoom;
+    const dotRadius = 2 / zoom;
+    const dotSpacing = 6 / zoom;
+
+    // Determine orientation based on cursor
+    const isVertical = handle.cursor === 'col-resize';
+
+    ctx.save();
+
+    // Draw the handle line
+    ctx.beginPath();
+    ctx.strokeStyle = options.handleStrokeColor;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+
+    if (isVertical) {
+      ctx.moveTo(handle.x, handle.y - lineLength / 2);
+      ctx.lineTo(handle.x, handle.y + lineLength / 2);
+    } else {
+      ctx.moveTo(handle.x - lineLength / 2, handle.y);
+      ctx.lineTo(handle.x + lineLength / 2, handle.y);
+    }
+    ctx.stroke();
+
+    // Draw grip dots along the line
+    ctx.fillStyle = options.handleFillColor;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      if (isVertical) {
+        ctx.arc(handle.x, handle.y + i * dotSpacing, dotRadius, 0, Math.PI * 2);
+      } else {
+        ctx.arc(handle.x + i * dotSpacing, handle.y, dotRadius, 0, Math.PI * 2);
+      }
+      ctx.fill();
     }
 
     ctx.restore();

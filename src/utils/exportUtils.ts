@@ -43,6 +43,8 @@ export interface ExportOptions {
   filename: string;
   /** Flatten groups on export (render children individually, no group container). Default: false */
   flattenGroups?: boolean;
+  /** Include whiteboard notes in export. Default: false */
+  includeWhiteboard?: boolean;
 }
 
 /**

@@ -121,6 +121,8 @@ export interface SessionState {
   hoveredId: string | null;
   /** ID of text shape currently being edited (null if not editing) */
   editingTextId: string | null;
+  /** ID of file shape currently being viewed in modal (null if not viewing) */
+  viewingFileShapeId: string | null;
   /** Snapping settings */
   snapSettings: SnapSettings;
   /** Active snap guides for visual feedback */
@@ -129,6 +131,12 @@ export interface SessionState {
   emphasizedShapeId: string | null;
   /** Current cursor position in world coordinates (for status bar display) */
   cursorWorldPosition: { x: number; y: number } | null;
+  /** Blob sync progress (for status bar display during file sync) */
+  blobSyncProgress: {
+    phase: 'checking' | 'uploading' | 'downloading';
+    current: number;
+    total: number;
+  } | null;
 }
 
 /**
@@ -164,6 +172,11 @@ export interface SessionActions {
   stopTextEdit: () => void;
   isEditingText: () => boolean;
 
+  // File viewing
+  openFileViewer: (id: string) => void;
+  closeFileViewer: () => void;
+  isViewingFile: () => boolean;
+
   // Snapping
   setSnapSettings: (settings: Partial<SnapSettings>) => void;
   setSnapGuides: (guides: SnapGuides) => void;
@@ -178,6 +191,10 @@ export interface SessionActions {
   // Cursor Position
   /** Set cursor world position (for status bar display) */
   setCursorWorldPosition: (pos: { x: number; y: number } | null) => void;
+
+  // Blob Sync Progress
+  /** Set blob sync progress (for status bar display) */
+  setBlobSyncProgress: (progress: { phase: 'checking' | 'uploading' | 'downloading'; current: number; total: number } | null) => void;
 
   // Page Camera
   /** Save current camera state for a page */
@@ -223,10 +240,12 @@ const initialState: SessionState = {
   isInteracting: false,
   hoveredId: null,
   editingTextId: null,
+  viewingFileShapeId: null,
   snapSettings: { ...DEFAULT_SNAP_SETTINGS },
   snapGuides: {},
   emphasizedShapeId: null,
   cursorWorldPosition: null,
+  blobSyncProgress: null,
 };
 
 /**
@@ -343,6 +362,19 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
     return get().editingTextId !== null;
   },
 
+  // File viewing
+  openFileViewer: (id: string) => {
+    set({ viewingFileShapeId: id });
+  },
+
+  closeFileViewer: () => {
+    set({ viewingFileShapeId: null });
+  },
+
+  isViewingFile: (): boolean => {
+    return get().viewingFileShapeId !== null;
+  },
+
   // Snapping
   setSnapSettings: (settings: Partial<SnapSettings>) => {
     set((state) => ({
@@ -405,6 +437,11 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
   // Cursor Position
   setCursorWorldPosition: (pos: { x: number; y: number } | null) => {
     set({ cursorWorldPosition: pos });
+  },
+
+  // Blob Sync Progress
+  setBlobSyncProgress: (progress: { phase: 'checking' | 'uploading' | 'downloading'; current: number; total: number } | null) => {
+    set({ blobSyncProgress: progress });
   },
 
   // Page Camera

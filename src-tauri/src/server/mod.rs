@@ -13,17 +13,20 @@
 //! - Authentication is required for all connections
 //! - Consider firewall rules for additional protection
 
+pub mod blobs;
 pub mod documents;
 pub mod permissions;
 pub mod protocol;
 
 use axum::{
+    body::Body,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
+        Path, State,
     },
-    response::IntoResponse,
-    routing::get,
+    http::{header, HeaderMap, StatusCode},
+    response::{IntoResponse, Response},
+    routing::{get, head, post},
     Router,
 };
 use futures_util::{SinkExt, StreamExt};
@@ -35,6 +38,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc, RwLock};
 use tower_http::cors::{Any, CorsLayer};
 
+use blobs::BlobStore;
 use documents::DocumentStore;
 use permissions::{check_read_permission, check_write_permission, check_delete_permission, to_error_string};
 use protocol::*;
@@ -146,6 +150,8 @@ pub struct ServerState {
     clients: RwLock<HashMap<u64, ClientState>>,
     /// Document store
     doc_store: Arc<DocumentStore>,
+    /// Blob store for embedded files
+    blob_store: Arc<BlobStore>,
     /// JWT secret for token validation
     jwt_secret: String,
     /// User store for authentication (optional - only set on host)
@@ -167,7 +173,8 @@ impl ServerState {
             client_count: AtomicU16::new(0),
             next_client_id: AtomicU64::new(1),
             clients: RwLock::new(HashMap::new()),
-            doc_store: Arc::new(DocumentStore::new(app_data_dir)),
+            doc_store: Arc::new(DocumentStore::new(app_data_dir.clone())),
+            blob_store: Arc::new(BlobStore::new(app_data_dir)),
             jwt_secret,
             user_store,
             token_config,
@@ -391,10 +398,13 @@ impl WebSocketServer {
             .allow_methods(Any)
             .allow_headers(Any);
 
-        // Create router with WebSocket endpoint
+        // Create router with WebSocket and blob endpoints
         let app = Router::new()
             .route("/ws", get(ws_handler))
             .route("/health", get(health_handler))
+            .route("/api/blobs/:hash", post(blob_upload_handler))
+            .route("/api/blobs/:hash", get(blob_download_handler))
+            .route("/api/blobs/:hash", head(blob_exists_handler))
             .with_state(server_state)
             .layer(cors);
 
@@ -510,6 +520,141 @@ impl WebSocketServer {
 /// Health check endpoint
 async fn health_handler() -> impl IntoResponse {
     "OK"
+}
+
+// ============ Blob HTTP Endpoints ============
+
+/// Extract and validate JWT from Authorization header
+fn extract_jwt_from_headers(headers: &HeaderMap, jwt_secret: &str) -> Result<JwtClaims, (StatusCode, String)> {
+    let auth_header = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .ok_or((StatusCode::UNAUTHORIZED, "Missing Authorization header".to_string()))?;
+
+    if !auth_header.starts_with("Bearer ") {
+        return Err((StatusCode::UNAUTHORIZED, "Invalid Authorization header format".to_string()));
+    }
+
+    let token = &auth_header[7..]; // Skip "Bearer "
+    validate_jwt(token, jwt_secret)
+        .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", e)))
+}
+
+/// Upload a blob (POST /api/blobs/:hash)
+async fn blob_upload_handler(
+    Path(hash): Path<String>,
+    State(state): State<Arc<ServerState>>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> impl IntoResponse {
+    // Validate JWT
+    let claims = match extract_jwt_from_headers(&headers, &state.jwt_secret) {
+        Ok(c) => c,
+        Err((status, msg)) => return (status, msg).into_response(),
+    };
+
+    // Extract MIME type from Content-Type header (default to application/octet-stream)
+    let mime_type = headers
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/octet-stream")
+        .to_string();
+
+    // Save blob with hash verification
+    match state.blob_store.save_blob(&hash, &body, &mime_type, &claims.sub) {
+        Ok(metadata) => {
+            let json = serde_json::json!({
+                "success": true,
+                "hash": metadata.hash,
+                "size": metadata.size,
+                "mimeType": metadata.mime_type,
+            });
+            (StatusCode::OK, axum::Json(json)).into_response()
+        }
+        Err(e) => {
+            if e.contains("Hash mismatch") {
+                (StatusCode::BAD_REQUEST, e).into_response()
+            } else {
+                (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+            }
+        }
+    }
+}
+
+/// Download a blob (GET /api/blobs/:hash)
+async fn blob_download_handler(
+    Path(hash): Path<String>,
+    State(state): State<Arc<ServerState>>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    // Validate JWT
+    if let Err((status, msg)) = extract_jwt_from_headers(&headers, &state.jwt_secret) {
+        return (status, msg).into_response();
+    }
+
+    // Get metadata for MIME type
+    let mime_type = state.blob_store
+        .get_metadata(&hash)
+        .map(|m| m.mime_type)
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+
+    // Load blob
+    match state.blob_store.load_blob(&hash) {
+        Ok(data) => {
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, mime_type)
+                .header(header::CONTENT_LENGTH, data.len())
+                .body(Body::from(data))
+                .unwrap_or_else(|_| {
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::from("Failed to build response"))
+                        .unwrap()
+                })
+        }
+        Err(e) => {
+            if e.contains("not found") {
+                (StatusCode::NOT_FOUND, e).into_response()
+            } else {
+                (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+            }
+        }
+    }
+}
+
+/// Check if a blob exists (HEAD /api/blobs/:hash)
+async fn blob_exists_handler(
+    Path(hash): Path<String>,
+    State(state): State<Arc<ServerState>>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    // Validate JWT
+    if let Err((status, msg)) = extract_jwt_from_headers(&headers, &state.jwt_secret) {
+        return (status, msg).into_response();
+    }
+
+    if state.blob_store.exists(&hash) {
+        // Return metadata in headers if available
+        if let Some(metadata) = state.blob_store.get_metadata(&hash) {
+            Response::builder()
+                .status(StatusCode::NO_CONTENT)
+                .header(header::CONTENT_TYPE, metadata.mime_type)
+                .header(header::CONTENT_LENGTH, metadata.size)
+                .header("X-Blob-Created-At", metadata.created_at.to_string())
+                .body(Body::empty())
+                .unwrap_or_else(|_| {
+                    Response::builder()
+                        .status(StatusCode::NO_CONTENT)
+                        .body(Body::empty())
+                        .unwrap()
+                })
+        } else {
+            StatusCode::NO_CONTENT.into_response()
+        }
+    } else {
+        StatusCode::NOT_FOUND.into_response()
+    }
 }
 
 /// WebSocket upgrade handler

@@ -7,21 +7,43 @@
  */
 
 /**
- * Handle types for resize/rotate operations.
+ * Standard handle types for resize/rotate operations.
  */
-export type HandleType =
-  | 'top-left'
-  | 'top'
-  | 'top-right'
-  | 'right'
-  | 'bottom-right'
-  | 'bottom'
-  | 'bottom-left'
-  | 'left'
-  | 'rotation';
+export const STANDARD_HANDLE_TYPES = [
+  'top-left',
+  'top',
+  'top-right',
+  'right',
+  'bottom-right',
+  'bottom',
+  'bottom-left',
+  'left',
+  'rotation',
+] as const;
+
+export type StandardHandleType = (typeof STANDARD_HANDLE_TYPES)[number];
 
 /**
- * A handle represents a control point for resizing or rotating shapes.
+ * Handle type - string to allow custom handle types beyond standard resize/rotate.
+ * Standard types: 'top-left', 'top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left', 'rotation'
+ * Custom types: 'lane-divider-{n}', 'header-resize', etc.
+ */
+export type HandleType = string;
+
+/**
+ * Metadata for custom handle behavior.
+ */
+export interface HandleMetadata {
+  /** Shape-specific data (e.g., lane index for lane dividers) */
+  data?: unknown;
+  /** Visual style hint for rendering */
+  style?: 'square' | 'line';
+  /** Whether this is a standard resize/rotate handle */
+  isStandard?: boolean;
+}
+
+/**
+ * A handle represents a control point for resizing, rotating, or custom shape operations.
  */
 export interface Handle {
   /** Handle identifier */
@@ -31,13 +53,18 @@ export interface Handle {
   y: number;
   /** Cursor to show when hovering */
   cursor: string;
+  /** Optional metadata for custom handle behavior */
+  metadata?: HandleMetadata;
 }
+
+/** File category for embedded file shapes */
+export type FileCategory = 'pdf' | 'spreadsheet' | 'image' | 'text' | 'generic';
 
 /**
  * Core shape type discriminator.
  * These are the built-in shape types that have dedicated handlers.
  */
-export type CoreShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector' | 'group';
+export type CoreShapeType = 'rectangle' | 'ellipse' | 'line' | 'text' | 'connector' | 'group' | 'file';
 
 /**
  * Array of core shape types for runtime checking.
@@ -49,6 +76,7 @@ export const CORE_SHAPE_TYPES: readonly CoreShapeType[] = [
   'text',
   'connector',
   'group',
+  'file',
 ] as const;
 
 /**
@@ -360,6 +388,12 @@ export type ConnectorType =
 export type LineStyle = 'solid' | 'dashed';
 
 /**
+ * Flow type for activity diagram connectors.
+ * Control flow is solid line, object flow is dashed.
+ */
+export type FlowType = 'control' | 'object';
+
+/**
  * UML Class Diagram marker styles for connector endpoints.
  * Used for start and end markers on UML class connectors.
  */
@@ -372,6 +406,20 @@ export type UMLClassMarker =
   | 'diamond-filled'    // Filled diamond - for composition
   | 'circle'            // Small circle - for interface ball notation
   | 'socket';           // Arc/socket - for interface socket notation
+
+/**
+ * UML Sequence Diagram marker styles for connector endpoints.
+ * Used for message arrows in sequence diagrams.
+ */
+export type UMLSequenceMarker =
+  | 'none'              // No marker
+  | 'sync'              // Filled triangle arrow - synchronous call
+  | 'async'             // Open arrow (V shape) - asynchronous message
+  | 'reply'             // Open arrow with dashed line - return message
+  | 'create'            // Dashed line with filled arrow - object creation
+  | 'destroy'           // X marker - object destruction
+  | 'lost'              // Filled circle - lost message
+  | 'found';            // Filled circle at start - found message
 
 /**
  * Connector shape that connects two shapes.
@@ -424,6 +472,20 @@ export interface ConnectorShape extends BaseShape {
   startUMLMarker?: UMLClassMarker;
   /** UML Class marker at end point (used when connectorType is 'uml-class') */
   endUMLMarker?: UMLClassMarker;
+  /** UML Sequence marker at start point (used when connectorType is 'uml-sequence') */
+  startSequenceMarker?: UMLSequenceMarker;
+  /** UML Sequence marker at end point (used when connectorType is 'uml-sequence') */
+  endSequenceMarker?: UMLSequenceMarker;
+  /** Guard condition label (shown as [condition]) for activity diagrams */
+  guardCondition?: string;
+  /** Guard condition position along path, 0-1 (default: 0.2 = near start) */
+  guardPosition?: number;
+  /** Flow type for activity diagrams: control (solid) or object (dashed) */
+  flowType?: FlowType;
+  /** Message number for sequence diagrams (e.g., "1", "2.1") */
+  messageNumber?: string;
+  /** Self-message loop width when startShapeId === endShapeId (default: 30) */
+  selfMessageWidth?: number;
 }
 
 /**
@@ -519,6 +581,43 @@ export interface GroupShape extends BaseShape {
 }
 
 /**
+ * Embedded file shape — displays as a thumbnail + filename on canvas.
+ * Content viewed in modal on double-click.
+ */
+export interface FileShape extends BaseShape {
+  type: 'file';
+  /** Width in world units */
+  width: number;
+  /** Height in world units */
+  height: number;
+  /** Blob storage reference (SHA-256 hash) */
+  blobRef: string;
+  /** Original filename */
+  fileName: string;
+  /** MIME type of the embedded file */
+  mimeType: string;
+  /** File size in bytes */
+  fileSize: number;
+  /** File category for viewer dispatch */
+  fileCategory: FileCategory;
+  /** Preview metadata */
+  preview?: {
+    /** Cached thumbnail as base64 data URL (JPEG) */
+    thumbnail?: string;
+    /** Number of pages (PDFs, multi-page docs) */
+    pageCount?: number;
+    /** Original content dimensions in pixels */
+    dimensions?: { width: number; height: number };
+  };
+  /** Optional user-set display label (defaults to fileName) */
+  label?: string;
+  /** Label font size in world units (default: 12) */
+  labelFontSize?: number;
+  /** Label text color */
+  labelColor?: string;
+}
+
+/**
  * Library shape - a generic shape type for shape library extensions.
  *
  * Library shapes use a dynamic type string (e.g., 'diamond', 'terminator')
@@ -575,6 +674,7 @@ export type Shape =
   | TextShape
   | ConnectorShape
   | GroupShape
+  | FileShape
   | LibraryShape;
 
 // ============ Type Guards ============
@@ -619,6 +719,13 @@ export function isConnector(shape: Shape): shape is ConnectorShape {
  */
 export function isGroup(shape: Shape): shape is GroupShape {
   return shape.type === 'group';
+}
+
+/**
+ * Check if a shape is an embedded file.
+ */
+export function isFile(shape: Shape): shape is FileShape {
+  return shape.type === 'file';
 }
 
 /**
@@ -714,6 +821,19 @@ export const DEFAULT_CONNECTOR = {
   routingMode: 'orthogonal' as RoutingMode,
   connectorType: 'default' as ConnectorType,
   lineStyle: 'solid' as LineStyle,
+} as const;
+
+/**
+ * Default values for file shapes.
+ */
+export const DEFAULT_FILE_SHAPE = {
+  width: 200,
+  height: 160,
+  fill: '#f8fafc',
+  stroke: '#cbd5e1',
+  strokeWidth: 1,
+  labelFontSize: 12,
+  labelColor: '#475569',
 } as const;
 
 /**

@@ -25,6 +25,7 @@ import { useSessionStore } from './sessionStore';
 import { useHistoryStore } from './historyStore';
 import { useDocumentRegistry } from './documentRegistry';
 import { useCollaborationStore } from '../collaboration';
+import { useWhiteboardStore } from './whiteboardStore';
 import { blobStorage } from '../storage/BlobStorage';
 import { isTauri } from '../tauri/commands';
 
@@ -180,6 +181,28 @@ function extractBlobIds(richTextContent: any): string[] {
 }
 
 /**
+ * Extract blob IDs from shape data.
+ * Scans FileShape blobRef fields across all pages.
+ */
+function extractShapeBlobIds(pages: Record<string, any>): string[] {
+  const blobIds: string[] = [];
+  for (const pageId in pages) {
+    if (!Object.prototype.hasOwnProperty.call(pages, pageId)) continue;
+    const page = pages[pageId];
+    const shapes = page?.shapes;
+    if (!shapes || typeof shapes !== 'object') continue;
+    for (const shapeId in shapes) {
+      if (!Object.prototype.hasOwnProperty.call(shapes, shapeId)) continue;
+      const shape = shapes[shapeId];
+      if (shape?.type === 'file' && shape.blobRef) {
+        blobIds.push(shape.blobRef);
+      }
+    }
+  }
+  return blobIds;
+}
+
+/**
  * Create a DiagramDocument from current page store state.
  */
 function createDocumentFromPageStore(
@@ -190,6 +213,7 @@ function createDocumentFromPageStore(
   const pageSnapshot = usePageStore.getState().getSnapshot();
   const richTextContent = useRichTextStore.getState().getContent();
   const richTextPages = useRichTextPagesStore.getState().serialize();
+  const whiteboardSnapshot = useWhiteboardStore.getState().getSnapshot();
 
   const doc: DiagramDocument = {
     id,
@@ -202,6 +226,7 @@ function createDocumentFromPageStore(
     version: 1,
     richTextContent,
     richTextPages,
+    whiteboard: whiteboardSnapshot,
   };
 
   // Preserve team-related fields from existing document
@@ -259,6 +284,13 @@ function loadDocumentToPageStore(doc: DiagramDocument): void {
     // Backwards compatibility: reset to default page
     useRichTextPagesStore.setState({ pages: {}, pageOrder: [], activePageId: null });
     useRichTextPagesStore.getState().initializeDefaultPage();
+  }
+
+  // Load whiteboard state (or initialize with defaults if not present)
+  if (doc.whiteboard) {
+    useWhiteboardStore.getState().loadSnapshot(doc.whiteboard);
+  } else {
+    useWhiteboardStore.getState().reset();
   }
 }
 
@@ -339,11 +371,11 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           existingDoc ?? undefined
         );
 
-        // Extract blob references from rich text content
-        if (doc.richTextContent) {
-          doc.blobReferences = extractBlobIds(doc.richTextContent);
-        }
-        const newBlobRefs = new Set(doc.blobReferences ?? []);
+        // Extract blob references from rich text content and shapes
+        const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
+        const shapeBlobs = extractShapeBlobIds(doc.pages ?? {});
+        doc.blobReferences = [...richTextBlobs, ...shapeBlobs];
+        const newBlobRefs = new Set(doc.blobReferences);
 
         // Track blob reference changes and update usage counts
         // Decrement usage for removed blobs (was in old, not in new)
@@ -414,10 +446,10 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         // Create document from current state
         const doc = createDocumentFromPageStore(newId, name);
 
-        // Extract blob references from rich text content
-        if (doc.richTextContent) {
-          doc.blobReferences = extractBlobIds(doc.richTextContent);
-        }
+        // Extract blob references from rich text content and shapes
+        const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
+        const shapeBlobs = extractShapeBlobIds(doc.pages ?? {});
+        doc.blobReferences = [...richTextBlobs, ...shapeBlobs];
 
         // Save to localStorage
         saveDocumentToStorage(doc);
@@ -549,10 +581,10 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         const doc = createDocumentFromPageStore(docId, state.currentDocumentName);
 
-        // Extract blob references from rich text content
-        if (doc.richTextContent) {
-          doc.blobReferences = extractBlobIds(doc.richTextContent);
-        }
+        // Extract blob references from rich text content and shapes
+        const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
+        const shapeBlobs = extractShapeBlobIds(doc.pages ?? {});
+        doc.blobReferences = [...richTextBlobs, ...shapeBlobs];
 
         return JSON.stringify(doc, null, 2);
       },

@@ -6,7 +6,7 @@
  */
 
 import type { ShapeMetadata } from '../ShapeMetadata';
-import type { AnchorPosition, LibraryShape } from '../Shape';
+import type { AnchorPosition, LibraryShape, Handle } from '../Shape';
 
 /**
  * Path builder function that creates a Path2D from shape dimensions.
@@ -114,6 +114,13 @@ export interface LibraryShapeDefinition {
    * When provided, this function is called instead of using the static 'anchors' array.
    */
   dynamicAnchors?: DynamicAnchorsFunction;
+
+  /**
+   * Optional custom handles function.
+   * Returns additional handles specific to this shape type (e.g., lane dividers, header resize).
+   * These are appended to the standard resize/rotation handles.
+   */
+  customHandles?: (shape: LibraryShape) => Handle[];
 }
 
 /**

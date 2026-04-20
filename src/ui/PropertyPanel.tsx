@@ -11,8 +11,10 @@ import {
   isGroup,
   isConnector,
   isLibraryShape,
+  isFile,
   GroupShape,
   LibraryShape,
+  FileShape,
   TextAlign,
   VerticalAlign,
   RoutingMode,
@@ -42,6 +44,8 @@ import { IconListEditor } from './IconListEditor';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 // GroupStyles types are used via the PatternPicker, ShadowEditor, LabelPositionPicker components
 import type { ShapeMetadata, PropertyDefinition, PropertySection as PropertySectionType } from '../shapes/ShapeMetadata';
+import { replaceFileContents } from '../services/FileReplaceService';
+import { formatFileSize, getFileTypeIcon } from '../utils/fileUtils';
 import './PropertyPanel.css';
 
 /** Sentinel value indicating mixed values across selected shapes */
@@ -275,6 +279,17 @@ function getShapeProperty(shape: Shape, key: string): unknown {
 }
 
 /**
+ * Get a custom property from shape.customProperties.
+ * Used for properties with section: 'custom' in metadata.
+ * Handles keys with 'customProperties.' prefix (e.g., 'customProperties.actionType' -> reads shape.customProperties.actionType)
+ */
+function getCustomProperty(shape: LibraryShape, key: string): unknown {
+  // Strip 'customProperties.' prefix if present
+  const actualKey = key.startsWith('customProperties.') ? key.slice('customProperties.'.length) : key;
+  return (shape.customProperties as Record<string, unknown> | undefined)?.[actualKey];
+}
+
+/**
  * Metadata-driven properties for library shapes.
  */
 function LibraryShapeProperties({
@@ -294,6 +309,24 @@ function LibraryShapeProperties({
     selectedShapes.forEach((s) => {
       if (isLibraryShape(s)) {
         updateShape(s.id, { [key]: value } as Partial<Shape>);
+      }
+    });
+  }, [selectedShapes, updateShape]);
+
+  // Handler for custom section properties - writes to shape.customProperties
+  // Handles keys with 'customProperties.' prefix (e.g., 'customProperties.actionType')
+  const handleCustomUpdate = useCallback((key: string, value: unknown) => {
+    // Strip 'customProperties.' prefix if present
+    const actualKey = key.startsWith('customProperties.') ? key.slice('customProperties.'.length) : key;
+    selectedShapes.forEach((s) => {
+      if (isLibraryShape(s)) {
+        const currentCustomProps = s.customProperties || {};
+        updateShape(s.id, {
+          customProperties: {
+            ...currentCustomProps,
+            [actualKey]: value,
+          },
+        } as Partial<Shape>);
       }
     });
   }, [selectedShapes, updateShape]);
@@ -593,15 +626,15 @@ function LibraryShapeProperties({
         </PropertySection>
       )}
 
-      {/* Custom Section */}
+      {/* Custom Section - reads/writes to shape.customProperties */}
       {groupedProperties.has('custom') && (
         <PropertySection id="custom" title={SECTION_LABELS.custom} defaultExpanded>
           {groupedProperties.get('custom')!.map((prop) => (
             <MetadataPropertyEditor
               key={prop.key}
               definition={prop}
-              value={getShapeProperty(shape, prop.key)}
-              onChange={(v) => handleUpdate(prop.key, v)}
+              value={getCustomProperty(shape, prop.key)}
+              onChange={(v) => handleCustomUpdate(prop.key, v)}
             />
           ))}
         </PropertySection>
@@ -1094,6 +1127,267 @@ function UMLClassProperties({
 }
 
 /**
+ * Swimlane properties interface matching the shape's customProperties.
+ */
+interface SwimlaneCustomProps {
+  orientation?: 'horizontal' | 'vertical';
+  laneHeaders?: string[];
+  headerSize?: number;
+  headerBackground?: string;
+  separatorColor?: string;
+  separatorWidth?: number;
+  laneWidths?: number[];
+  laneColors?: string[];
+  partitionType?: 'dimension' | 'external';
+  showNestedPartitions?: boolean;
+}
+
+/**
+ * Swimlane properties editor for managing lanes.
+ */
+function SwimlaneProperties({
+  shape,
+  updateShape,
+}: {
+  shape: LibraryShape;
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  // Get custom properties with defaults
+  const customProps = (shape.customProperties || {}) as SwimlaneCustomProps;
+  const laneHeaders = customProps.laneHeaders || ['Lane 1', 'Lane 2'];
+  const laneWidths = customProps.laneWidths || [];
+
+  const updateCustomProps = useCallback((updates: Partial<SwimlaneCustomProps>) => {
+    updateShape(shape.id, {
+      customProperties: {
+        ...customProps,
+        ...updates,
+      },
+    } as Partial<Shape>);
+  }, [shape.id, customProps, updateShape]);
+
+  // Lane management handlers
+  const handleAddLane = useCallback(() => {
+    const newHeaders = [...laneHeaders, `Lane ${laneHeaders.length + 1}`];
+    // Add proportional width for new lane
+    const newWidths = laneWidths.length > 0
+      ? [...laneWidths, 1]
+      : []; // Empty means equal distribution
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths,
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  const handleRemoveLane = useCallback((index: number) => {
+    if (laneHeaders.length <= 1) return; // Keep at least one lane
+    const newHeaders = laneHeaders.filter((_, i) => i !== index);
+    const newWidths = laneWidths.length > 0
+      ? laneWidths.filter((_, i) => i !== index)
+      : [];
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths,
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  const handleUpdateHeader = useCallback((index: number, value: string) => {
+    const newHeaders = laneHeaders.map((h, i) => (i === index ? value : h));
+    updateCustomProps({ laneHeaders: newHeaders });
+  }, [laneHeaders, updateCustomProps]);
+
+  const handleResetWidths = useCallback(() => {
+    // Reset to equal distribution by clearing widths array
+    updateCustomProps({ laneWidths: [] });
+  }, [updateCustomProps]);
+
+  const handleMoveLane = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || fromIndex >= laneHeaders.length) return;
+    const newHeaders = [...laneHeaders];
+    const [movedHeader] = newHeaders.splice(fromIndex, 1);
+    if (movedHeader !== undefined) {
+      newHeaders.splice(toIndex, 0, movedHeader);
+    }
+
+    // Also move widths if they exist
+    let newWidths: number[] = [];
+    if (laneWidths.length === laneHeaders.length) {
+      newWidths = [...laneWidths];
+      const [movedWidth] = newWidths.splice(fromIndex, 1);
+      if (movedWidth !== undefined) {
+        newWidths.splice(toIndex, 0, movedWidth);
+      }
+    }
+
+    updateCustomProps({
+      laneHeaders: newHeaders,
+      laneWidths: newWidths.length > 0 ? newWidths : [],
+    });
+  }, [laneHeaders, laneWidths, updateCustomProps]);
+
+  // Drag state for reordering
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+  return (
+    <PropertySection id="swimlane-lanes" title="Lanes" defaultExpanded>
+      <div className="swimlane-lanes-list">
+        {laneHeaders.map((header, index) => (
+          <div
+            key={index}
+            className={`swimlane-lane-row${dragIndex === index ? ' dragging' : ''}${dragOverIndex === index ? ' drag-over' : ''}`}
+            draggable
+            onDragStart={(e) => {
+              setDragIndex(index);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => {
+              if (dragIndex !== null && dragOverIndex !== null) {
+                handleMoveLane(dragIndex, dragOverIndex);
+              }
+              setDragIndex(null);
+              setDragOverIndex(null);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              setDragOverIndex(index);
+            }}
+            onDragLeave={() => {
+              setDragOverIndex(null);
+            }}
+          >
+            <span className="member-drag-handle" title="Drag to reorder">⋮⋮</span>
+            <input
+              type="text"
+              value={header}
+              onChange={(e) => handleUpdateHeader(index, e.target.value)}
+              className="swimlane-lane-name"
+              placeholder={`Lane ${index + 1}`}
+            />
+            <button
+              className="swimlane-lane-remove"
+              onClick={() => handleRemoveLane(index)}
+              title="Remove lane"
+              disabled={laneHeaders.length <= 1}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="swimlane-actions">
+        <button className="swimlane-add-lane" onClick={handleAddLane}>
+          + Add Lane
+        </button>
+        <button
+          className="swimlane-reset-widths"
+          onClick={handleResetWidths}
+          title="Reset all lanes to equal width"
+        >
+          Reset Widths
+        </button>
+      </div>
+      <div className="property-hint">
+        Drag to reorder lanes. Use canvas handles to resize widths.
+      </div>
+    </PropertySection>
+  );
+}
+
+/**
+ * FileShape properties editor with file info and replace button.
+ */
+function FileShapeProperties({
+  shape,
+  updateShape,
+}: {
+  shape: FileShape;
+  updateShape: (id: string, updates: Partial<Shape>) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isReplacing, setIsReplacing] = useState(false);
+
+  const handleReplaceClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleReplaceFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setIsReplacing(true);
+      try {
+        await replaceFileContents(shape.id, file);
+      } finally {
+        setIsReplacing(false);
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    },
+    [shape.id]
+  );
+
+  const icon = getFileTypeIcon(shape.fileCategory);
+
+  return (
+    <>
+      <PropertySection id="file-info" title="File" defaultExpanded>
+        <div className="file-info-card">
+          <span className="file-info-icon">{icon}</span>
+          <div className="file-info-details">
+            <div className="file-info-name" title={shape.fileName}>
+              {shape.fileName}
+            </div>
+            <div className="file-info-meta">
+              {formatFileSize(shape.fileSize)} · {shape.mimeType}
+            </div>
+          </div>
+        </div>
+        <button
+          className="file-replace-btn"
+          onClick={handleReplaceClick}
+          disabled={isReplacing}
+        >
+          {isReplacing ? 'Replacing...' : 'Replace File'}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={handleReplaceFile}
+        />
+      </PropertySection>
+
+      <PropertySection id="file-label" title="Label" defaultExpanded={false}>
+        <input
+          type="text"
+          value={shape.label || ''}
+          onChange={(e) => updateShape(shape.id, { label: e.target.value })}
+          className="property-text-input"
+          placeholder="Uses filename if empty"
+        />
+        <CompactNumberInput
+          label="Font Size"
+          value={shape.labelFontSize || 12}
+          onChange={(val) => updateShape(shape.id, { labelFontSize: val })}
+          min={8}
+          max={36}
+        />
+        <CompactColorInput
+          label="Color"
+          value={shape.labelColor || '#333333'}
+          onChange={(color) => updateShape(shape.id, { labelColor: color })}
+        />
+      </PropertySection>
+    </>
+  );
+}
+
+/**
  * PropertyPanel component for editing selected shape properties.
  *
  * Features:
@@ -1246,6 +1540,14 @@ export function PropertyPanel() {
           shape.type === 'uml-abstract-class'
         ) && (
           <UMLClassProperties
+            shape={shape as LibraryShape}
+            updateShape={updateShape}
+          />
+        )}
+
+        {/* Swimlane properties - lane management */}
+        {isLibraryShapeSelected && shape.type === 'activity-swimlane' && (
+          <SwimlaneProperties
             shape={shape as LibraryShape}
             updateShape={updateShape}
           />
@@ -2380,6 +2682,11 @@ export function PropertyPanel() {
             <InfoRow label="Start" value={`(${Math.round(shape.x)}, ${Math.round(shape.y)})`} />
             <InfoRow label="End" value={`(${Math.round(shape.x2)}, ${Math.round(shape.y2)})`} />
           </PropertySection>
+        )}
+
+        {/* FileShape Section */}
+        {isFile(shape) && (
+          <FileShapeProperties shape={shape} updateShape={updateShape} />
         )}
       </div>
 

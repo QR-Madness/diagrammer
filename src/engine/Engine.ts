@@ -23,6 +23,7 @@ import { useSessionStore, ToolType, deleteSelected } from '../store/sessionStore
 import { useHistoryStore, pushHistory } from '../store/historyStore';
 import { useShapeLibraryStore } from '../store/shapeLibraryStore';
 import { useCustomShapeLibraryStore } from '../store/customShapeLibraryStore';
+import { useWhiteboardStore } from '../store/whiteboardStore';
 import { nanoid } from 'nanoid';
 
 // Import shape handlers to register them
@@ -32,6 +33,7 @@ import '../shapes/Line';
 import '../shapes/Text';
 import '../shapes/Connector';
 import '../shapes/Group';
+import '../shapes/FileShape';
 
 // Clipboard for copy/paste (module-level to persist across operations)
 let clipboard: Shape[] = [];
@@ -382,6 +384,9 @@ export class Engine {
       startTextEdit: (id) => {
         sessionStore.getState().startTextEdit(id);
       },
+      openFileViewer: (id) => {
+        sessionStore.getState().openFileViewer(id);
+      },
 
       // Snapping
       getSnapSettings: () => sessionStore.getState().snapSettings,
@@ -689,6 +694,13 @@ export class Engine {
           this.renderer.requestRender();
         }
       }
+      return;
+    }
+
+    // Ctrl+I: Toggle whiteboard (Ideas)
+    if (isCtrl && event.key.toLowerCase() === 'i') {
+      event.preventDefault();
+      useWhiteboardStore.getState().toggleVisibility();
       return;
     }
   }

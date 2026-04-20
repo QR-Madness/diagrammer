@@ -243,7 +243,7 @@ export function createLibraryShapeHandler(
     },
 
     /**
-     * Get resize and rotation handles.
+     * Get resize, rotation, and custom handles.
      */
     getHandles(shape: LibraryShape): Handle[] {
       const halfWidth = shape.width / 2;
@@ -262,15 +262,24 @@ export function createLibraryShapeHandler(
         { type: 'rotation', x: 0, y: -halfHeight - rotationHandleOffset, cursor: 'grab' },
       ];
 
-      return localHandles.map((h) => {
+      const standardHandles: Handle[] = localHandles.map((h) => {
         const world = localToWorld(new Vec2(h.x, h.y), shape);
         return {
           type: h.type,
           x: world.x,
           y: world.y,
           cursor: h.cursor,
+          metadata: { isStandard: true },
         };
       });
+
+      // Add custom handles from definition if provided
+      if (definition.customHandles) {
+        const customHandles = definition.customHandles(shape);
+        return [...standardHandles, ...customHandles];
+      }
+
+      return standardHandles;
     },
 
     /**

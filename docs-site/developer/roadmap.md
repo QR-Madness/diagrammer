@@ -4,21 +4,28 @@ This document tracks Diagrammer's development progress and planned features. For
 
 ## Current Status
 
+<!-- DO NOT TOUCH THIS VERSION LINE; IT'S MANAGED BY RELEASE ACTIONS -->
+
 **Version 1.1.0-beta.3** (Icon System & AI Recommendations)
+
+<!-- END OF MANAGED SECTION -->
 
 Diagrammer is feature-rich and nearly stable with the following key features completed:
 
 - ✅ High-performance canvas rendering (10k+ shapes @ 60fps)
 - ✅ Real-time collaboration via Protected Local mode (Yjs CRDT over WebSocket)
-- ✅ Rich shape libraries (Basic, Flowchart, UML Class, UML Use-Case, ERD Crow's Foot)
+- ✅ Rich shape libraries (Basic, Flowchart, UML Class, UML Use-Case, ERD Crow's Foot, UML Sequence, UML Activity)
 - ✅ User-expandable custom shape libraries
 - ✅ Multi-page documents with rich text editor (Tiptap)
 - ✅ Desktop app (Tauri v2) and web version
-- ✅ Export to PDF, PNG, SVG, JSON
+- ✅ Export to PDF, PNG, SVG, JSON, `.diagrammer` archives
 - ✅ Offline-first with sync queue and team document caching
 - ✅ Command palette, shape search, keyboard shortcut reference
 - ✅ Large tech icon libraries (AWS, Azure, GCP, Kubernetes, Docker, databases)
-- ✅ Documentation site (Starlight) with GitHub Pages deployment
+- ✅ Embedded file support (PDF, spreadsheet, image, text) with content viewers
+- ✅ Full application backup & restore with selective export
+- ✅ Whiteboard overlay for idea tracking (sticky notes)
+- ✅ Documentation site (VitePress) with GitHub Pages deployment
 
 ## Version History
 
@@ -223,7 +230,7 @@ Completed items:
 ### Phase 15: Version 1.0
 *Documentation, deployment, and CI/CD*
 
-- **15.1 — Documentation Site**: Starlight (Astro) site in `/docs-site/`, custom dark theme, content structure, GitHub Pages deployment via GitHub Actions, local help integration (F1 shortcut, Tauri bundled docs)
+- **15.1 — Documentation Site**: VitePress site in `/docs-site/`, custom dark theme, content structure, GitHub Pages deployment via GitHub Actions, local help integration (F1 shortcut, Tauri bundled docs)
 - **15.2 — Release Build**: `.github/workflows/release.yml` with manual dispatch, semver validation, test gates, auto version bumping, cross-platform Tauri builds (Linux `.deb`/`.AppImage`, Windows `.exe`/`.msi`), git tags and GitHub Releases
 - **15.3 — Release Pipeline**: Finalized UI polish, documentation, and release notes for v1.0.0-beta.1
 
@@ -271,16 +278,47 @@ Completed items:
 - Large tech icon library with lazy loading (AWS, Azure, GCP, Kubernetes, Docker, programming languages, databases)
 - Icon library loading optimization (on-demand categories, cross-category search, LRU cache, loading skeletons)
 
+### Phase 16.7: Application Backup & Recovery [v1.1.0-beta.2]
+*Full application backup and restore*
+
+- Full application backup export (documents, blobs, settings, libraries as ZIP archive)
+- Backup import/restore (merge or replace, conflict resolution)
+- Selective backup options (per-document with dependencies)
+- Backup UI in Settings (timestamp, size estimation, restore preview)
+- Shared `ArchiveUtils` infrastructure (ZIP, checksums, blob collection)
+
+### Phase 16.8: Document Archive Export [v1.1.0-beta.2]
+*Per-document archive export*
+
+- Document archive service (`DocumentArchiveService.exportDocument` / `importDocument`)
+- `.diagrammer` archive format (single document + referenced blobs as ZIP)
+- UI integration: "Export as .diagrammer" in document browser and context menu
+- Reuses `ArchiveUtils` infrastructure from Phase 16.7
+
+### Phase 17: Embedded Files [v1.2.0-beta.1]
+*File embedding for PDFs, spreadsheets, and assets*
+
+- FileShape type with reference-based blob storage and lazy loading tiers
+- File shape handlers (PDF, Spreadsheet, Generic) with thumbnail generation via Web Worker
+- FileViewerModal with PDF viewer (pdf.js) and spreadsheet viewer (SheetJS)
+- File import flow (drag-and-drop, file picker, validation)
+- Files tab in Storage Manager (reference tracking, orphan detection)
+- Collaboration support (HTTP blob endpoints for large files, blob sync protocol)
+- File replacement, error handling, and memory management (LRU cache)
+
+### Phase 18: Advanced Diagram Patterns [v1.3.0-beta.1]
+*Sequence diagrams, activity diagrams, and whiteboard*
+
+- **18.1 — Sequence Diagrams**: Lifeline (6 head types: object, actor, component, interface, database, queue), Activation (nesting, recursion), Fragment (loop, alt, opt, par, break, critical, strict, seq with operand dividers), Actor (person, system, external), Destruction marker, State Invariant, Time Constraint, Coregion, Continuation shapes, UML Sequence connector markers (sync, async, reply, create, destroy, lost, found) — 57 tests
+- **18.2 — Activity Diagrams + Swimlanes**: Action (call behavior/operation, pre/post conditions), Initial/Final/Flow-Final nodes, Fork/Join Bar (join spec), Send/Receive Signal, Decision/Merge nodes, Accept Event, Accept Time Event, Object Node (FIFO/LIFO/ordered/unordered), Data Store, Central Buffer, Input/Output Pin, Expansion Region (parallel/iterative/stream), Interruptible Region, Activity Parameter Node, Swimlane (horizontal/vertical, custom lane widths/colors, partition types) — 71 tests
+- **18.2.1 — Connector Enhancements**: Guard condition labels with configurable position, object flow (dashed) vs control flow (solid), message numbering for sequence diagrams, self-message routing (loop to right of lifeline) — 36 tests
+- **18.3 — Whiteboard (Sticky Notes)**: Document-global whiteboard overlay (Ctrl+I), draggable/resizable sticky notes with customizable colors (12 presets + recent), contentEditable formatting (bold, italic), whiteboard persistence in document, export handling (excluded by default), toolbar button — 19 tests
+
 ## Planned Features
 
-### Phase 16.7: Application Backup & Recovery [v1.1.0-beta.2]
+These features are under consideration for future versions:
 
-- [ ] Full application backup export (documents, blobs, settings, libraries as archive)
-- [ ] Backup import/restore (merge or replace, conflict resolution)
-- [ ] Selective backup options (per-document with dependencies)
-- [ ] Backup UI in Settings (timestamp, size estimation, restore preview)
-
-### Phase 16.9: Deferred Improvements [v1.1.0-beta.2]
+### Phase 16.9: Deferred Improvements
 
 #### Connector & Shape Improvements
 - [ ] Lazy connector route rebuilding (incremental updates for affected connectors only)
@@ -306,24 +344,6 @@ Completed items:
 
 #### Quality of Life
 - [ ] Template gallery (Flowchart, Org Chart, ERD, Network Diagram, Wireframe starters)
-
-### Phase 17: Embedded Files [v1.2.0-beta.1]
-*File embedding for PDFs, spreadsheets, and assets*
-
-- [ ] FileShape type with reference-based blob storage and lazy loading tiers
-- [ ] File shape handlers (PDF, Spreadsheet, Generic) with thumbnail generation via Web Worker
-- [ ] FileViewerModal with PDF viewer (pdf.js) and spreadsheet viewer (SheetJS)
-- [ ] File import flow (drag-and-drop, file picker, validation)
-- [ ] Files tab in Storage Manager (reference tracking, orphan detection)
-- [ ] Collaboration support (HTTP blob endpoints for large files, blob sync protocol)
-- [ ] File replacement, error handling, and memory management (LRU cache)
-
-### Phase 18: Advanced Diagram Patterns [v1.3.0-beta.1]
-
-- [ ] Sequence diagram patterns
-- [ ] Activity diagram patterns
-- [ ] Swimlane customization
-- [ ] StickyNote shape type (postit appearance, rich text, canvas/screen anchor modes)
 
 ## Future Considerations
 

@@ -1,0 +1,492 @@
+/**
+ * Tests for Connector shape handler and related utilities.
+ *
+ * Tests the connector rendering, hit testing, and UML diagram features.
+ */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { Vec2 } from '../math/Vec2';
+import {
+  connectorHandler,
+  getConnectorStartPoint,
+  getConnectorEndPoint,
+  checkConnectorHealth,
+  findOrphanedConnectors,
+  findClosestAnchor,
+  updateConnectorEndpoints,
+} from './Connector';
+import { ConnectorShape, RectangleShape, Shape } from './Shape';
+// Import Rectangle to register its handler
+import './Rectangle';
+
+/**
+ * Helper to create a test connector shape.
+ */
+function createTestConnector(overrides: Partial<ConnectorShape> = {}): ConnectorShape {
+  return {
+    id: 'test-connector',
+    type: 'connector',
+    x: 0,
+    y: 0,
+    x2: 100,
+    y2: 0,
+    rotation: 0,
+    opacity: 1,
+    locked: false,
+    visible: true,
+    fill: null,
+    stroke: '#000000',
+    strokeWidth: 2,
+    startShapeId: null,
+    startAnchor: 'center',
+    endShapeId: null,
+    endAnchor: 'center',
+    startArrow: false,
+    endArrow: true,
+    ...overrides,
+  };
+}
+
+/**
+ * Helper to create a mock CanvasRenderingContext2D.
+ */
+function createMockContext(): CanvasRenderingContext2D {
+  return {
+    save: vi.fn(),
+    restore: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke: vi.fn(),
+    fill: vi.fn(),
+    closePath: vi.fn(),
+    arc: vi.fn(),
+    setLineDash: vi.fn(),
+    fillRect: vi.fn(),
+    strokeRect: vi.fn(),
+    fillText: vi.fn(),
+    measureText: vi.fn().mockReturnValue({ width: 50 }),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    globalAlpha: 1,
+    strokeStyle: '',
+    fillStyle: '',
+    lineWidth: 1,
+    lineCap: 'butt',
+    lineJoin: 'miter',
+    font: '',
+    textAlign: 'left',
+    textBaseline: 'alphabetic',
+  } as unknown as CanvasRenderingContext2D;
+}
+
+describe('connectorHandler', () => {
+  describe('render', () => {
+    it('renders a basic connector line', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector();
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.save).toHaveBeenCalled();
+      expect(ctx.beginPath).toHaveBeenCalled();
+      expect(ctx.moveTo).toHaveBeenCalledWith(0, 0);
+      expect(ctx.lineTo).toHaveBeenCalledWith(100, 0);
+      expect(ctx.stroke).toHaveBeenCalled();
+      expect(ctx.restore).toHaveBeenCalled();
+    });
+
+    it('renders a connector with dashed line style', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ lineStyle: 'dashed' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.setLineDash).toHaveBeenCalledWith([8, 4]);
+    });
+
+    it('renders object flow with dashed line', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ flowType: 'object' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.setLineDash).toHaveBeenCalledWith([8, 4]);
+    });
+
+    it('renders control flow with solid line', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ flowType: 'control' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.setLineDash).toHaveBeenCalledWith([]);
+    });
+
+    it('renders a connector label at midpoint', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ label: 'Test Label' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.fillText).toHaveBeenCalledWith('Test Label', expect.any(Number), expect.any(Number));
+    });
+
+    it('renders guard condition with brackets', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ guardCondition: 'x > 0' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.fillText).toHaveBeenCalledWith('[x > 0]', expect.any(Number), expect.any(Number));
+    });
+
+    it('renders guard condition at custom position', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({
+        guardCondition: 'valid',
+        guardPosition: 0.8,
+      });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.fillText).toHaveBeenCalled();
+    });
+
+    it('renders message number for sequence diagrams', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({ messageNumber: '1.2' });
+
+      connectorHandler.render(ctx, connector);
+
+      expect(ctx.fillText).toHaveBeenCalledWith('1.2:', expect.any(Number), expect.any(Number));
+    });
+
+    it('handles self-message routing', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({
+        startShapeId: 'shape-1',
+        endShapeId: 'shape-1',
+        x: 50,
+        y: 0,
+        x2: 50,
+        y2: 40,
+        selfMessageWidth: 30,
+      });
+
+      connectorHandler.render(ctx, connector);
+
+      // Should render the connector (moveTo and lineTo calls)
+      expect(ctx.moveTo).toHaveBeenCalled();
+      expect(ctx.lineTo).toHaveBeenCalled();
+      // At minimum 3 lineTo calls for 4-point loop path
+      expect((ctx.lineTo as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(3);
+    });
+
+    it('uses default selfMessageWidth when not specified', () => {
+      const ctx = createMockContext();
+      const connector = createTestConnector({
+        startShapeId: 'shape-1',
+        endShapeId: 'shape-1',
+        x: 50,
+        y: 0,
+        x2: 50,
+        y2: 40,
+      });
+
+      connectorHandler.render(ctx, connector);
+
+      // Should still render with default width of 30
+      expect(ctx.lineTo).toHaveBeenCalled();
+    });
+  });
+
+  describe('hitTest', () => {
+    it('returns true for point on line', () => {
+      const connector = createTestConnector();
+      const result = connectorHandler.hitTest(connector, new Vec2(50, 0));
+      expect(result).toBe(true);
+    });
+
+    it('returns true for point within tolerance', () => {
+      const connector = createTestConnector();
+      const result = connectorHandler.hitTest(connector, new Vec2(50, 4));
+      expect(result).toBe(true);
+    });
+
+    it('returns false for point far from line', () => {
+      const connector = createTestConnector();
+      const result = connectorHandler.hitTest(connector, new Vec2(50, 50));
+      expect(result).toBe(false);
+    });
+
+    it('handles orthogonal connectors with waypoints', () => {
+      const connector = createTestConnector({
+        waypoints: [{ x: 50, y: 0 }, { x: 50, y: 50 }],
+        x2: 100,
+        y2: 50,
+      });
+      const result = connectorHandler.hitTest(connector, new Vec2(50, 25));
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('getBounds', () => {
+    it('returns correct bounds for horizontal connector', () => {
+      const connector = createTestConnector();
+      const bounds = connectorHandler.getBounds(connector);
+
+      expect(bounds.minX).toBeLessThan(0);
+      expect(bounds.minY).toBeLessThan(0);
+      expect(bounds.maxX).toBeGreaterThan(100);
+      expect(bounds.maxY).toBeGreaterThan(0);
+    });
+
+    it('includes waypoints in bounds calculation', () => {
+      const connector = createTestConnector({
+        waypoints: [{ x: 50, y: -50 }, { x: 50, y: 50 }],
+      });
+      const bounds = connectorHandler.getBounds(connector);
+
+      expect(bounds.minY).toBeLessThan(-50);
+      expect(bounds.maxY).toBeGreaterThan(50);
+    });
+  });
+
+  describe('getHandles', () => {
+    it('returns start and end handles', () => {
+      const connector = createTestConnector();
+      const handles = connectorHandler.getHandles(connector);
+
+      expect(handles).toHaveLength(2);
+      expect(handles[0]?.type).toBe('left');
+      expect(handles[0]?.x).toBe(0);
+      expect(handles[0]?.y).toBe(0);
+      expect(handles[1]?.type).toBe('right');
+      expect(handles[1]?.x).toBe(100);
+      expect(handles[1]?.y).toBe(0);
+    });
+  });
+
+  describe('create', () => {
+    it('creates connector at specified position', () => {
+      const connector = connectorHandler.create(new Vec2(50, 100), 'new-connector');
+
+      expect(connector.id).toBe('new-connector');
+      expect(connector.x).toBe(50);
+      expect(connector.y).toBe(100);
+      expect(connector.x2).toBe(150); // 100px to the right
+      expect(connector.y2).toBe(100);
+    });
+  });
+});
+
+describe('connector utility functions', () => {
+  let shapes: Record<string, Shape>;
+  let testRect: RectangleShape;
+
+  beforeEach(() => {
+    testRect = {
+      id: 'rect-1',
+      type: 'rectangle',
+      x: 100,
+      y: 100,
+      width: 80,
+      height: 60,
+      cornerRadius: 0,
+      rotation: 0,
+      opacity: 1,
+      locked: false,
+      visible: true,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeWidth: 2,
+    };
+    shapes = { 'rect-1': testRect };
+  });
+
+  describe('getConnectorStartPoint', () => {
+    it('returns stored position when not connected', () => {
+      const connector = createTestConnector({ x: 25, y: 75 });
+      const point = getConnectorStartPoint(connector, shapes);
+      expect(point.x).toBe(25);
+      expect(point.y).toBe(75);
+    });
+
+    it('returns anchor position when connected to shape', () => {
+      const connector = createTestConnector({
+        startShapeId: 'rect-1',
+        startAnchor: 'center',
+      });
+      const point = getConnectorStartPoint(connector, shapes);
+      expect(point.x).toBe(100);
+      expect(point.y).toBe(100);
+    });
+
+    it('falls back to stored position when shape not found', () => {
+      const connector = createTestConnector({
+        startShapeId: 'nonexistent',
+        x: 50,
+        y: 50,
+      });
+      const point = getConnectorStartPoint(connector, shapes);
+      expect(point.x).toBe(50);
+      expect(point.y).toBe(50);
+    });
+  });
+
+  describe('getConnectorEndPoint', () => {
+    it('returns stored position when not connected', () => {
+      const connector = createTestConnector({ x2: 200, y2: 150 });
+      const point = getConnectorEndPoint(connector, shapes);
+      expect(point.x).toBe(200);
+      expect(point.y).toBe(150);
+    });
+
+    it('returns anchor position when connected to shape', () => {
+      const connector = createTestConnector({
+        endShapeId: 'rect-1',
+        endAnchor: 'center',
+      });
+      const point = getConnectorEndPoint(connector, shapes);
+      expect(point.x).toBe(100);
+      expect(point.y).toBe(100);
+    });
+  });
+
+  describe('checkConnectorHealth', () => {
+    it('reports healthy for floating endpoints', () => {
+      const connector = createTestConnector();
+      const health = checkConnectorHealth(connector, shapes);
+      expect(health.isHealthy).toBe(true);
+      expect(health.startStatus).toBe('floating');
+      expect(health.endStatus).toBe('floating');
+    });
+
+    it('reports healthy for valid connections', () => {
+      const connector = createTestConnector({
+        startShapeId: 'rect-1',
+        startAnchor: 'center',
+        endShapeId: 'rect-1',
+        endAnchor: 'right',
+      });
+      const health = checkConnectorHealth(connector, shapes);
+      expect(health.isHealthy).toBe(true);
+      expect(health.startStatus).toBe('connected');
+      expect(health.endStatus).toBe('connected');
+    });
+
+    it('reports orphaned when shape not found', () => {
+      const connector = createTestConnector({
+        startShapeId: 'deleted-shape',
+      });
+      const health = checkConnectorHealth(connector, shapes);
+      expect(health.isHealthy).toBe(false);
+      expect(health.startStatus).toBe('orphaned');
+      expect(health.issues).toContain('Start shape "deleted-shape" not found');
+    });
+  });
+
+  describe('findOrphanedConnectors', () => {
+    it('returns empty array when no orphans', () => {
+      const connector = createTestConnector();
+      const allShapes = { ...shapes, 'test-connector': connector };
+      const orphans = findOrphanedConnectors(allShapes);
+      expect(orphans).toHaveLength(0);
+    });
+
+    it('finds orphaned connectors', () => {
+      const connector = createTestConnector({
+        startShapeId: 'deleted-shape',
+      });
+      const allShapes = { ...shapes, 'test-connector': connector };
+      const orphans = findOrphanedConnectors(allShapes);
+      expect(orphans).toHaveLength(1);
+      expect(orphans[0]?.connector.id).toBe('test-connector');
+    });
+  });
+
+  describe('updateConnectorEndpoints', () => {
+    it('updates start point when connected', () => {
+      const connector = createTestConnector({
+        startShapeId: 'rect-1',
+        startAnchor: 'center',
+        x: 0,
+        y: 0,
+      });
+      const updates = updateConnectorEndpoints(connector, shapes);
+      expect(updates.x).toBe(100);
+      expect(updates.y).toBe(100);
+    });
+
+    it('updates end point when connected', () => {
+      const connector = createTestConnector({
+        endShapeId: 'rect-1',
+        endAnchor: 'center',
+        x2: 0,
+        y2: 0,
+      });
+      const updates = updateConnectorEndpoints(connector, shapes);
+      expect(updates.x2).toBe(100);
+      expect(updates.y2).toBe(100);
+    });
+
+    it('returns empty updates when not connected', () => {
+      const connector = createTestConnector();
+      const updates = updateConnectorEndpoints(connector, shapes);
+      expect(Object.keys(updates)).toHaveLength(0);
+    });
+  });
+
+  describe('findClosestAnchor', () => {
+    it('finds closest anchor point', () => {
+      const result = findClosestAnchor(testRect, new Vec2(140, 100));
+      expect(result).not.toBeNull();
+      expect(result?.anchor.position).toBe('right');
+    });
+
+    it('respects maxDistance parameter', () => {
+      const result = findClosestAnchor(testRect, new Vec2(500, 500), 10);
+      expect(result).toBeNull();
+    });
+  });
+});
+
+describe('FlowType property', () => {
+  it('object flow uses dashed line', () => {
+    const ctx = createMockContext();
+    const connector = createTestConnector({ flowType: 'object' });
+
+    connectorHandler.render(ctx, connector);
+
+    const setLineDashCalls = (ctx.setLineDash as ReturnType<typeof vi.fn>).mock.calls;
+    expect(setLineDashCalls.some((call: unknown[]) =>
+      Array.isArray(call[0]) && call[0].length > 0
+    )).toBe(true);
+  });
+
+  it('control flow uses solid line', () => {
+    const ctx = createMockContext();
+    const connector = createTestConnector({ flowType: 'control', lineStyle: 'solid' });
+
+    connectorHandler.render(ctx, connector);
+
+    const setLineDashCalls = (ctx.setLineDash as ReturnType<typeof vi.fn>).mock.calls;
+    // First call should be solid (empty array)
+    expect(setLineDashCalls[0]).toEqual([[]]);
+  });
+
+  it('flowType object overrides lineStyle solid', () => {
+    const ctx = createMockContext();
+    const connector = createTestConnector({
+      flowType: 'object',
+      lineStyle: 'solid',  // Should be overridden by flowType
+    });
+
+    connectorHandler.render(ctx, connector);
+
+    const setLineDashCalls = (ctx.setLineDash as ReturnType<typeof vi.fn>).mock.calls;
+    // First call should be dashed (object flow overrides)
+    expect(setLineDashCalls[0]).toEqual([[8, 4]]);
+  });
+});

@@ -32,220 +32,11 @@
 
 ---
 
-## Completed Phases
-
-Phases 1–16.6 are complete. See [roadmap.md](docs-site/developer/roadmap.md) for full version history.
+## Phase 19: ???
 
 ---
 
-## Implementation Phase Tracker
-### Phase 16.7: Application Backup & Recovery [v1.1.0‑beta.2] ✅
-
-Comprehensive backup system for transferring and recovering all application data.
-
-#### Backup System
-
-- [x] **Full application backup export**
-  - Export all local documents as a single archive (.diagrammer-backup or .zip).
-  - Include all blob storage (images, icons, embedded files).
-  - Include style profiles, color palettes, and custom shape libraries.
-  - Include application settings and preferences.
-  - Progress indicator for large backups.
-
-- [x] **Backup import/restore**
-  - Import backup archive and restore all data.
-  - Option to merge with existing data or replace entirely.
-  - Conflict resolution UI for duplicate documents/profiles.
-  - Validation of backup integrity before restore.
-
-- [x] **Selective backup options**
-  - Choose which data to include: documents, blobs, settings, libraries.
-  - Per-document export with dependencies (all referenced blobs included).
-  - Export selected documents only.
-
-- [x] **Backup UI in Settings**
-  - Backup/Restore tab in Settings modal.
-  - Last backup timestamp display.
-  - Backup size estimation before export.
-  - Restore preview showing what will be imported.
-
-### Phase 16.8: Document Archive Export [v1.1.0‑beta.2]
-
-Per-document archive export (`.diagrammer` files) for sharing individual diagrams with all dependencies. Builds on the shared `ArchiveUtils` infrastructure from Phase 16.7.
-
-- [x] **Document archive service**
-  - `DocumentArchiveService.exportDocument(docId)` — bundles one document + referenced blobs into a `.diagrammer` archive.
-  - `DocumentArchiveService.importDocument(file)` — imports a `.diagrammer` file, creating a new local document with all blobs.
-  - Reuses `ArchiveUtils` (ZIP, checksums, blob collection) — no new archive infrastructure needed.
-  - Manifest `type: 'diagrammer-document-archive'` distinguishes from full backups.
-
-- [x] **UI integration**
-  - "Export as .diagrammer" option in document browser and context menu.
-  - "Import .diagrammer" alongside existing JSON import.
-  - Replaces/augments current JSON-only export (which loses blob data).
-
-### Phase 17: Embedded Files [RELEASE v1.2.0‑beta.1]
-
-File embedding system for PDFs, spreadsheets, and other assets. Uses reference-based architecture with lazy loading to maintain canvas performance.
-
-#### Architecture Decisions
-
-- **Modal viewer pattern**: Content viewed in modal, not in-place rendered on canvas (preserves 60fps target)
-- **Thumbnail on canvas**: Cached preview thumbnail + file icon/name displayed as shape
-- **Reference-based storage**: Shapes hold `blobRef` (SHA-256 hash), actual files in BlobStorage
-- **Lazy loading tiers**: Off-screen (nothing) → On-screen (thumbnail) → Modal open (full content)
-- **Separate blob sync**: HTTP endpoints for large files, WebSocket for shape metadata only
-
-#### Phase 17.1: Core Infrastructure
-
-- [ ] **FileShape type definition** (`src/types/FileShape.ts`)
-  - Extends BaseShape with: `blobRef`, `fileName`, `mimeType`, `fileSize`
-  - Preview metadata: `thumbnail` (base64), `pageCount`, `dimensions`
-  - Supported categories: `pdf`, `spreadsheet`, `generic`
-
-- [ ] **File shape handlers** (`src/shapes/files/`)
-  - `BaseFileHandler.ts` — Common: bounds, selection, download action
-  - `PdfHandler.ts` — PDF icon, page count badge, thumbnail render
-  - `SpreadsheetHandler.ts` — Table icon, row/column count badge
-  - `GenericFileHandler.ts` — File type icon + filename fallback
-  - Register all handlers in ShapeRegistry
-
-- [ ] **Thumbnail generation service** (`src/services/ThumbnailGenerator.ts`)
-  - Web Worker for non-blocking generation
-  - PDF: Render page 1 at ~400px width via pdf.js → JPEG blob
-  - XLSX/CSV: Generate mini-table preview or use generic icon
-  - Store thumbnail in shape's `preview.thumbnail` field
-
-#### Phase 17.2: Content Viewer Modal
-
-- [ ] **FileViewerModal component** (`src/ui/FileViewerModal.tsx`)
-  - Full-screen modal with close button, download, replace actions
-  - File type detection and appropriate viewer dispatch
-
-- [ ] **PDF viewer** (`src/ui/viewers/PdfViewer.tsx`)
-  - pdf.js integration for rendering
-  - Page navigation (prev/next, page number input)
-  - Zoom controls
-  - Lazy page loading (render visible pages only)
-  - BONUS: Cache the viewer's position in the document upon close
-
-- [ ] **Spreadsheet viewer** (`src/ui/viewers/SpreadsheetViewer.tsx`)
-  - SheetJS (xlsx) for parsing XLSX/CSV
-  - Table rendering with virtual scrolling for large datasets
-  - Sheet tabs for multi-sheet workbooks
-  - Basic cell formatting preservation
-
-- [ ] **Generic file viewer** (`src/ui/viewers/GenericFileViewer.tsx`)
-  - File icon, name, size, type display
-  - Download button
-  - "No preview available" message
-
-#### Phase 17.3: File Import Flow
-
-- [ ] **File drop/upload handling**
-  - Drag-and-drop files onto canvas
-  - File picker via toolbar or context menu
-  - Validate file types and size limits
-
-- [ ] **Import pipeline**
-  - Store file in BlobStorage (content-addressed)
-  - Generate thumbnail (async, Web Worker)
-  - Create FileShape at drop position
-  - Update spatial index
-
-#### Phase 17.4: Storage Manager Integration
-
-- [ ] **Files tab in Storage Manager**
-  - List all embedded files with: name, type, size, reference count
-  - Preview thumbnails where available
-  - Show which documents reference each file
-  - Orphan detection (files with no shape references)
-  - Delete/replace individual files
-
-- [ ] **Storage references checker extension**
-  - Update `BlobGarbageCollector` to scan FileShape `blobRef` fields
-  - Protect files referenced by any document
-  - Handle thumbnail blobs if stored separately
-
-#### Phase 17.5: Collaboration Support
-
-- [ ] **HTTP blob endpoints** (Rust backend)
-  - `POST /api/blobs/:hash` — Upload blob with hash verification
-  - `GET /api/blobs/:hash` — Download blob by hash
-  - `HEAD /api/blobs/:hash` — Check blob existence
-  - Chunked upload/download for large files (>10MB)
-  - Authentication via JWT token header
-
-- [ ] **Blob sync protocol**
-  - On shape sync, client checks if blob exists locally
-  - If missing, fetch via HTTP endpoint
-  - Progress indicator for large file downloads
-  - Retry logic with exponential backoff
-
-- [ ] **AssetBundler extension**
-  - Update `bundleDocumentWithAssets()` to include file blobs
-  - Handle large files (consider compression or external references)
-
-#### Phase 17.6: Polish & Edge Cases
-
-- [ ] **File replacement flow**
-  - Replace file contents while keeping shape position/size
-  - Regenerate thumbnail
-  - Update all references atomically
-
-- [ ] **Error handling**
-  - Corrupt file detection on import
-  - Missing blob recovery (prompt to re-upload)
-  - Unsupported file type graceful fallback
-
-- [ ] **Memory management**
-  - Unload full PDF/spreadsheet content when modal closes
-  - LRU cache for recently viewed file content
-  - Thumbnail-only mode for low-memory situations
-
-### Phase 18: Advanced Diagram Patterns [RELEASE v1.3.0‑beta.1]
-
-- [ ] Sequence diagram patterns
-- [ ] Activity diagram patterns + Swimlane customization
-
-#### Phase 18.1: Sticky Notes
-
-- [ ] **StickyNote shape type** (`src/shapes/StickyNote.ts`)
-  - Postit-like appearance with folded corner effect
-  - Configurable background color (default yellow palette: yellow, pink, blue, green, orange)
-  - Rich text content support (bold, italic, bullet lists)
-  - Auto-resize based on content or fixed size with overflow handling
-  - Drop shadow for "lifted paper" effect
-
-- [ ] **Anchor modes**
-  - **Canvas mode** (default): Note exists in world space, moves with pan/zoom like other shapes
-  - **Screen mode**: Note anchored to viewport corner (top-left, top-right, bottom-left, bottom-right)
-  - Screen-anchored notes persist across pages and zoom levels
-  - Toggle anchor mode via context menu or PropertyPanel
-
-- [ ] **StickyNoteTool** (`src/tools/StickyNoteTool.ts`)
-  - Click-to-place with default size
-  - Drag-to-size for custom dimensions
-  - Immediate inline editing on creation
-
-- [ ] **PropertyPanel integration**
-  - Color picker with sticky note palette
-  - Anchor mode toggle (canvas/screen + corner selector for screen mode)
-  - Font size and alignment controls
-  - Transparency/opacity slider
-
-- [ ] **Screen-anchored note rendering**
-  - Render after main canvas in screen space (not affected by camera transform)
-  - Maintain position relative to viewport on resize
-  - Z-order always above canvas content
-  - Draggable within viewport bounds
-
-- [ ] **Persistence**
-  - Canvas notes: stored in document like other shapes
-  - Screen notes: stored in document metadata with viewport-relative positions
-  - Export: include canvas notes in PNG/SVG; exclude or optionally include screen notes
-
-### Phase 18.9: Performance & Polish
+## Optimizations Backlog: Performance & Polish Tasks
 
 Improvements deferred from earlier phases for incremental completion.
 
@@ -333,6 +124,12 @@ Improvements deferred from earlier phases for incremental completion.
   - [ ] Create publish configurations to manage the publisher's export locations
   - [ ] Run a publish configuration to export various types of media (e.g. PDF, SVG, JSON) to a single, or multiple configured paths on the computer.
   - Keep it extensible to support exporting to cloud locations in the future.
+
+### Future: Dynamic Style Profiles
+
+- [ ] Implement optional shape style reference field; referenced style profiles override defaults
+- [ ] Style profiles can also be merged to a shape instead of referenced, acting as one-time copy
+- [ ] Implementing this would mean applying shape adapters for style to store the large amount of shapes' customization (optimizing this may prove difficult w/o extensive testing)
 
 ### Future: Document Cloud Providers
 
@@ -486,6 +283,25 @@ A commercially licensed tier targeting teams and organizations, built on top of 
 - [ ] OpenTelemetry tracing for request lifecycle visibility
 - [ ] Admin dashboard for server health, active sessions, and storage usage
 
+### Future: Video Tutorials
+
+Short screencast videos to accompany documentation pages. Each video should be 2–5 minutes, embedded in the corresponding docs page and uploaded to a hosting platform (YouTube or self-hosted).
+
+<!-- 🎬 VIDEO: These tasks mark where video content would significantly improve the learning experience. -->
+<!-- Videos are most valuable for spatial/interactive features that are hard to convey in text alone. -->
+
+- [ ] **Quick Start walkthrough** — Video showing document creation, adding shapes, connecting them, and exporting. Complements `getting-started/quick-start.md`.
+- [ ] **Canvas navigation demo** — WASD movement, scroll-zoom, minimap, and smart guides in action. Spatial interaction is hard to convey in text. Complements `guide/canvas-navigation.md`.
+- [ ] **Connector routing & connection points** — Show snap behavior, auto-routing, switching between orthogonal/straight/curved, and self-messages. Complements `guide/connectors.md`.
+- [ ] **Collaboration setup (Host + Join)** — Full walkthrough of starting a server, configuring auth, joining from another machine, and seeing live cursors. Multi-step networking setup benefits from screencast. Complements `guide/collaboration.md`.
+- [ ] **Shape libraries & icon browsing** — Browsing categories, searching icons, using cloud provider icons (AWS/Azure/GCP), and creating custom libraries. Visual discovery. Complements `guide/shape-libraries.md`.
+- [ ] **Rich text editor features** — Formatting toolbar, LaTeX math (inline and block), tables, embedded diagram groups, and images. Complements `guide/rich-text-editor.md`.
+- [ ] **Export workflows (PNG/SVG/PDF)** — Show export options, scale settings, PDF cover page configuration, and .diagrammer archive creation. Complements `guide/export-import.md`.
+- [ ] **Embedded files (drag-and-drop)** — Drag files onto canvas, open PDF/spreadsheet viewers, file replacement, and Storage Manager. Complements `guide/embedded-files.md`.
+- [ ] **Whiteboard / sticky notes** — Quick demo of Ctrl+I, adding/coloring/arranging notes, and closing. Complements `guide/whiteboard.md`.
+- [ ] **Backup & restore** — Full walkthrough of creating a backup, choosing what to include, restoring on a new machine, and merge vs. replace. Complements `guide/export-import.md`.
+- [ ] **Style profiles & themes** — Creating style profiles, applying them to shapes, switching themes, and setting defaults. Visual styling needs visual demonstration. Complements `guide/styling.md`.
+
 ---
 
 ## Testing Notes
@@ -494,7 +310,7 @@ A commercially licensed tier targeting teams and organizations, built on top of 
 - Update this file as new tasks are discovered
 - Each task should be small enough to complete in one session
 - Test each component before moving to the next phase
-- Total tests: 1045 passing (32 test files)
+- Total tests: 1408 passing (44 test files)
 
 ## Test Coverage by Module
 
@@ -507,17 +323,20 @@ A commercially licensed tier targeting teams and organizations, built on top of 
 | SpatialIndex                     | 24      |
 | HitTester                        | 24      |
 | DocumentStore                    | 37      |
-| SessionStore                     | 37      |
+| SessionStore                     | 41      |
 | PageStore                        | 32      |
 | HistoryStore                     | 19      |
 | Rectangle                        | 21      |
 | Ellipse                          | 25      |
 | Line                             | 23      |
+| Connector                        | 36      |
 | Shape transforms                 | 31      |
 | Shape bounds                     | 24      |
 | Collaboration (protocol, sync)   | 200+    |
 | Storage (cache, trash, versions) | 80+     |
 | connectionStore                  | 26      |
+| Sequence Diagram Shapes          | 57      |
+| Activity Diagram Shapes          | 71      |
 |                                  |         |
-| **Total**                        | **1045**|
+| **Total**                        | **1408**|
 
