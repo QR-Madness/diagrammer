@@ -159,12 +159,18 @@ tasks:
       - '{{.BUN}} run build:offline'
 
   docs:build:online:
-    desc: Build documentation for online deployment (GitHub Pages)
+    desc: Build documentation for online deployment
     dir: docs-site
     env:
       ONLINE_MODE: 'true'
     cmds:
       - '{{.BUN}} run build'
+
+  docs:build:gh-pages:
+    desc: Build documentation for GitHub Pages deployment
+    dir: docs-site
+    cmds:
+      - '{{.BUN}} run build:gh-pages'
 
   docs:preview:
     desc: Preview built documentation
