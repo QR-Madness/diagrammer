@@ -39,21 +39,32 @@
 
 ### 19.1 - Formatted Text Space/Margins Fixs
 
-- [ ] Headings produce too much lower margin, pushing text flow beneath slightly too far.
-- [ ] Blockquotes' text sits above the container slightly; it should be well-centered vertically.
-- [ ] When exported to PDF, a blockquote above bold text (suspected trigger), the quotes left margin line will stretch down the page resulting in a ugly visual bug.
+- [X] Headings produce too much bottom padding, pushing content beneath a bit too far too far, also the headings need slightly more top-padding.
+- [X] Blockquotes' text sits above the container slightly; it should be well-centered vertically.
+- [X] Blockquotes intersect with headings when directly above them.
+- [X] When exported to PDF, a blockquote above bold text (suspected trigger), the quotes left margin line will stretch down the page resulting in a ugly visual bug.
 
 ### 19.2 - Additional Features
 
 - [ ] Code-Block is needed (language support is not recommended unless it's lightweight + cross-plat., but it should be highly format-aware (preserving rich formatting where possible), especially with indentation.
-- [ ] Spellcheck + grammar check is badly needed (a custom dictionary per document would be ideal nice too)
+- [ ] Spellcheck + grammar check is badly needed (a custom dictionary; "Add to Dictionary" button would be very nice too)
 - [ ] Contrast Awareness Font Coloring System: White text is dangerous in documents (and especially the canvas) and can be easily applied in dark-mode; add a 'Automatic' color reference which is themed (white/dark, black/light) and is standard-black in PDFs; evaluate complexity to implement this into the canvas too; it's badly needed.
   - Problem: My connectors are white during work since I am in dark-mode and I like white connectors; but when I export to PDF, they aren't contrast aware. I propose that the 'Automatic' color reference could fix this by precomputing contrast requirements based on group-placements weighted by the background color. Assign a contrast render area ID to connectors partitioned based on their group membership, extract the parents' (groups) BGs (per area) into an array, then you can drill down to next background colors to evaluate contrasts (this can be used during rebuilds as well for recalculating contrast assignments)
-- [ ] Add a tree element which formats (prettified) similar to a tree using ASCII operators or another effective format.
+- [ ] Add a tree (quite literally a file tree) element which formats (prettified) similar to a tree using ASCII operators or another effective format.
+- [ ] Remember scroll position in tiptap editor.
+- [ ] Add a preview PDF feature which saves the PDF to temp dir and opens it in a viewer, users can either save it (copy to downloads with a fallback to exporting to downloads), or close it (deleting the temp file)
+- [ ] Table of contents for PDF
+- [ ] Document Outline for PDF Readers
+- [ ] LINKS! We need web links and internal document links!
 
-### 19.3 - PDF Styling Features and Fixes
+### 19.3 - PDF Styling Features, Document Features, and General Fixes
 
-- [ ]
+- [ ] When exported to PDF, table cells won't break-word for word-wrapping leading to large words/numbers being overflow out of the cell. 
+- [ ] Large strings (one giant word or number; a edge case but needs to be fixed) in the PDF don't break; they overflow the page.
+- [ ] Saving PDF defaults saves application-level; it should be document level as other documents data get pulled by others, and it get's messy. 
+- [ ] Add a little preview picture of the logo as a sanity check.
+- [ ] Marking document sections as WIP (add an icon next indicating it's still in construction); we can also add hide properties for PDFs to exclude document WIPs in the future.
+- [ ] The document toolbar switches to the table ribbon/tab when editing a table, but doesn't change to Home on text selection or after exiting the table, I suggest removing the toolbar ribbon auto-switch.
 
 ### 19.4 - PDF Compression Optimizations
 
@@ -65,12 +76,15 @@
 ### 20.1 - Documentation Enhancements
 
 - [ ] Human will add [YouTube] videos for different concepts; you must add support for a custom component to not embed but emphasize a link to YouTube video.
-- [ ] Optimize the docs site to use high-quality styling, and easy-to-navigate pages
+- [X] Optimize the docs site to use high-quality styling, and easy-to-navigate pages
 - [ ] Review shapes in docs and identify implementation discrepancies
 
 ### 20.2 Style Profile Refinements
 
-- [ ]
+- The style profiles are an **excellent** foundation but that are just that; some features are needed to bring them to fruition:
+  - [ ] StyleProfileShapeAdapters
+  - [ ] 
+  - Note: we do have in the backlog, a task for Dynamic Style Profiles, if the complexity isn't massive, consider moving that task to this phase
 
 ### 20.9 - 1.5 Release
 
