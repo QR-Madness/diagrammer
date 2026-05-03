@@ -50,6 +50,8 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
   const [margins, setMargins] = useState<PDFMargins>({ top: 20, right: 20, bottom: 20, left: 20 });
   const [showPageNumbers, setShowPageNumbers] = useState(true);
   const [pageNumberFormat, setPageNumberFormat] = useState<PDFPageNumberFormat>('x-of-y');
+  const [includeTableOfContents, setIncludeTableOfContents] = useState(true);
+  const [includePdfOutline, setIncludePdfOutline] = useState(true);
 
   // Cover page state
   const [coverPageEnabled, setCoverPageEnabled] = useState(false);
@@ -88,6 +90,8 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
       setMargins(initialOptions.margins);
       setShowPageNumbers(initialOptions.showPageNumbers);
       setPageNumberFormat(initialOptions.pageNumberFormat);
+      setIncludeTableOfContents(initialOptions.includeTableOfContents ?? true);
+      setIncludePdfOutline(initialOptions.includePdfOutline ?? true);
       setCoverPageEnabled(initialOptions.coverPage.enabled);
       setCoverTitle(initialOptions.coverPage.title);
       setCoverVersion(initialOptions.coverPage.version);
@@ -117,6 +121,8 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
         margins,
         showPageNumbers,
         pageNumberFormat,
+        includeTableOfContents,
+        includePdfOutline,
         coverPage: {
           enabled: coverPageEnabled,
           title: coverTitle,
@@ -177,6 +183,7 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
         if (pageId === rtPages.activePageId && editor) {
           // Active page: use Tiptap JSON directly from editor (most accurate)
           richTextPages.push({
+            id: page.id,
             name: page.name,
             content: {
               content: editor.getJSON(),
@@ -188,6 +195,7 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
           const htmlContent = page.content || '<p></p>';
           const json = generateJSON(htmlContent, tiptapExtensions);
           richTextPages.push({
+            id: page.id,
             name: page.name,
             content: {
               content: json,
@@ -259,6 +267,8 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
     margins,
     showPageNumbers,
     pageNumberFormat,
+    includeTableOfContents,
+    includePdfOutline,
     coverPageEnabled,
     coverTitle,
     coverVersion,
@@ -478,6 +488,30 @@ export function PDFExportDialog({ isOpen, onClose }: PDFExportDialogProps) {
                   <option value="numeric">X</option>
                 </select>
               )}
+            </div>
+
+            {/* Table of Contents */}
+            <div className="pdf-export-field pdf-export-field-inline">
+              <label className="pdf-export-checkbox">
+                <input
+                  type="checkbox"
+                  checked={includeTableOfContents}
+                  onChange={(e) => setIncludeTableOfContents(e.target.checked)}
+                />
+                Include Table of Contents
+              </label>
+            </div>
+
+            {/* PDF Outline / Bookmarks */}
+            <div className="pdf-export-field pdf-export-field-inline">
+              <label className="pdf-export-checkbox">
+                <input
+                  type="checkbox"
+                  checked={includePdfOutline}
+                  onChange={(e) => setIncludePdfOutline(e.target.checked)}
+                />
+                Include PDF Outline (reader bookmarks)
+              </label>
             </div>
           </div>
 

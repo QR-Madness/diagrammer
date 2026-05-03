@@ -19,6 +19,7 @@ export const clearFormatting = (editor: Editor) => editor.chain().focus().unsetA
 
 // Block-level formatting
 export const toggleBlockquote = (editor: Editor) => editor.chain().focus().toggleBlockquote().run();
+export const toggleCodeBlock = (editor: Editor) => editor.chain().focus().toggleCodeBlock().run();
 export const insertHorizontalRule = (editor: Editor) => editor.chain().focus().setHorizontalRule().run();
 
 // Headings

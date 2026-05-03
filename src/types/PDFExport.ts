@@ -107,6 +107,10 @@ export interface PDFExportOptions {
   pageNumberFormat: PDFPageNumberFormat;
   /** Diagram embedding options */
   diagramEmbed?: PDFDiagramEmbed;
+  /** Insert a Table of Contents page after the cover (defaults to true) */
+  includeTableOfContents?: boolean;
+  /** Add PDF reader bookmarks/outline from heading hierarchy (defaults to true) */
+  includePdfOutline?: boolean;
 }
 
 /**
@@ -155,6 +159,8 @@ export const DEFAULT_PDF_OPTIONS: PDFExportOptions = {
   coverPage: { ...DEFAULT_COVER_PAGE },
   showPageNumbers: true,
   pageNumberFormat: 'x-of-y',
+  includeTableOfContents: true,
+  includePdfOutline: true,
 };
 
 /**

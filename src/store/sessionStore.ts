@@ -111,6 +111,8 @@ export interface SessionState {
   camera: CameraState;
   /** Per-page camera states (for restoring when switching pages) */
   pageCameras: Record<string, CameraState>;
+  /** Per-page Tiptap editor scroll positions */
+  editorScrollPositions: Record<string, number>;
   /** Currently active tool */
   activeTool: ToolType;
   /** Current cursor style */
@@ -202,6 +204,12 @@ export interface SessionActions {
   /** Restore camera state for a page (if saved) */
   restorePageCamera: (pageId: string) => void;
 
+  // Editor Scroll Position
+  /** Save Tiptap editor scroll position for a page */
+  saveEditorScroll: (pageId: string, scrollTop: number) => void;
+  /** Get saved editor scroll position for a page (undefined if none saved) */
+  getEditorScroll: (pageId: string) => number | undefined;
+
   // Utilities
   isSelected: (id: string) => boolean;
   getSelectedIds: () => string[];
@@ -235,6 +243,7 @@ const initialState: SessionState = {
   selectedIds: new Set(),
   camera: { ...DEFAULT_CAMERA },
   pageCameras: {},
+  editorScrollPositions: {},
   activeTool: 'select',
   cursor: 'default',
   isInteracting: false,
@@ -464,6 +473,20 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
     }
   },
 
+  // Editor Scroll Position
+  saveEditorScroll: (pageId: string, scrollTop: number) => {
+    set((state) => ({
+      editorScrollPositions: {
+        ...state.editorScrollPositions,
+        [pageId]: scrollTop,
+      },
+    }));
+  },
+
+  getEditorScroll: (pageId: string): number | undefined => {
+    return get().editorScrollPositions[pageId];
+  },
+
   // Utilities
   isSelected: (id: string): boolean => {
     return get().selectedIds.has(id);
@@ -482,6 +505,7 @@ export const useSessionStore = create<SessionState & SessionActions>()((set, get
       ...initialState,
       selectedIds: new Set(),
       pageCameras: {},
+      editorScrollPositions: {},
       snapSettings: { ...DEFAULT_SNAP_SETTINGS },
       snapGuides: {},
       cursorWorldPosition: null,

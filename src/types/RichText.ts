@@ -14,6 +14,8 @@ export interface RichTextContent {
   content: JSONContent;
   /** Schema version for migration support */
   version: number;
+  /** Per-document custom dictionary (words the user has 'Added to Dictionary') */
+  customDictionary?: string[];
 }
 
 /**

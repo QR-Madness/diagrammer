@@ -90,6 +90,119 @@
   color: var(--text-primary);
 }
 
+/* Code block */
+.tiptap-editor .ProseMirror pre.tiptap-code-block,
+.tiptap-editor .ProseMirror pre {
+  background: var(--bg-tertiary);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin: 0.75rem 0;
+  border: 1px solid var(--border-color, #e0e0e0);
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 2;
+  -moz-tab-size: 2;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-size: 0.875em;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.tiptap-editor .ProseMirror .spellcheck-error {
+  text-decoration: underline wavy var(--color-error, #dc2626);
+  text-decoration-skip-ink: none;
+}
+
+.spellcheck-popover {
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #111);
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  min-width: 180px;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.spellcheck-popover-header {
+  padding: 4px 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #555);
+  font-style: italic;
+}
+
+.spellcheck-popover-empty {
+  padding: 4px 12px;
+  color: var(--text-secondary, #888);
+}
+
+.spellcheck-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.spellcheck-popover-list button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 4px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.spellcheck-popover-list button:hover {
+  background: var(--bg-secondary, #f0f0f0);
+}
+
+.spellcheck-popover-divider {
+  height: 1px;
+  background: var(--border-color, #e5e5e5);
+  margin: 4px 0;
+}
+
+.spellcheck-popover-add {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-primary, #2563eb);
+  font-weight: 500;
+}
+
+.spellcheck-popover-add:hover {
+  background: var(--bg-secondary, #f0f0f0);
+}
+
+.tiptap-editor .ProseMirror a.tiptap-link,
+.tiptap-editor .ProseMirror a {
+  color: var(--color-primary, #2563eb);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.tiptap-editor .ProseMirror a.tiptap-link:hover {
+  text-decoration: underline;
+  filter: brightness(1.15);
+}
+
+.tiptap-editor .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  white-space: inherit;
+}
+
 /* Lists */
 .tiptap-editor .ProseMirror ul,
 .tiptap-editor .ProseMirror ol {

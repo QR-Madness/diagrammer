@@ -38,6 +38,8 @@ const QUALITY_TO_COMPRESSION: Record<PDFQuality, ImageCompression> = {
  * A rich text page prepared for PDF export (Tiptap JSON content).
  */
 export interface PDFRichTextPage {
+  /** Stable page ID (used for resolving internal `diagrammer://page/<id>` links) */
+  id?: string;
   /** Page display name */
   name: string;
   /** Tiptap JSON content */
@@ -173,6 +175,8 @@ interface TextSegment {
   fontSizeScale: number;
   /** Vertical offset in mm (positive = up for superscript, negative = down for subscript) */
   yOffset: number;
+  /** Hyperlink href if this segment has a link mark */
+  link?: string;
 }
 
 /**
@@ -194,6 +198,31 @@ interface PDFRenderContext {
   pageNumberFormat: 'numeric' | 'x-of-y';
   images: Map<string, string>; // blobId -> dataURL
   imageCompression: ImageCompression;
+  /** Map from rich-text page ID to PDF page number (for internal link resolution) */
+  pageIdToPdfPage: Record<string, number>;
+  /** Headings collected during render for ToC + outline */
+  collectedHeadings: Array<{
+    level: number;
+    text: string;
+    pdfPage: number;
+    pageId: string | undefined;
+    /** Index of this heading within its page (used to disambiguate duplicates) */
+    pageHeadingIndex: number | undefined;
+  }>;
+  /** Per-page heading counter, resets when a new rich-text page begins */
+  currentPageHeadingIndex: number;
+  /** ID of the rich-text page currently being rendered */
+  currentPageId: string | undefined;
+  /** Internal heading links deferred until after render (so target pages are known) */
+  deferredHeadingLinks: Array<{
+    pdfPage: number;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    targetPageId: string;
+    targetHeadingIndex: number;
+  }>;
 }
 
 /**
@@ -271,6 +300,11 @@ export async function exportToPdf(
     pageNumberFormat: options.pageNumberFormat,
     images,
     imageCompression: QUALITY_TO_COMPRESSION[options.quality],
+    pageIdToPdfPage: {},
+    collectedHeadings: [],
+    currentPageHeadingIndex: 0,
+    currentPageId: undefined,
+    deferredHeadingLinks: [],
   };
 
   // Render cover page if enabled
@@ -302,6 +336,13 @@ export async function exportToPdf(
       ctx.y = ctx.marginTop;
     }
 
+    // Record where this app page lives in the PDF (for internal link resolution)
+    if (page.id) {
+      ctx.pageIdToPdfPage[page.id] = ctx.pageNumber;
+    }
+    ctx.currentPageId = page.id;
+    ctx.currentPageHeadingIndex = 0;
+
     // Render page title as heading if there are multiple pages
     if (pagesToRender.length > 1) {
       ctx.doc.setFont(PDF_FONT_SANS, 'bold');
@@ -330,8 +371,31 @@ export async function exportToPdf(
     await renderAllDiagramPages(ctx, options.diagramEmbed, canvasPages, themeBackground);
   }
 
+  // Insert ToC pages after the cover (or at the very front if no cover) and shift heading pages
+  const wantToc = options.includeTableOfContents !== false && ctx.collectedHeadings.length > 0;
+  let tocInsertedCount = 0;
+  if (wantToc) {
+    tocInsertedCount = insertTableOfContents(ctx, options.coverPage.enabled);
+  }
+  // ToC insertion shifts every recorded PDF page number by `tocInsertedCount`.
+  // Apply that shift to deferred-link source pages too so we write to the right page.
+  if (tocInsertedCount > 0) {
+    for (const link of ctx.deferredHeadingLinks) {
+      link.pdfPage += tocInsertedCount;
+    }
+  }
+
+  // Resolve deferred internal heading-links now that final page numbers are known
+  resolveDeferredHeadingLinks(ctx);
+
+  // Build PDF outline / bookmarks from collected headings
+  if (options.includePdfOutline !== false && ctx.collectedHeadings.length > 0) {
+    buildPdfOutline(ctx);
+  }
+
   // Store total pages
-  ctx.totalPages = ctx.pageNumber;
+  ctx.totalPages = ctx.pageNumber + tocInsertedCount;
+  ctx.pageNumber = ctx.totalPages;
 
   // Add page numbers to all pages
   if (options.showPageNumbers) {
@@ -848,6 +912,21 @@ function renderHeading(ctx: PDFRenderContext, node: JSONContent): void {
 
   checkPageBreak(ctx, fontSize * PDF_STYLE.lineHeight);
 
+  // Capture heading metadata for ToC + outline (text and the page where it lands).
+  // Stamp pageId + within-page index so heading-targeted internal links can resolve.
+  const headingText = extractText(node).trim();
+  const headingIndexInPage = ctx.currentPageHeadingIndex;
+  ctx.currentPageHeadingIndex++;
+  if (headingText) {
+    ctx.collectedHeadings.push({
+      level,
+      text: headingText,
+      pdfPage: ctx.pageNumber,
+      pageId: ctx.currentPageId,
+      pageHeadingIndex: headingIndexInPage,
+    });
+  }
+
   const segments = extractSegments(node);
   renderSegmentedText(ctx, segments, fontSize, 'bold', ctx.marginLeft, ctx.contentWidth, textAlign);
 
@@ -959,16 +1038,37 @@ async function renderListItem(
 function renderCodeBlock(ctx: PDFRenderContext, node: JSONContent): void {
   const text = extractText(node);
   const fontSize = 10;
+  const lineHeightMm = fontSize * 0.352778 * PDF_STYLE.lineHeight;
 
   ctx.doc.setFont(PDF_FONT_MONO, 'normal');
   ctx.doc.setFontSize(fontSize);
 
-  const lines = ctx.doc.splitTextToSize(text, ctx.contentWidth - PDF_STYLE.codeBlockPadding * 2);
-  const blockHeight = lines.length * (fontSize * 0.352778 * PDF_STYLE.lineHeight) + PDF_STYLE.codeBlockPadding * 2;
+  // Preserve indentation: split on \n manually, then wrap each line individually
+  // and re-prepend the line's leading whitespace to wrapped continuations.
+  const innerWidth = ctx.contentWidth - PDF_STYLE.codeBlockPadding * 2;
+  const wrappedLines: string[] = [];
+  for (const rawLine of text.split('\n')) {
+    if (rawLine.length === 0) {
+      wrappedLines.push('');
+      continue;
+    }
+    const indentMatch = rawLine.match(/^[\t ]*/);
+    const indent = indentMatch ? indentMatch[0] : '';
+    const segments = ctx.doc.splitTextToSize(rawLine, innerWidth) as string[];
+    if (segments.length <= 1) {
+      wrappedLines.push(rawLine);
+    } else {
+      wrappedLines.push(segments[0] ?? rawLine);
+      for (let i = 1; i < segments.length; i++) {
+        wrappedLines.push(indent + (segments[i] ?? ''));
+      }
+    }
+  }
+
+  const blockHeight = wrappedLines.length * lineHeightMm + PDF_STYLE.codeBlockPadding * 2;
 
   checkPageBreak(ctx, blockHeight);
 
-  // Draw background
   ctx.doc.setFillColor(PDF_STYLE.codeBlockBg);
   ctx.doc.rect(
     ctx.marginLeft,
@@ -978,13 +1078,11 @@ function renderCodeBlock(ctx: PDFRenderContext, node: JSONContent): void {
     'F'
   );
 
-  // Draw text
   ctx.doc.setTextColor(0, 0, 0);
-  ctx.doc.text(lines, ctx.marginLeft + PDF_STYLE.codeBlockPadding, ctx.y + PDF_STYLE.codeBlockPadding);
+  ctx.doc.text(wrappedLines, ctx.marginLeft + PDF_STYLE.codeBlockPadding, ctx.y + PDF_STYLE.codeBlockPadding);
 
   ctx.y += blockHeight + 4;
 
-  // Reset font
   ctx.doc.setFont(PDF_FONT_SANS, 'normal');
 }
 
@@ -1272,6 +1370,11 @@ function extractSegments(node: JSONContent): TextSegment[] {
         seg.yOffset = 1.5;
       }
 
+      const linkMark = marks.find((m) => m.type === 'link');
+      if (linkMark?.attrs?.['href']) {
+        seg.link = linkMark.attrs['href'] as string;
+      }
+
       segments.push(seg);
     } else if (child.type === 'hardBreak') {
       segments.push({
@@ -1458,6 +1561,8 @@ function renderSegmentedText(
       if (seg.color) {
         const rgb = parseColor(seg.color);
         if (rgb) ctx.doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+      } else if (seg.link) {
+        ctx.doc.setTextColor(37, 99, 235); // link blue
       } else {
         ctx.doc.setTextColor(0, 0, 0);
       }
@@ -1489,6 +1594,40 @@ function renderSegmentedText(
 
       // Draw text
       ctx.doc.text(chunk.text, cursorX, yPos);
+
+      // Hyperlink + auto-underline for links
+      if (seg.link) {
+        const linkY = yPos - lineHeightMm * 0.7;
+        const linkH = lineHeightMm * 0.9;
+        const headingMatch = seg.link.match(/^diagrammer:\/\/heading\/([^/]+)\/(\d+)$/);
+        if (headingMatch) {
+          // Defer — we don't know the target's PDF page until the whole doc has rendered
+          ctx.deferredHeadingLinks.push({
+            pdfPage: ctx.pageNumber,
+            x: cursorX,
+            y: linkY,
+            w: chunkWidth,
+            h: linkH,
+            targetPageId: headingMatch[1]!,
+            targetHeadingIndex: parseInt(headingMatch[2]!, 10),
+          });
+        } else if (seg.link.startsWith('diagrammer://page/')) {
+          // Backwards compat: legacy page-level links
+          const targetId = seg.link.slice('diagrammer://page/'.length);
+          const targetPage = ctx.pageIdToPdfPage[targetId];
+          if (targetPage !== undefined) {
+            ctx.doc.link(cursorX, linkY, chunkWidth, linkH, { pageNumber: targetPage });
+          }
+        } else {
+          ctx.doc.link(cursorX, linkY, chunkWidth, linkH, { url: seg.link });
+        }
+        if (!seg.underline) {
+          const underY = yPos + 1;
+          ctx.doc.setDrawColor(37, 99, 235);
+          ctx.doc.setLineWidth(0.2);
+          ctx.doc.line(cursorX, underY, cursorX + chunkWidth, underY);
+        }
+      }
 
       // Draw underline
       if (seg.underline) {
@@ -2041,6 +2180,173 @@ async function renderMathImage(ctx: PDFRenderContext, dataUrl: string, isBlock: 
     }
   } catch (error) {
     console.warn('[PDF Export] Failed to render math image:', error);
+  }
+}
+
+// ─── Table of Contents + Outline ─────────────────────────────────────────────
+
+/**
+ * Insert ToC pages right after the cover page (or at the front when no cover),
+ * fill them with the heading list and dotted page-number leaders, then shift
+ * `collectedHeadings` page numbers to account for the inserted pages.
+ *
+ * Returns the number of ToC pages inserted.
+ */
+function insertTableOfContents(ctx: PDFRenderContext, hasCover: boolean): number {
+  const headings = ctx.collectedHeadings;
+  if (headings.length === 0) return 0;
+
+  const titleFontSize = 18;
+  const entryFontSize = 11;
+  const entryLineHeightMm = entryFontSize * 0.352778 * 1.6;
+  const titleLineHeightMm = titleFontSize * 0.352778 * 1.4;
+  const footerSpace = ctx.showPageNumbers ? PDF_STYLE.pageNumberFooterHeight : 0;
+  const usableHeight = ctx.pageHeight - ctx.marginTop - ctx.marginBottom - footerSpace;
+  const firstPageEntries = Math.max(1, Math.floor((usableHeight - titleLineHeightMm - 6) / entryLineHeightMm));
+  const subsequentPageEntries = Math.max(1, Math.floor(usableHeight / entryLineHeightMm));
+
+  const tocPageCount = headings.length <= firstPageEntries
+    ? 1
+    : 1 + Math.ceil((headings.length - firstPageEntries) / subsequentPageEntries);
+
+  const insertBefore = (hasCover ? 2 : 1);
+  // Add ToC pages at the end then move them into place
+  const startTotal = ctx.doc.getNumberOfPages();
+  for (let i = 0; i < tocPageCount; i++) {
+    ctx.doc.addPage();
+  }
+  // Move newly-added pages into position (in reverse so page numbers stay stable as we go)
+  for (let i = 0; i < tocPageCount; i++) {
+    const newPageIndex = startTotal + tocPageCount; // last newly-added page (numbers shift each move)
+    ctx.doc.movePage(newPageIndex, insertBefore + i);
+  }
+
+  // All previously-numbered pages shift down by `tocPageCount`
+  for (const h of headings) {
+    h.pdfPage += tocPageCount;
+  }
+  for (const id of Object.keys(ctx.pageIdToPdfPage)) {
+    const v = ctx.pageIdToPdfPage[id];
+    if (v !== undefined) ctx.pageIdToPdfPage[id] = v + tocPageCount;
+  }
+
+  // Render ToC content
+  const innerWidth = ctx.contentWidth;
+  let cursor = 0;
+  for (let p = 0; p < tocPageCount; p++) {
+    const tocPdfPage = insertBefore + p;
+    ctx.doc.setPage(tocPdfPage);
+    let y = ctx.marginTop;
+
+    if (p === 0) {
+      ctx.doc.setFont(PDF_FONT_SANS, 'bold');
+      ctx.doc.setFontSize(titleFontSize);
+      ctx.doc.setTextColor(0, 0, 0);
+      ctx.doc.text('Table of Contents', ctx.marginLeft, y + titleLineHeightMm * 0.7);
+      y += titleLineHeightMm + 6;
+    }
+
+    const entriesOnPage = p === 0 ? firstPageEntries : subsequentPageEntries;
+    const end = Math.min(headings.length, cursor + entriesOnPage);
+
+    ctx.doc.setFont(PDF_FONT_SANS, 'normal');
+    ctx.doc.setFontSize(entryFontSize);
+    ctx.doc.setTextColor(0, 0, 0);
+
+    for (; cursor < end; cursor++) {
+      const h = headings[cursor]!;
+      const indent = (h.level - 1) * 6; // mm per level
+      const labelX = ctx.marginLeft + indent;
+      const pageNumStr = String(h.pdfPage);
+      const pageNumWidth = ctx.doc.getTextWidth(pageNumStr);
+      const pageNumX = ctx.marginLeft + innerWidth - pageNumWidth;
+
+      // Truncate label so leader dots have at least a little room
+      const maxLabelWidth = pageNumX - labelX - 8;
+      let label = h.text;
+      while (ctx.doc.getTextWidth(label) > maxLabelWidth && label.length > 4) {
+        label = label.slice(0, -2);
+      }
+      if (label !== h.text) label = label.slice(0, -1) + '…';
+
+      ctx.doc.text(label, labelX, y);
+      ctx.doc.text(pageNumStr, pageNumX, y);
+
+      // Dotted leader between label and page number
+      const labelWidth = ctx.doc.getTextWidth(label);
+      const dotsStartX = labelX + labelWidth + 2;
+      const dotsEndX = pageNumX - 2;
+      if (dotsEndX > dotsStartX) {
+        const dotWidth = ctx.doc.getTextWidth('.');
+        const dots = Math.max(0, Math.floor((dotsEndX - dotsStartX) / dotWidth));
+        if (dots > 0) {
+          ctx.doc.text('.'.repeat(dots), dotsStartX, y);
+        }
+      }
+
+      // Make the entry clickable in the PDF
+      ctx.doc.link(labelX, y - entryLineHeightMm * 0.7, innerWidth - indent, entryLineHeightMm * 0.9, {
+        pageNumber: h.pdfPage,
+      });
+
+      y += entryLineHeightMm;
+    }
+  }
+
+  // Reset to last page so subsequent operations (page numbering) iterate correctly
+  ctx.doc.setPage(ctx.doc.getNumberOfPages());
+
+  return tocPageCount;
+}
+
+/**
+ * Walk the deferred internal heading-links list and write the actual `doc.link`
+ * calls now that we know the final PDF page for every heading.
+ */
+function resolveDeferredHeadingLinks(ctx: PDFRenderContext): void {
+  if (ctx.deferredHeadingLinks.length === 0) return;
+  // Build (pageId, headingIndex) → pdfPage map
+  const map = new Map<string, number>();
+  for (const h of ctx.collectedHeadings) {
+    if (h.pageId !== undefined && h.pageHeadingIndex !== undefined) {
+      map.set(`${h.pageId}::${h.pageHeadingIndex}`, h.pdfPage);
+    }
+  }
+  // Group by source PDF page to minimize setPage thrash
+  const grouped = new Map<number, typeof ctx.deferredHeadingLinks>();
+  for (const link of ctx.deferredHeadingLinks) {
+    const arr = grouped.get(link.pdfPage) ?? [];
+    arr.push(link);
+    grouped.set(link.pdfPage, arr);
+  }
+  const restore = ctx.doc.getNumberOfPages();
+  for (const [srcPage, links] of grouped) {
+    ctx.doc.setPage(srcPage);
+    for (const link of links) {
+      const targetPdfPage = map.get(`${link.targetPageId}::${link.targetHeadingIndex}`);
+      if (targetPdfPage === undefined) continue;
+      ctx.doc.link(link.x, link.y, link.w, link.h, { pageNumber: targetPdfPage });
+    }
+  }
+  ctx.doc.setPage(restore);
+}
+
+/**
+ * Build PDF reader bookmarks (outline) from the collected heading list,
+ * nesting children under the most-recent heading of a higher level.
+ */
+function buildPdfOutline(ctx: PDFRenderContext): void {
+  const headings = ctx.collectedHeadings;
+  // Stack of [level, outlineItem] from outermost to innermost
+  const stack: Array<{ level: number; item: unknown }> = [];
+
+  for (const h of headings) {
+    while (stack.length > 0 && stack[stack.length - 1]!.level >= h.level) {
+      stack.pop();
+    }
+    const parent = stack.length > 0 ? stack[stack.length - 1]!.item : null;
+    const item = ctx.doc.outline.add(parent as never, h.text, { pageNumber: h.pdfPage });
+    stack.push({ level: h.level, item });
   }
 }
 

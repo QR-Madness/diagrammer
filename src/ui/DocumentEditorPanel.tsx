@@ -16,6 +16,7 @@ import { TiptapEditorProvider } from './TiptapEditorContext';
 import { RichTextTabBar } from './RichTextTabBar';
 import { useRichTextPagesStore, initializeRichTextPages } from '../store/richTextPagesStore';
 import { useRichTextStore } from '../store/richTextStore';
+import { useSessionStore } from '../store/sessionStore';
 import { RICH_TEXT_VERSION } from '../types/RichText';
 import './DocumentEditorPanel.css';
 
@@ -35,6 +36,13 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
   const pendingLoadRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const editorRef = useRef<Editor | null>(null);
+
+  // The actual scroll container is `.tiptap-editor` (overflow-y: auto), which is
+  // the parent of the ProseMirror DOM node. The wrapper `.document-editor-panel-content`
+  // is `overflow: hidden`, so reading scrollTop on it always gives 0.
+  const getScrollEl = useCallback((): HTMLElement | null => {
+    return (editorRef.current?.view.dom.parentElement as HTMLElement | null) ?? null;
+  }, []);
 
   // Keep ref in sync for use in effects/callbacks that shouldn't re-trigger
   useEffect(() => {
@@ -74,6 +82,10 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
     if (lastActivePageRef.current && !isLoadingRef.current) {
       const currentContent = editor.getHTML();
       updatePageContent(lastActivePageRef.current, currentContent);
+      const el = getScrollEl();
+      if (el) {
+        useSessionStore.getState().saveEditorScroll(lastActivePageRef.current, el.scrollTop);
+      }
     }
 
     const targetPageId = activePageId;
@@ -93,12 +105,62 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
           content: editorRef.current.getJSON(),
           version: RICH_TEXT_VERSION,
         });
+        // Restore scroll position after layout settles. Tiptap reports `scrollHeight`
+        // in stages while it paints, so we retry until the target is reachable —
+        // and abort the moment the user scrolls (so we don't fight live input).
+        const savedScroll = useSessionStore.getState().getEditorScroll(targetPageId) ?? 0;
+        const restoreEl = getScrollEl();
+        if (restoreEl) {
+          let attempts = 0;
+          let cancelled = false;
+          const cancel = () => { cancelled = true; };
+          restoreEl.addEventListener('wheel', cancel, { once: true, passive: true });
+          restoreEl.addEventListener('touchmove', cancel, { once: true, passive: true });
+          restoreEl.addEventListener('keydown', cancel, { once: true });
+          const tryRestore = () => {
+            if (cancelled) return;
+            restoreEl.scrollTop = savedScroll;
+            attempts++;
+            if (restoreEl.scrollTop < savedScroll - 1 && attempts < 30) {
+              requestAnimationFrame(tryRestore);
+            } else {
+              restoreEl.removeEventListener('wheel', cancel);
+              restoreEl.removeEventListener('touchmove', cancel);
+              restoreEl.removeEventListener('keydown', cancel);
+            }
+          };
+          requestAnimationFrame(tryRestore);
+        }
       }
       isLoadingRef.current = false;
     }, 0);
     // `pages` is intentionally excluded from deps — it is read imperatively
     // inside the timeout to avoid stale closures and spurious re-runs.
   }, [activePageId, updatePageContent, editor]);
+
+  // Continuously persist scroll position of the active page (debounced).
+  // Re-attaches whenever the editor instance changes since the scroll container
+  // is owned by Tiptap (`editor.view.dom.parentElement`).
+  useEffect(() => {
+    const el = getScrollEl();
+    if (!el) return;
+    let frame: number | null = null;
+    const onScroll = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        const pageId = useRichTextPagesStore.getState().activePageId;
+        if (pageId && !isLoadingRef.current) {
+          useSessionStore.getState().saveEditorScroll(pageId, el.scrollTop);
+        }
+      });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [editor, getScrollEl]);
 
   // Auto-save current page content periodically
   useEffect(() => {
@@ -125,9 +187,13 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
       if (editorRef.current && pageId) {
         const content = editorRef.current.getHTML();
         updatePageContent(pageId, content);
+        const el = getScrollEl();
+        if (el) {
+          useSessionStore.getState().saveEditorScroll(pageId, el.scrollTop);
+        }
       }
     };
-  }, [updatePageContent]);
+  }, [updatePageContent, getScrollEl]);
 
   // Exit full-screen on Escape
   const handleKeyDown = useCallback(

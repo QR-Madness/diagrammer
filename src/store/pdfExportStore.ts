@@ -199,6 +199,8 @@ export function createInitialPDFOptions(
   margins: PDFMargins;
   showPageNumbers: boolean;
   pageNumberFormat: PDFPageNumberFormat;
+  includeTableOfContents: boolean;
+  includePdfOutline: boolean;
   coverPage: PDFCoverPage;
   diagramEmbed: PDFDiagramEmbed;
 } {
@@ -217,6 +219,8 @@ export function createInitialPDFOptions(
     margins: { ...state.margins },
     showPageNumbers: state.showPageNumbers,
     pageNumberFormat: state.pageNumberFormat,
+    includeTableOfContents: true,
+    includePdfOutline: true,
     coverPage: {
       ...DEFAULT_COVER_PAGE,
       enabled: state.coverPageDefaults.enabled,

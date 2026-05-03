@@ -14,6 +14,7 @@ import * as cmd from './editorCommands';
 import { ImageUploadButton } from './ImageUploadButton';
 import { SearchReplacePanel } from './SearchReplacePanel';
 import { ToolbarDropdown } from './ToolbarDropdown';
+import { InsertLinkDialog } from './InsertLinkDialog';
 import './DocumentEditorToolbar.css';
 
 /** Color palette for text and highlight colors */
@@ -44,6 +45,7 @@ export function DocumentEditorToolbar() {
   const [showTableStyles, setShowTableStyles] = useState(false);
   const [showCellBgColor, setShowCellBgColor] = useState(false);
   const [showSearchReplace, setShowSearchReplace] = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
 
   // Subscribe to editor events for toolbar state updates
   useEffect(() => {
@@ -268,6 +270,12 @@ export function DocumentEditorToolbar() {
               <button className={`document-editor-toolbar-btn ${isActive('blockquote') ? 'active' : ''}`} onClick={() => editor && cmd.toggleBlockquote(editor)} title="Block Quote">
                 <span className="toolbar-icon">❝</span>
               </button>
+              <button className={`document-editor-toolbar-btn ${isActive('codeBlock') ? 'active' : ''}`} onClick={() => editor && cmd.toggleCodeBlock(editor)} title="Code Block">
+                <span className="toolbar-icon">{'</>'}</span>
+              </button>
+              <button className={`document-editor-toolbar-btn ${isActive('link') ? 'active' : ''}`} onClick={() => editor && setShowLinkDialog(true)} title="Insert / Edit Link">
+                <span className="toolbar-icon">🔗</span>
+              </button>
             </div>
 
             <div className="document-editor-toolbar-divider" />
@@ -453,6 +461,11 @@ export function DocumentEditorToolbar() {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Insert Link Dialog */}
+      {showLinkDialog && editor && (
+        <InsertLinkDialog editor={editor} onClose={() => setShowLinkDialog(false)} />
       )}
 
       {/* Search & Replace Panel */}
