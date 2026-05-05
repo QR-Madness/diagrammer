@@ -52,7 +52,7 @@
   - Problem: My connectors are white during work since I am in dark-mode and I like white connectors; but when I export to PDF, they aren't contrast aware. I propose that the 'Automatic' color reference could fix this by precomputing contrast requirements based on group-placements weighted by the background color. Assign a contrast render area ID to connectors partitioned based on their group membership, extract the parents' (groups) BGs (per area) into an array, then you can drill down to next background colors to evaluate contrasts (this can be used during rebuilds as well for recalculating contrast assignments)
 - [ ] Add a tree (quite literally a file tree) element which formats (prettified) similar to a tree using ASCII operators or another effective format.
 - [X] Remember scroll position in tiptap editor.
-- [ ] Add a preview PDF feature which saves the PDF to temp dir and opens it in a viewer, users can either save it (copy to downloads with a fallback to exporting to downloads), or close it (deleting the temp file)
+- [ ] Make the PDF exporter full-screen, and add a preview PDF feature which saves the PDF to temp dir and shows it on the side, users can either save it (copy to downloads with a fallback to exporting to downloads), or close it (deleting the temp file)
 - [X] Table of contents for PDF
 - [X] Document Outline for PDF Readers
 - [X] LINKS! We need web links and internal document links!

@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid';
 import { Page, createPage } from '../types/Document';
 import { useDocumentStore } from './documentStore';
 import { useSessionStore } from './sessionStore';
-import { useHistoryStore } from './historyStore';
+import { useHistoryStore, registerPageStoreActiveId } from './historyStore';
 
 /**
  * Page state.
@@ -111,6 +111,11 @@ export const usePageStore = create<PageState & PageActions>()(
         }
       });
 
+      // Keep historyStore's pageStore-mirror in sync if we just activated this page.
+      if (get().activePageId === pageId) {
+        registerPageStoreActiveId(pageId);
+      }
+
       return pageId;
     },
 
@@ -152,8 +157,13 @@ export const usePageStore = create<PageState & PageActions>()(
           get().syncDocumentToCurrentPage();
           // Update history active page (clears page history if switching)
           useHistoryStore.getState().setActivePage(newState.activePageId);
+          registerPageStoreActiveId(newState.activePageId);
         }
       }
+
+      // Drop history for the deleted page so its entries can never resurface
+      // and target the wrong page bucket later.
+      useHistoryStore.getState().clearPage(id);
     },
 
     // Rename a page
@@ -261,28 +271,40 @@ export const usePageStore = create<PageState & PageActions>()(
         return;
       }
 
-      // Save current page camera state before switching
-      if (state.activePageId) {
-        useSessionStore.getState().savePageCamera(state.activePageId);
+      // Cross-page corruption guard: disable history tracking across the
+      // entire swap so any synchronous subscriber that reacts to the
+      // documentStore mutation cannot push a snapshot into the wrong
+      // page bucket. Update historyStore's activePageId BEFORE the
+      // documentStore swap so the page-id mirror is correct if any
+      // re-entrant push slips through.
+      const history = useHistoryStore.getState();
+      const wasTracking = history.isTracking;
+      history.setTracking(false);
+      try {
+        // Save current page camera state before switching
+        if (state.activePageId) {
+          useSessionStore.getState().savePageCamera(state.activePageId);
+        }
+
+        // Save current page content from documentStore (still on old page)
+        get().syncCurrentPageFromDocument();
+
+        // Flip page identity in both stores BEFORE touching documentStore.
+        set((draft) => {
+          draft.activePageId = id;
+        });
+        history.setActivePage(id);
+        registerPageStoreActiveId(id);
+
+        // Load new page content into documentStore
+        get().syncDocumentToCurrentPage();
+
+        // Restore camera state for new page
+        useSessionStore.getState().restorePageCamera(id);
+        useSessionStore.getState().clearSelection();
+      } finally {
+        history.setTracking(wasTracking);
       }
-
-      // Save current page content from documentStore
-      get().syncCurrentPageFromDocument();
-
-      // Update active page
-      set((draft) => {
-        draft.activePageId = id;
-      });
-
-      // Load new page content to documentStore
-      get().syncDocumentToCurrentPage();
-
-      // Restore camera state for new page
-      useSessionStore.getState().restorePageCamera(id);
-
-      // Clear selection and update history active page
-      useSessionStore.getState().clearSelection();
-      useHistoryStore.getState().setActivePage(id);
     },
 
     // Get a page by ID
@@ -362,6 +384,7 @@ export const usePageStore = create<PageState & PageActions>()(
       if (snapshot.activePageId) {
         useHistoryStore.getState().setActivePage(snapshot.activePageId);
       }
+      registerPageStoreActiveId(snapshot.activePageId);
     },
 
     // Reset to empty state
@@ -371,6 +394,7 @@ export const usePageStore = create<PageState & PageActions>()(
         state.pageOrder = [];
         state.activePageId = null;
       });
+      registerPageStoreActiveId(null);
     },
 
     // Initialize with a default page

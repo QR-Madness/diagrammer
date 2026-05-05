@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useDocumentStore, DocumentSnapshot } from './documentStore';
+import { useNotificationStore } from './notificationStore';
 
 /**
  * Maximum number of history entries to keep per page.
@@ -15,6 +16,15 @@ const DEBOUNCE_TIME = 300;
  * A snapshot of the document state at a point in time.
  */
 export interface HistoryEntry {
+  /**
+   * The page this snapshot belongs to.
+   *
+   * Cross-page corruption guard: snapshots must only ever be restored onto
+   * the page they originated from. Mismatch indicates a bug elsewhere
+   * (ordering window in setActivePage, store drift, etc.) — undo/redo
+   * refuses to apply rather than silently swap one page's content for another.
+   */
+  pageId: string;
   /** Document state snapshot */
   snapshot: DocumentSnapshot;
   /** Timestamp when the entry was created */
@@ -154,6 +164,53 @@ function restoreSnapshot(snapshot: DocumentSnapshot): void {
 }
 
 /**
+ * Module-local mirror of pageStore.activePageId, kept in sync via
+ * `registerPageStoreActiveId` (called from pageStore on every page switch).
+ *
+ * Avoids a circular static import (pageStore imports historyStore) while still
+ * letting historyStore detect drift between its own activePageId and the
+ * pageStore's. `null` means "not yet registered" — treat as unknown and skip
+ * the check (e.g. during early bootstrap or in tests that drive historyStore
+ * directly).
+ */
+let pageStoreActiveIdMirror: { value: string | null } | null = null;
+
+/**
+ * Called by pageStore whenever its activePageId changes. Lets historyStore
+ * cross-check both stores agree before pushing or restoring.
+ */
+export function registerPageStoreActiveId(id: string | null): void {
+  pageStoreActiveIdMirror = { value: id };
+}
+
+/**
+ * Verify that historyStore.activePageId agrees with pageStore.activePageId.
+ * A drift between the two means a snapshot push or restore is about to land
+ * in the wrong page bucket — refuse the operation and surface the problem
+ * loudly so we never silently swap one page's content for another.
+ */
+function assertActivePageConsistency(
+  op: 'push' | 'undo' | 'redo',
+  historyActiveId: string | null,
+): boolean {
+  if (pageStoreActiveIdMirror === null) return true; // not yet registered
+  const pageActiveId = pageStoreActiveIdMirror.value;
+  if (pageActiveId === historyActiveId) return true;
+  // eslint-disable-next-line no-console
+  console.error(
+    `[historyStore] ${op} aborted: activePageId mismatch between stores. ` +
+      `historyStore=${historyActiveId} pageStore=${pageActiveId}. ` +
+      `This would corrupt page content — refusing.`,
+  );
+  useNotificationStore.getState().error(
+    `${op === 'push' ? 'Edit' : op === 'undo' ? 'Undo' : 'Redo'} blocked: page tracking is out of sync. ` +
+      `No data was changed. Please report this.`,
+    { category: 'permanent' },
+  );
+  return false;
+}
+
+/**
  * History store for undo/redo functionality.
  *
  * The history system stores complete document snapshots per page.
@@ -185,6 +242,10 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
 
     if (!isTracking || !activePageId) return;
 
+    // Cross-store consistency: refuse to push if historyStore and pageStore
+    // disagree on which page is active — snapshot would land in the wrong bucket.
+    if (!assertActivePageConsistency('push', activePageId)) return;
+
     // Get or create page history
     const pageHist = state.pageHistory[activePageId] ?? createEmptyPageHistory();
 
@@ -196,6 +257,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
 
     const snapshot = createSnapshot();
     const entry: HistoryEntry = {
+      pageId: activePageId,
       snapshot,
       timestamp: now,
       description,
@@ -230,6 +292,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     const { activePageId } = state;
 
     if (!activePageId) return;
+    if (!assertActivePageConsistency('undo', activePageId)) return;
 
     const pageHist = state.pageHistory[activePageId];
     if (!pageHist || pageHist.past.length === 0) return;
@@ -238,9 +301,42 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     const lastEntry = pageHist.past[pageHist.past.length - 1];
     if (!lastEntry) return;
 
+    // Page-identity guard: a snapshot must only ever be restored onto the
+    // page it came from. If the bucket holds an entry tagged with a different
+    // pageId, the entry is poison — applying it would replace the active
+    // page's content with another page's content. Drop the entry (so it
+    // doesn't keep firing on every undo press) and notify the user, rather
+    // than silently applying corrupted data.
+    if (lastEntry.pageId !== activePageId) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[historyStore] undo: dropped poisoned history entry pageId=${lastEntry.pageId} ` +
+          `from bucket=${activePageId}. Would have corrupted page content.`,
+      );
+      useNotificationStore.getState().warning(
+        'Skipped a stale undo entry that belonged to a different page.',
+        { category: 'transient' },
+      );
+      set((state) => {
+        const cur = state.pageHistory[activePageId] ?? createEmptyPageHistory();
+        return {
+          pageHistory: {
+            ...state.pageHistory,
+            [activePageId]: {
+              past: cur.past.slice(0, -1),
+              future: cur.future,
+              lastPushTime: cur.lastPushTime,
+            },
+          },
+        };
+      });
+      return;
+    }
+
     // Save current state to future before restoring
     const currentSnapshot = createSnapshot();
     const currentEntry: HistoryEntry = {
+      pageId: activePageId,
       snapshot: currentSnapshot,
       timestamp: Date.now(),
       description: lastEntry.description,
@@ -275,6 +371,7 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     const { activePageId } = state;
 
     if (!activePageId) return;
+    if (!assertActivePageConsistency('redo', activePageId)) return;
 
     const pageHist = state.pageHistory[activePageId];
     if (!pageHist || pageHist.future.length === 0) return;
@@ -283,9 +380,40 @@ export const useHistoryStore = create<HistoryState & HistoryActions>()((set, get
     const nextEntry = pageHist.future[0];
     if (!nextEntry) return;
 
+    // Same drop-and-notify policy as undo: if a future entry belongs to a
+    // different page, drop it rather than silently apply corrupted data.
+    // For redo specifically we prefer dropping over any chance of resurrecting
+    // another page's content into this one.
+    if (nextEntry.pageId !== activePageId) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[historyStore] redo: dropped poisoned future entry pageId=${nextEntry.pageId} ` +
+          `from bucket=${activePageId}. Would have corrupted page content.`,
+      );
+      useNotificationStore.getState().warning(
+        'Skipped a stale redo entry that belonged to a different page.',
+        { category: 'transient' },
+      );
+      set((state) => {
+        const cur = state.pageHistory[activePageId] ?? createEmptyPageHistory();
+        return {
+          pageHistory: {
+            ...state.pageHistory,
+            [activePageId]: {
+              past: cur.past,
+              future: cur.future.slice(1),
+              lastPushTime: cur.lastPushTime,
+            },
+          },
+        };
+      });
+      return;
+    }
+
     // Save current state to past before restoring
     const currentSnapshot = createSnapshot();
     const currentEntry: HistoryEntry = {
+      pageId: activePageId,
       snapshot: currentSnapshot,
       timestamp: Date.now(),
       description: nextEntry.description,

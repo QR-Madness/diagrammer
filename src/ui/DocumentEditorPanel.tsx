@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Editor } from '@tiptap/core';
+import { history } from 'prosemirror-history';
 import { DocumentEditorToolbar } from './DocumentEditorToolbar';
 import { TiptapEditor } from './TiptapEditor';
 import { TiptapEditorProvider } from './TiptapEditorContext';
@@ -67,6 +68,34 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
     initializeRichTextPages();
   }, []);
 
+  /**
+   * Wipe Tiptap's undo/redo history without disturbing the current document.
+   *
+   * Tiptap (via StarterKit's History extension) keeps one shared undo stack
+   * for the editor instance. When we swap in a new page's content with
+   * `setContent`, that swap itself is recorded as a transaction — so undoing
+   * later walks back through old page loads and resurrects content from
+   * other pages. Clearing history at every page boundary makes undo/redo a
+   * per-page-session operation, which is what users intuitively expect.
+   *
+   * Implementation: replace the history plugin *instance* in the plugin
+   * array, then `reconfigure` the state. ProseMirror's reconfigure preserves
+   * plugin state for plugin instances that are unchanged and reinitializes
+   * only those that differ — so the history plugin gets a fresh empty stack
+   * while @tiptap/react's ReactNodeView tracking plugin (and every other
+   * plugin) keeps its state intact. Using `EditorState.create` here instead
+   * would reinit *every* plugin and crash mid-render with
+   * "curDesc.parent.children is undefined" because ReactNodeView would try
+   * to remount synchronously against a partial desc tree.
+   */
+  const clearTiptapHistory = useCallback((ed: Editor) => {
+    const newPlugins = ed.state.plugins.map((p) => {
+      const key = (p as unknown as { key?: string }).key;
+      return typeof key === 'string' && key.startsWith('history$') ? history() : p;
+    });
+    ed.view.updateState(ed.state.reconfigure({ plugins: newPlugins }));
+  }, []);
+
   // Handle editor ready callback from TiptapEditor
   const handleEditorReady = useCallback((ed: Editor | null) => {
     setEditor(ed);
@@ -113,6 +142,12 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
       const freshPage = useRichTextPagesStore.getState().pages[targetPageId];
       if (editorRef.current) {
         editorRef.current.commands.setContent(freshPage?.content ?? '<p></p>');
+        // Wipe Tiptap's undo stack so the page-load transaction we just
+        // dispatched can never be undone — and so undo/redo on this page
+        // cannot walk back into transactions from previously-loaded pages.
+        // This is the actual fix for the "undo on page 3 starts applying
+        // page 1's content" bug.
+        clearTiptapHistory(editorRef.current);
         // Keep richTextStore in sync so TiptapEditor's content-watcher
         // never sees a mismatch and overwrites the freshly-loaded page.
         useRichTextStore.getState().loadContent({
@@ -162,7 +197,7 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
     }, 0);
     // `pages` is intentionally excluded from deps — it is read imperatively
     // inside the timeout to avoid stale closures and spurious re-runs.
-  }, [activePageId, updatePageContent, editor]);
+  }, [activePageId, updatePageContent, editor, clearTiptapHistory]);
 
   // Continuously persist scroll position of the active page (debounced).
   // Re-attaches whenever the editor instance changes since the scroll container
@@ -180,7 +215,14 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
         // Skip writes during page-load/restore so transient scroll events from
         // DOM rebuilds don't get persisted under the new page's key.
         if (isLoadingRef.current || restoreInProgressRef.current) return;
-        const pageId = useRichTextPagesStore.getState().activePageId;
+        // CROSS-PAGE GUARD: use lastActivePageRef (the page whose content is
+        // actually mounted in the editor right now), not the store's
+        // activePageId — the store flips synchronously when the user clicks a
+        // tab, but editor content is only swapped after the page-load effect
+        // runs. Reading the store here would persist the old page's scroll
+        // (or content, in the autosave/unmount handlers below) into the new
+        // page's slot.
+        const pageId = lastActivePageRef.current;
         if (pageId) {
           useSessionStore.getState().saveEditorScroll(pageId, el.scrollTop);
         }
@@ -196,7 +238,10 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
   // Auto-save current page content periodically
   useEffect(() => {
     const saveInterval = setInterval(() => {
-      const pageId = useRichTextPagesStore.getState().activePageId;
+      // Use the page whose content is currently mounted in the editor, not the
+      // store's activePageId — see cross-page guard comment in the scroll
+      // handler above.
+      const pageId = lastActivePageRef.current;
       if (editorRef.current && pageId && !isLoadingRef.current) {
         const content = editorRef.current.getHTML();
         updatePageContent(pageId, content);
@@ -214,8 +259,13 @@ export function DocumentEditorPanel({ onCollapse, isFullscreen, onToggleFullscre
         clearTimeout(pendingLoadRef.current);
         pendingLoadRef.current = null;
       }
-      const pageId = useRichTextPagesStore.getState().activePageId;
-      if (editorRef.current && pageId) {
+      // Same cross-page guard — write to whichever page is actually mounted.
+      // Skip if a page-load is in flight (lastActivePageRef has already been
+      // flipped to the target page but its content hasn't been swapped into
+      // the editor yet — saving here would write the old page's content
+      // into the new page's slot).
+      const pageId = lastActivePageRef.current;
+      if (editorRef.current && pageId && !isLoadingRef.current) {
         const content = editorRef.current.getHTML();
         updatePageContent(pageId, content);
         const el = getScrollEl(editorRef.current);

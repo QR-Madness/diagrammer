@@ -46,6 +46,14 @@ export interface DocumentActions {
   // Serialization
   getSnapshot: () => DocumentSnapshot;
   loadSnapshot: (snapshot: DocumentSnapshot) => void;
+  /**
+   * Returns information about the most recent loadSnapshot call:
+   * whether the snapshot was clean, or whether shapeOrder referenced
+   * shape ids that didn't exist (indicating possible corruption).
+   * Used by the persistence layer to refuse saves that would write
+   * corrupted state to disk.
+   */
+  getLastSnapshotIntegrity: () => SnapshotIntegrity;
 
   // Utilities
   getShape: (id: string) => Shape | undefined;
@@ -91,6 +99,28 @@ export interface DocumentSnapshot {
 
 /** Current snapshot version for migration support */
 const SNAPSHOT_VERSION = 1;
+
+/**
+ * Integrity report produced by `loadSnapshot`. `ok: true` means shapes and
+ * shapeOrder agreed; `ok: false` means we silently dropped or skipped ids and
+ * the caller should treat in-memory state as suspect.
+ */
+export interface SnapshotIntegrity {
+  ok: boolean;
+  /** ids present in shapeOrder but missing from shapes (orphaned references) */
+  droppedFromOrder: string[];
+  /** ids present in shapes but never referenced by shapeOrder */
+  unorderedShapes: string[];
+  /** Wall-clock time of the last load, for debugging */
+  at: number;
+}
+
+let lastSnapshotIntegrity: SnapshotIntegrity = {
+  ok: true,
+  droppedFromOrder: [],
+  unorderedShapes: [],
+  at: 0,
+};
 
 /**
  * Initial empty document state.
@@ -297,21 +327,51 @@ export const useDocumentStore = create<DocumentState & DocumentActions>()(
     },
 
     loadSnapshot: (snapshot: DocumentSnapshot) => {
+      // Compute integrity *before* mutating state so we can log loud, accurate
+      // diagnostics if the snapshot is malformed (e.g. cross-page contamination).
+      // Only the shapeOrder→missing-shape direction is a corruption signal;
+      // shapes present but absent from shapeOrder is normal (group children
+      // are tracked via the parent group's childIds, not shapeOrder).
+      const incomingShapes = snapshot.shapes ?? {};
+      const incomingOrder = snapshot.shapeOrder ?? [];
+      const droppedFromOrder = incomingOrder.filter((id) => !incomingShapes[id]);
+      const unorderedShapes: string[] = [];
+      const ok = droppedFromOrder.length === 0;
+
+      if (!ok) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[documentStore] loadSnapshot integrity issue — possible page corruption.',
+          {
+            droppedFromOrder,
+            unorderedShapes,
+            shapeCount: Object.keys(incomingShapes).length,
+            orderCount: incomingOrder.length,
+          },
+        );
+      }
+
+      lastSnapshotIntegrity = {
+        ok,
+        droppedFromOrder,
+        unorderedShapes,
+        at: Date.now(),
+      };
+
       set((state) => {
         // Clear existing data
         state.shapes = {};
         state.shapeOrder = [];
 
         // Load snapshot data
-        if (snapshot.shapes) {
-          state.shapes = JSON.parse(JSON.stringify(snapshot.shapes));
-        }
-        if (snapshot.shapeOrder) {
-          // Filter out any orphaned IDs
-          state.shapeOrder = snapshot.shapeOrder.filter((id) => state.shapes[id]);
-        }
+        state.shapes = JSON.parse(JSON.stringify(incomingShapes));
+        // Filter out any orphaned IDs to keep rendering stable; the integrity
+        // flag above lets the persistence layer refuse a save if needed.
+        state.shapeOrder = incomingOrder.filter((id) => state.shapes[id]);
       });
     },
+
+    getLastSnapshotIntegrity: (): SnapshotIntegrity => lastSnapshotIntegrity,
 
     // Utilities
     getShape: (id: string): Shape | undefined => {

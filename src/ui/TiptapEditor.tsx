@@ -18,6 +18,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { history } from 'prosemirror-history';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -334,6 +335,19 @@ export function TiptapEditor({ className, onEditorReady }: TiptapEditorProps) {
       const newContent = JSON.stringify(content.content);
       if (currentContent !== newContent) {
         editor.commands.setContent(content.content);
+        // Drop history so the "load document" transaction can never be
+        // undone, and so any leftover entries from a previously-loaded
+        // document don't leak across. Reconfigure with a fresh history
+        // plugin instance — this resets only the history plugin's state
+        // and leaves @tiptap/react's ReactNodeView tracking plugin alone
+        // (a wholesale `EditorState.create` would crash mid-render here
+        // by forcing every plugin to reinit and remounting node views
+        // against a partial desc tree).
+        const newPlugins = editor.state.plugins.map((p) => {
+          const key = (p as unknown as { key?: string }).key;
+          return typeof key === 'string' && key.startsWith('history$') ? history() : p;
+        });
+        editor.view.updateState(editor.state.reconfigure({ plugins: newPlugins }));
 
         // Convert blob:// URLs after content is set (slight delay for DOM update)
         requestAnimationFrame(async () => {

@@ -16,6 +16,8 @@ import {
 } from '../types/Document';
 import { validateDocumentJSON } from '../types/DocumentValidation';
 import { usePageStore, PageStoreSnapshot } from './pageStore';
+import { useNotificationStore } from './notificationStore';
+import type { Page } from '../types/Document';
 import { useRichTextStore } from './richTextStore';
 import { useRichTextPagesStore } from './richTextPagesStore';
 import { useUserStore } from './userStore';
@@ -203,7 +205,46 @@ function extractShapeBlobIds(pages: Record<string, any>): string[] {
 }
 
 /**
+ * Walk every page in a snapshot and verify shape/shapeOrder agreement.
+ * Returns a list of issues (empty array means clean). This is the last
+ * line of defense before a save: if a cross-page corruption ever bypassed
+ * the historyStore guards, we'd rather refuse to write than overwrite a
+ * good document on disk with corrupted state.
+ */
+function findPageIntegrityIssues(pages: Record<string, Page>): string[] {
+  // Only flag the dangerous direction — shapeOrder pointing at a shape id
+  // that doesn't exist. The reverse (shape present but not in shapeOrder)
+  // is normal: group children are stored in `shapes` but tracked through
+  // their parent group's `childIds`, never in the page-level shapeOrder.
+  const issues: string[] = [];
+  for (const [pageId, page] of Object.entries(pages)) {
+    const shapeIds = new Set(Object.keys(page.shapes ?? {}));
+    for (const id of page.shapeOrder ?? []) {
+      if (!shapeIds.has(id)) {
+        issues.push(`page ${pageId}: shapeOrder references missing shape "${id}"`);
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * Thrown by `createDocumentFromPageStore` when a corrupt in-memory page is
+ * detected. Save callers catch this, surface a notification, and abort
+ * rather than persist the corruption.
+ */
+export class DocumentIntegrityError extends Error {
+  constructor(public readonly issues: string[]) {
+    super(`Document integrity check failed:\n${issues.join('\n')}`);
+    this.name = 'DocumentIntegrityError';
+  }
+}
+
+/**
  * Create a DiagramDocument from current page store state.
+ *
+ * Throws `DocumentIntegrityError` if any page's shapes/shapeOrder are
+ * inconsistent — saving such a state would persist corruption.
  */
 function createDocumentFromPageStore(
   id: string,
@@ -211,6 +252,13 @@ function createDocumentFromPageStore(
   existingDoc?: DiagramDocument
 ): DiagramDocument {
   const pageSnapshot = usePageStore.getState().getSnapshot();
+
+  const issues = findPageIntegrityIssues(pageSnapshot.pages);
+  if (issues.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error('[persistenceStore] aborting save — page integrity check failed:', issues);
+    throw new DocumentIntegrityError(issues);
+  }
   const richTextContent = useRichTextStore.getState().getContent();
   const richTextPages = useRichTextPagesStore.getState().serialize();
   const whiteboardSnapshot = useWhiteboardStore.getState().getSnapshot();
@@ -364,12 +412,26 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         const existingDoc = docId ? loadDocumentFromStorage(docId) : undefined;
         const oldBlobRefs = new Set(existingDoc?.blobReferences ?? []);
 
-        // Create document from current state
-        const doc = createDocumentFromPageStore(
-          docId,
-          state.currentDocumentName,
-          existingDoc ?? undefined
-        );
+        // Create document from current state. Throws DocumentIntegrityError if
+        // any page is internally inconsistent — refuse the save in that case
+        // so we don't overwrite a good on-disk document with corrupted state.
+        let doc: DiagramDocument;
+        try {
+          doc = createDocumentFromPageStore(
+            docId,
+            state.currentDocumentName,
+            existingDoc ?? undefined
+          );
+        } catch (err) {
+          if (err instanceof DocumentIntegrityError) {
+            useNotificationStore.getState().error(
+              'Save aborted: page data failed an integrity check. Your previously saved version is unchanged. Please report this.',
+              { category: 'permanent' },
+            );
+            return;
+          }
+          throw err;
+        }
 
         // Extract blob references from rich text content and shapes
         const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
@@ -443,8 +505,20 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
       saveDocumentAs: (name: string) => {
         const newId = nanoid();
 
-        // Create document from current state
-        const doc = createDocumentFromPageStore(newId, name);
+        // Create document from current state (integrity-guarded — see saveDocument)
+        let doc: DiagramDocument;
+        try {
+          doc = createDocumentFromPageStore(newId, name);
+        } catch (err) {
+          if (err instanceof DocumentIntegrityError) {
+            useNotificationStore.getState().error(
+              'Save aborted: page data failed an integrity check. Please report this.',
+              { category: 'permanent' },
+            );
+            return;
+          }
+          throw err;
+        }
 
         // Extract blob references from rich text content and shapes
         const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
@@ -579,7 +653,19 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         const state = get();
         const docId = state.currentDocumentId ?? nanoid();
 
-        const doc = createDocumentFromPageStore(docId, state.currentDocumentName);
+        let doc: DiagramDocument;
+        try {
+          doc = createDocumentFromPageStore(docId, state.currentDocumentName);
+        } catch (err) {
+          if (err instanceof DocumentIntegrityError) {
+            useNotificationStore.getState().error(
+              'Export aborted: page data failed an integrity check.',
+              { category: 'permanent' },
+            );
+            throw err;
+          }
+          throw err;
+        }
 
         // Extract blob references from rich text content and shapes
         const richTextBlobs = doc.richTextContent ? extractBlobIds(doc.richTextContent) : [];
