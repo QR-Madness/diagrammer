@@ -29,6 +29,8 @@ interface ColorPaletteProps {
   onChange: (color: string) => void;
   /** Whether to show the "no fill" option */
   showNoFill?: boolean;
+  /** Whether to show the "Automatic" (contrast-aware) option */
+  showAuto?: boolean;
   /** Compact mode - hide labels and reduce spacing */
   compact?: boolean;
 }
@@ -71,6 +73,7 @@ export function ColorPalette({
   value,
   onChange,
   showNoFill = false,
+  showAuto = false,
   compact = false,
 }: ColorPaletteProps) {
   const { recentColors, customColor, addRecentColor, setCustomColor } =
@@ -222,6 +225,21 @@ export function ColorPalette({
           </div>
         ))}
       </div>
+
+      {/* Automatic (contrast-aware) option */}
+      {showAuto && (
+        <div className="color-palette-section">
+          <button
+            className={`color-swatch auto-color ${normalizedValue === 'auto' ? 'selected' : ''}`}
+            onClick={() => onChange('auto')}
+            title="Automatic — contrast-aware (white on dark, black on light; black in PDFs)"
+            aria-label="Automatic color"
+          >
+            <span className="auto-color-icon">A</span>
+          </button>
+          {!compact && <span className="color-palette-nofill-label">Auto</span>}
+        </div>
+      )}
 
       {/* No Fill Option */}
       {showNoFill && (

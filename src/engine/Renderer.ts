@@ -1,10 +1,12 @@
 import { Camera } from './Camera';
 import { Box } from '../math/Box';
-import { Shape, isGroup, GroupShape, Handle } from '../shapes/Shape';
+import { Shape, isGroup, GroupShape, Handle, isConnector } from '../shapes/Shape';
 import { shapeRegistry } from '../shapes/ShapeRegistry';
 import type { GroupShapeHandler } from '../shapes/Group';
 import { setLatexRenderCallback } from '../utils/textUtils';
 import { onIconLoad } from '../utils/iconCache';
+import { ContrastCache, isAutoColor } from './ContrastResolver';
+import { setRenderContext } from './RenderContext';
 
 /**
  * Configuration options for the Renderer.
@@ -138,6 +140,9 @@ export class Renderer {
   // Emphasis animation
   private emphasizedShapeId: string | null = null;
   private emphasisStartTime: number = 0;
+
+  // Per-frame contrast resolution cache (reused across frames, cleared at start)
+  private contrastCache: ContrastCache = new ContrastCache();
 
   // Performance metrics
   private lastFrameTime: number = 0;
@@ -367,8 +372,20 @@ export class Renderer {
       this.drawGrid();
     }
 
-    // 4. Draw shapes in z-order with viewport culling
-    this.drawShapes();
+    // 4. Draw shapes in z-order with viewport culling.
+    // Publish per-frame render context so shape handlers can resolve AUTO colors.
+    this.contrastCache.clear();
+    setRenderContext({
+      shapes: this.shapes,
+      shapeOrder: this.shapeOrder,
+      pageBackground: options.backgroundColor,
+      contrastCache: this.contrastCache,
+    });
+    try {
+      this.drawShapes();
+    } finally {
+      setRenderContext(null);
+    }
 
     // 4.5. Draw lock indicators on locked shapes (in world space)
     if (options.showLockIndicators) {
@@ -523,6 +540,39 @@ export class Renderer {
   }
 
   /**
+   * If the shape uses the AUTO color sentinel for fill or stroke, return a
+   * shallow clone with those values resolved against the current frame's
+   * background. Connectors and groups handle AUTO themselves (per-segment
+   * stroke for connectors, dynamic background lookup for groups), so they
+   * are returned unchanged.
+   */
+  private resolveAutoFillStroke<T extends Shape>(shape: T): T {
+    if (isConnector(shape) || isGroup(shape)) return shape;
+
+    const fillIsAuto = isAutoColor(shape.fill);
+    const strokeIsAuto = isAutoColor(shape.stroke);
+    // `labelColor` is optional on rectangle/ellipse/file/library shapes.
+    // Pre-resolving it here keeps shape handlers ignorant of the AUTO sentinel.
+    const labelColorIsAuto =
+      'labelColor' in shape && isAutoColor((shape as { labelColor?: string }).labelColor);
+    if (!fillIsAuto && !strokeIsAuto && !labelColorIsAuto) return shape;
+
+    const point = { x: shape.x, y: shape.y };
+    const resolved = this.contrastCache.resolve(
+      point,
+      this.shapes,
+      this.shapeOrder,
+      this.options.backgroundColor,
+      shape.id
+    );
+    const next: T & { labelColor?: string } = { ...shape };
+    if (fillIsAuto) next.fill = resolved;
+    if (strokeIsAuto) next.stroke = resolved;
+    if (labelColorIsAuto) next.labelColor = resolved;
+    return next;
+  }
+
+  /**
    * Draw all shapes in z-order with viewport culling.
    * Shapes outside the visible bounds are skipped for performance.
    */
@@ -566,7 +616,7 @@ export class Renderer {
         } else {
           // Render the shape
           ctx.save();
-          handler.render(ctx, shape);
+          handler.render(ctx, this.resolveAutoFillStroke(shape));
           ctx.restore();
           rendered++;
         }
@@ -632,7 +682,7 @@ export class Renderer {
           // Render the child with inherited opacity
           ctx.save();
           ctx.globalAlpha = child.opacity * effectiveOpacity;
-          handler.render(ctx, child);
+          handler.render(ctx, this.resolveAutoFillStroke(child));
           ctx.restore();
           rendered++;
         }

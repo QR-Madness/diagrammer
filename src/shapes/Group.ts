@@ -5,6 +5,34 @@ import { GroupShape, Handle, DEFAULT_GROUP, Shape } from './Shape';
 import { useDocumentStore } from '../store/documentStore';
 import { createPatternFill, createRoundedRectPath } from '../utils/patternUtils';
 import type { GroupLabelPosition } from './GroupStyles';
+import { isAutoColor } from '../engine/ContrastResolver';
+import { getRenderContext } from '../engine/RenderContext';
+
+/**
+ * Resolve the AUTO sentinel against the active render frame, sampling at the
+ * group's geometric centre. Returns the input unchanged for non-AUTO values
+ * or when called outside a render frame.
+ */
+function resolveGroupAutoColor(
+  shape: GroupShape,
+  value: string | undefined,
+  fallback: string
+): string {
+  if (!isAutoColor(value)) return value ?? fallback;
+  const rc = getRenderContext();
+  if (!rc) return fallback;
+  // Sample at the group centre so its own bg doesn't influence the lookup.
+  const handler = shapeRegistry.getHandler('group');
+  const bounds = handler.getBounds(shape);
+  const centre = { x: bounds.centerX, y: bounds.centerY };
+  return rc.contrastCache.resolve(
+    centre,
+    rc.shapes,
+    rc.shapeOrder,
+    rc.pageBackground,
+    shape.id
+  );
+}
 
 /**
  * Get all shapes from the document store.
@@ -118,8 +146,12 @@ export const groupHandler: GroupShapeHandler = {
         const fillStyle = createPatternFill(ctx, shape.patternConfig, paddedBounds);
         ctx.fillStyle = fillStyle;
       } else {
-        // Use solid background color
-        ctx.fillStyle = shape.backgroundColor ?? DEFAULT_GROUP.backgroundColor;
+        // Use solid background color (resolve AUTO if needed)
+        ctx.fillStyle = resolveGroupAutoColor(
+          shape,
+          shape.backgroundColor,
+          DEFAULT_GROUP.backgroundColor
+        );
       }
       ctx.fill(bgPath);
     }
@@ -132,7 +164,7 @@ export const groupHandler: GroupShapeHandler = {
 
     // Draw border
     if (hasBorder) {
-      ctx.strokeStyle = shape.borderColor || '#000000';
+      ctx.strokeStyle = resolveGroupAutoColor(shape, shape.borderColor, '#000000');
       ctx.lineWidth = shape.borderWidth!;
 
       // Apply dash pattern if specified
@@ -166,7 +198,11 @@ export const groupHandler: GroupShapeHandler = {
 
     // Get label properties
     const fontSize = shape.labelFontSize ?? DEFAULT_GROUP.labelFontSize;
-    const labelColor = shape.labelColor ?? DEFAULT_GROUP.labelColor;
+    const labelColor = resolveGroupAutoColor(
+      shape,
+      shape.labelColor,
+      DEFAULT_GROUP.labelColor
+    );
     const labelBackground = shape.labelBackground;
     const labelPosition = shape.labelPosition ?? DEFAULT_GROUP.labelPosition;
     const labelOffsetX = shape.labelOffsetX ?? 0;

@@ -195,6 +195,7 @@ function MetadataPropertyEditor({
           label={definition.label}
           value={(value as string) ?? ''}
           onChange={(c) => onChange(c)}
+          showAuto={definition.colorAllowAuto ?? false}
         />
       );
     case 'boolean':
@@ -368,6 +369,7 @@ function LibraryShapeProperties({
             label="Color"
             value={shape.labelColor || '#000000'}
             onChange={(color) => handleUpdate('labelColor', color)}
+            showAuto
           />
           <CompactColorInput
             label="Background"
@@ -1381,6 +1383,7 @@ function FileShapeProperties({
           label="Color"
           value={shape.labelColor || '#333333'}
           onChange={(color) => updateShape(shape.id, { labelColor: color })}
+          showAuto
         />
       </PropertySection>
     </>
@@ -1605,6 +1608,7 @@ export function PropertyPanel() {
                       label="Color"
                       value={(shape as GroupShape).backgroundColor || '#ffffff'}
                       onChange={(color) => handleBulkUpdate({ backgroundColor: color })}
+                      showAuto
                     />
                   )}
                   <CompactNumberInput
@@ -1632,6 +1636,7 @@ export function PropertyPanel() {
                 value={(shape as GroupShape).borderColor || '#000000'}
                 onChange={(color) => handleBulkUpdate({ borderColor: color })}
                 showNoFill
+                showAuto
               />
               <CompactNumberInput
                 label="Width"
@@ -1737,13 +1742,18 @@ export function PropertyPanel() {
         {/* Appearance Section - only for non-group, non-library shapes */}
         {!isGroupSelected && !isLibraryShapeSelected && (
           <PropertySection id="appearance" title="Appearance" defaultExpanded>
-            {/* Fill Color */}
-            {shape.fill !== null && (
+            {/* Fill Color (Text shapes always show — `fill` is the text colour) */}
+            {(shape.fill !== null || isText(shape)) && (
               <CompactColorInput
-                label={isMultiple && getSharedValue(selectedShapes, (s) => s.fill) === MIXED ? 'Fill (Mixed)' : 'Fill'}
+                label={
+                  isText(shape)
+                    ? (isMultiple && getSharedValue(selectedShapes, (s) => s.fill) === MIXED ? 'Color (Mixed)' : 'Color')
+                    : (isMultiple && getSharedValue(selectedShapes, (s) => s.fill) === MIXED ? 'Fill (Mixed)' : 'Fill')
+                }
                 value={shape.fill || ''}
                 onChange={(color) => handleBulkUpdate({ fill: color })}
-                showNoFill
+                showNoFill={!isText(shape)}
+                showAuto
               />
             )}
 
@@ -1754,6 +1764,7 @@ export function PropertyPanel() {
                   label={isMultiple && getSharedValue(selectedShapes, (s) => s.stroke) === MIXED ? 'Stroke (Mixed)' : 'Stroke'}
                   value={shape.stroke || ''}
                   onChange={(color) => handleBulkUpdate({ stroke: color })}
+                  showAuto
                 />
                 <CompactNumberInput
                   label="W"
@@ -1831,6 +1842,7 @@ export function PropertyPanel() {
                   }
                 });
               }}
+              showAuto
             />
             <CompactColorInput
               label="Background"
@@ -2612,6 +2624,7 @@ export function PropertyPanel() {
                   }
                 });
               }}
+              showAuto
             />
             <CompactColorInput
               label="Background"

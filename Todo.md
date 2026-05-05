@@ -48,8 +48,7 @@
 
 - [X] Code-Block is needed (language support is not recommended unless it's lightweight + cross-plat., but it should be highly format-aware (preserving rich formatting where possible), especially with indentation.
 - [X] Spellcheck (custom dictionary; "Add to Dictionary" button) — grammar check still pending.
-- [ ] Contrast Awareness Font Coloring System: White text is dangerous in documents (and especially the canvas) and can be easily applied in dark-mode; add a 'Automatic' color reference which is themed (white/dark, black/light) and is standard-black in PDFs; evaluate complexity to implement this into the canvas too; it's badly needed.
-  - Problem: My connectors are white during work since I am in dark-mode and I like white connectors; but when I export to PDF, they aren't contrast aware. I propose that the 'Automatic' color reference could fix this by precomputing contrast requirements based on group-placements weighted by the background color. Assign a contrast render area ID to connectors partitioned based on their group membership, extract the parents' (groups) BGs (per area) into an array, then you can drill down to next background colors to evaluate contrasts (this can be used during rebuilds as well for recalculating contrast assignments)
+- [X] Contrast Awareness Font Coloring System: 'Automatic' colour sentinel resolves at render time via a topmost-shape spatial walk (per-segment for connectors, group-bg aware), and forces black for PDF export. Available for fill, stroke, label colour, group background, and group border.
 - [ ] Add a tree (quite literally a file tree) element which formats (prettified) similar to a tree using ASCII operators or another effective format.
 - [X] Remember scroll position in tiptap editor.
 - [ ] Make the PDF exporter full-screen, and add a preview PDF feature which saves the PDF to temp dir and shows it on the side, users can either save it (copy to downloads with a fallback to exporting to downloads), or close it (deleting the temp file)
@@ -62,7 +61,7 @@
 - [ ] When exported to PDF, table cells won't break-word for word-wrapping leading to large words/numbers being overflow out of the cell. 
 - [ ] Large strings (one giant word or number; a edge case but needs to be fixed) in the PDF don't break; they overflow the page.
 - [ ] Saving PDF defaults saves application-level; it should be document level as other documents data get pulled by others, and it get's messy. 
-- [ ] Add a little preview picture of the logo as a sanity check.
+- [ ] When a cover-page has a logo selected, display the name and size in the PDF exporter section.
 - [ ] Marking document sections as WIP (add an icon next indicating it's still in construction); we can also add hide properties for PDFs to exclude document WIPs in the future.
 - [ ] The document toolbar switches to the table ribbon/tab when editing a table, but doesn't change to Home on text selection or after exiting the table, I suggest removing the toolbar ribbon auto-switch.
 

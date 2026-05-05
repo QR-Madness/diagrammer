@@ -11,6 +11,55 @@ import {
   UMLClassMarker,
   UMLSequenceMarker,
 } from './Shape';
+import { isAutoColor } from '../engine/ContrastResolver';
+import { getRenderContext } from '../engine/RenderContext';
+
+/**
+ * Resolve a stroke colour at the midpoint of a single line segment, sampling
+ * the topmost shape underneath. Returns the input unchanged if it is not the
+ * AUTO sentinel, or if no render context is active.
+ */
+function resolveSegmentStroke(
+  rawStroke: string,
+  from: Vec2,
+  to: Vec2,
+  connectorId: string
+): string {
+  if (!isAutoColor(rawStroke)) return rawStroke;
+  const rc = getRenderContext();
+  if (!rc) return '#000000'; // safe fallback when AUTO leaks outside a frame
+  const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+  return rc.contrastCache.resolve(
+    mid,
+    rc.shapes,
+    rc.shapeOrder,
+    rc.pageBackground,
+    connectorId
+  );
+}
+
+/**
+ * Resolve a stroke colour at a single point. Used for arrow heads, markers,
+ * and labels — anywhere on the connector that needs a concrete colour rather
+ * than a per-segment one.
+ */
+function resolveStrokeAtPoint(
+  rawStroke: string | null,
+  point: { x: number; y: number },
+  connectorId: string
+): string | null {
+  if (!rawStroke) return rawStroke;
+  if (!isAutoColor(rawStroke)) return rawStroke;
+  const rc = getRenderContext();
+  if (!rc) return '#000000';
+  return rc.contrastCache.resolve(
+    point,
+    rc.shapes,
+    rc.shapeOrder,
+    rc.pageBackground,
+    connectorId
+  );
+}
 
 /**
  * Get the resolved start point of a connector.
@@ -633,32 +682,39 @@ function renderConnectorLabel(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
-  // Measure text for background
-  const metrics = ctx.measureText(label);
-  const padding = 4;
-  const bgWidth = metrics.width + padding * 2;
-  const bgHeight = fontSize + padding * 2;
+  // Background semantics:
+  //   undefined          → unset; draw the legacy default white pill for readability
+  //   '' (or 'transparent') → user explicitly chose No Fill; skip background entirely
+  //   <colour>           → draw with that colour
+  const noBackground = backgroundColor === '' || backgroundColor === 'transparent';
+  const usingDefault = backgroundColor === undefined;
 
-  // Draw background (use custom color or default semi-transparent white)
-  const bgColor = backgroundColor || 'rgba(255, 255, 255, 0.9)';
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(
-    drawX - bgWidth / 2,
-    drawY - bgHeight / 2,
-    bgWidth,
-    bgHeight
-  );
+  if (!noBackground) {
+    const metrics = ctx.measureText(label);
+    const padding = 4;
+    const bgWidth = metrics.width + padding * 2;
+    const bgHeight = fontSize + padding * 2;
 
-  // Draw border (only if using default background)
-  if (!backgroundColor) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(
+    const bgColor = backgroundColor || 'rgba(255, 255, 255, 0.9)';
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(
       drawX - bgWidth / 2,
       drawY - bgHeight / 2,
       bgWidth,
       bgHeight
     );
+
+    // Subtle border only on the legacy default pill.
+    if (usingDefault) {
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        drawX - bgWidth / 2,
+        drawY - bgHeight / 2,
+        bgWidth,
+        bgHeight
+      );
+    }
   }
 
   // Draw text
@@ -732,7 +788,6 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
 
     // Draw the line(s)
     if (stroke && strokeWidth > 0 && points.length >= 2) {
-      ctx.strokeStyle = stroke;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -745,16 +800,29 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
         ctx.setLineDash([]);
       }
 
-      const firstPoint = points[0]!;
-      ctx.beginPath();
-      ctx.moveTo(firstPoint.x, firstPoint.y);
-
-      for (let i = 1; i < points.length; i++) {
-        const pt = points[i]!;
-        ctx.lineTo(pt.x, pt.y);
+      if (isAutoColor(stroke)) {
+        // Per-segment colour resolution so a connector crossing dark→light
+        // backgrounds gets the right contrast on each leg.
+        for (let i = 1; i < points.length; i++) {
+          const a = points[i - 1]!;
+          const b = points[i]!;
+          ctx.strokeStyle = resolveSegmentStroke(stroke, a, b, shape.id);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      } else {
+        ctx.strokeStyle = stroke;
+        const firstPoint = points[0]!;
+        ctx.beginPath();
+        ctx.moveTo(firstPoint.x, firstPoint.y);
+        for (let i = 1; i < points.length; i++) {
+          const pt = points[i]!;
+          ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
       }
-
-      ctx.stroke();
 
       // Reset dash for markers (they should always be solid)
       ctx.setLineDash([]);
@@ -778,19 +846,21 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
         const p0 = points[0]!;
         const p1 = points[1]!;
         const startAngle = Math.atan2(p1.y - p0.y, p1.x - p0.x);
+        const startStroke = resolveStrokeAtPoint(stroke, p0, shape.id) ?? stroke;
 
         if (connectorType === 'uml-sequence' && shape.startSequenceMarker && shape.startSequenceMarker !== 'none') {
           // Draw UML sequence marker
-          drawUMLSequenceMarker(ctx, p0, startAngle + Math.PI, shape.startSequenceMarker, strokeWidth, stroke, shape.fill);
+          drawUMLSequenceMarker(ctx, p0, startAngle + Math.PI, shape.startSequenceMarker, strokeWidth, startStroke, shape.fill);
         } else if (connectorType === 'uml-class' && shape.startUMLMarker && shape.startUMLMarker !== 'none') {
           // Draw UML class marker
-          drawUMLClassMarker(ctx, p0, startAngle + Math.PI, shape.startUMLMarker, strokeWidth, stroke, shape.fill);
+          drawUMLClassMarker(ctx, p0, startAngle + Math.PI, shape.startUMLMarker, strokeWidth, startStroke, shape.fill);
         } else if (connectorType === 'erd' && shape.startCardinality && shape.startCardinality !== 'none') {
           // Draw ERD cardinality symbol
+          ctx.strokeStyle = startStroke;
           drawCardinalitySymbol(ctx, p0, startAngle + Math.PI, shape.startCardinality, strokeWidth);
         } else if (startArrow) {
           // Draw regular arrow
-          ctx.fillStyle = stroke;
+          ctx.fillStyle = startStroke;
           drawArrowHead(ctx, p0, startAngle + Math.PI, arrowSize);
         }
       }
@@ -802,19 +872,21 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
         const lastPt = points[lastIdx]!;
         const secondLastPt = points[lastIdx - 1]!;
         const endAngle = Math.atan2(lastPt.y - secondLastPt.y, lastPt.x - secondLastPt.x);
+        const endStroke = resolveStrokeAtPoint(stroke, lastPt, shape.id) ?? stroke;
 
         if (connectorType === 'uml-sequence' && shape.endSequenceMarker && shape.endSequenceMarker !== 'none') {
           // Draw UML sequence marker
-          drawUMLSequenceMarker(ctx, lastPt, endAngle, shape.endSequenceMarker, strokeWidth, stroke, shape.fill);
+          drawUMLSequenceMarker(ctx, lastPt, endAngle, shape.endSequenceMarker, strokeWidth, endStroke, shape.fill);
         } else if (connectorType === 'uml-class' && shape.endUMLMarker && shape.endUMLMarker !== 'none') {
           // Draw UML class marker
-          drawUMLClassMarker(ctx, lastPt, endAngle, shape.endUMLMarker, strokeWidth, stroke, shape.fill);
+          drawUMLClassMarker(ctx, lastPt, endAngle, shape.endUMLMarker, strokeWidth, endStroke, shape.fill);
         } else if (connectorType === 'erd' && shape.endCardinality && shape.endCardinality !== 'none') {
           // Draw ERD cardinality symbol
+          ctx.strokeStyle = endStroke;
           drawCardinalitySymbol(ctx, lastPt, endAngle, shape.endCardinality, strokeWidth);
         } else if (endArrow) {
           // Draw regular arrow
-          ctx.fillStyle = stroke;
+          ctx.fillStyle = endStroke;
           drawArrowHead(ctx, lastPt, endAngle, arrowSize);
         }
       }
@@ -824,7 +896,8 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
     if (shape.messageNumber && shape.messageNumber.trim()) {
       const { point, angle } = getPointAlongPath(points, 0.1); // Near the start
       const fontSize = shape.labelFontSize ?? 12;
-      const color = shape.labelColor ?? stroke ?? '#000000';
+      const rawColor = shape.labelColor ?? stroke ?? '#000000';
+      const color = resolveStrokeAtPoint(rawColor, point, shape.id) ?? rawColor;
 
       ctx.save();
       ctx.font = `${fontSize}px sans-serif`;
@@ -848,7 +921,8 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       const labelPosition = shape.labelPosition ?? 0.5;
       const { point } = getPointAlongPath(points, labelPosition);
       const fontSize = shape.labelFontSize ?? 12;
-      const color = shape.labelColor ?? stroke ?? '#000000';
+      const rawColor = shape.labelColor ?? stroke ?? '#000000';
+      const color = resolveStrokeAtPoint(rawColor, point, shape.id) ?? rawColor;
       const backgroundColor = shape.labelBackground;
       const offsetX = shape.labelOffsetX ?? 0;
       const offsetY = shape.labelOffsetY ?? 0;
@@ -861,7 +935,8 @@ export const connectorHandler: ShapeHandler<ConnectorShape> = {
       const guardPosition = shape.guardPosition ?? 0.2; // Near the start by default
       const { point } = getPointAlongPath(points, guardPosition);
       const fontSize = shape.labelFontSize ?? 12;
-      const color = shape.labelColor ?? stroke ?? '#000000';
+      const rawColor = shape.labelColor ?? stroke ?? '#000000';
+      const color = resolveStrokeAtPoint(rawColor, point, shape.id) ?? rawColor;
       const guardText = `[${shape.guardCondition}]`;
 
       ctx.save();

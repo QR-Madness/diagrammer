@@ -21,6 +21,7 @@ import { blobStorage } from '../storage/BlobStorage';
 import { exportToPng, type ExportData } from './exportUtils';
 import { useDocumentStore } from '../store/documentStore';
 import { isGroup, type GroupShape, type Shape } from '../shapes/Shape';
+import { normalizeAutoColorsForPdf } from '../engine/ContrastResolver';
 import type { ImageCompression, ImageFormat } from 'jspdf';
 import type { PDFQuality } from '../types/PDFExport';
 
@@ -742,7 +743,7 @@ async function renderDiagramPageToPdf(
     }
 
     const exportData: ExportData = {
-      shapes,
+      shapes: normalizeAutoColorsForPdf(shapes),
       shapeOrder,
       selectedIds: [],
     };
@@ -816,9 +817,9 @@ async function renderDiagramToPdf(
       return;
     }
 
-    // Prepare export data
+    // Prepare export data (normalize AUTO colours → black for paper output)
     const exportData: ExportData = {
-      shapes,
+      shapes: normalizeAutoColorsForPdf(shapes),
       shapeOrder,
       selectedIds: [], // Export all shapes
     };
@@ -1251,7 +1252,7 @@ async function renderEmbeddedGroup(ctx: PDFRenderContext, node: JSONContent): Pr
     const groupShapeOrder = shapeOrder.filter((id) => groupShapeIds.has(id));
 
     const exportData: ExportData = {
-      shapes: groupShapes,
+      shapes: normalizeAutoColorsForPdf(groupShapes),
       shapeOrder: groupShapeOrder,
       selectedIds: [groupId],
     };

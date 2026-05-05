@@ -1,0 +1,189 @@
+import { Shape, isGroup } from '../shapes/Shape';
+import { shapeRegistry } from '../shapes/ShapeRegistry';
+import { getContrastColor } from '../utils/color';
+
+/**
+ * Sentinel value used in shape `fill` / `stroke` / group `backgroundColor`
+ * to request automatic contrast-aware color resolution at render time.
+ *
+ * Documents containing this sentinel are forward/backward compatible: older
+ * code paths that compare colors as plain strings will simply pass it through
+ * (and renderers that don't recognize it will fall back to default behavior).
+ */
+export const AUTO_COLOR = 'auto' as const;
+
+export type AutoColor = typeof AUTO_COLOR;
+
+/**
+ * Check whether a color value is the automatic sentinel.
+ */
+export function isAutoColor(value: string | null | undefined): boolean {
+  return value === AUTO_COLOR;
+}
+
+/**
+ * Minimum opacity for a shape's fill to count as background coverage.
+ * Below this threshold the shape is treated as transparent for contrast purposes.
+ */
+const OPAQUE_THRESHOLD = 0.5;
+
+/**
+ * Resolve the AUTO sentinel against the topmost opaque shape underneath a point.
+ *
+ * Algorithm:
+ *   1. Walk `shapeOrder` from top to bottom (last to first).
+ *   2. Skip the shape being resolved itself, and any shape with AUTO fill
+ *      (auto-colored shapes can't be the background for another auto element).
+ *   3. For each candidate, query its bounds via the shape registry. If the
+ *      point falls inside, and the shape contributes a usable background
+ *      (opaque fill, or — for groups — a `showBackground` background color),
+ *      derive the contrast color from that fill.
+ *   4. If nothing covers the point, fall back to the page background.
+ *
+ * Bounding-box check is intentionally used instead of precise hit testing:
+ *   contrast resolution doesn't need pixel accuracy, and the bounds path is
+ *   cheap enough to run for many points (e.g. per-segment connector sampling)
+ *   without a SpatialIndex query.
+ *
+ * @param point - World-space point to resolve.
+ * @param shapes - Map of shape id to shape data.
+ * @param shapeOrder - Z-ordered shape ids (first = bottom).
+ * @param pageBackground - Hex color of the page/canvas background.
+ * @param excludeId - Optional shape id to skip (the shape being resolved).
+ * @returns Resolved hex color (#000000 or #ffffff).
+ */
+export function resolveAutoColor(
+  point: { x: number; y: number },
+  shapes: Record<string, Shape> | Map<string, Shape>,
+  shapeOrder: string[],
+  pageBackground: string,
+  excludeId?: string
+): string {
+  const get = (id: string): Shape | undefined =>
+    shapes instanceof Map ? shapes.get(id) : shapes[id];
+
+  for (let i = shapeOrder.length - 1; i >= 0; i--) {
+    const id = shapeOrder[i];
+    if (!id || id === excludeId) continue;
+
+    const shape = get(id);
+    if (!shape || !shape.visible) continue;
+    if ((shape.opacity ?? 1) < OPAQUE_THRESHOLD) continue;
+
+    // Determine the effective background color for this shape, if any.
+    const bg = effectiveBackground(shape);
+    if (!bg) continue;
+
+    // Bounds check
+    let inside = false;
+    try {
+      const handler = shapeRegistry.getHandler(shape.type);
+      const bounds = handler.getBounds(shape);
+      inside =
+        point.x >= bounds.minX &&
+        point.x <= bounds.maxX &&
+        point.y >= bounds.minY &&
+        point.y <= bounds.maxY;
+    } catch {
+      continue;
+    }
+
+    if (inside) {
+      return getContrastColor(bg);
+    }
+  }
+
+  return getContrastColor(pageBackground);
+}
+
+/**
+ * Extract the color a shape contributes as a background for contrast purposes.
+ * Returns null if the shape has no usable background (transparent fill,
+ * AUTO fill that hasn't been resolved, or a group with no shown background).
+ */
+function effectiveBackground(shape: Shape): string | null {
+  if (isGroup(shape)) {
+    if (!shape.showBackground) return null;
+    const bg = shape.backgroundColor;
+    if (!bg || isAutoColor(bg)) return null;
+    return bg;
+  }
+
+  const fill = shape.fill;
+  if (!fill || isAutoColor(fill)) return null;
+  return fill;
+}
+
+/**
+ * Replace AUTO colour sentinels in `fill`, `stroke`, and group `backgroundColor`
+ * / `borderColor` / `labelColor` with #000000. Used by the PDF export path:
+ * paper convention is that "Automatic" reads as black, regardless of canvas
+ * theme, so the PDF pipeline never needs to run the canvas contrast resolver.
+ *
+ * Returns a new shape map; the input is not mutated. Shapes that don't use
+ * AUTO are returned by reference (no clone) for cheapness.
+ */
+export function normalizeAutoColorsForPdf(
+  shapes: Record<string, Shape>
+): Record<string, Shape> {
+  const out: Record<string, Shape> = {};
+  for (const id in shapes) {
+    const shape = shapes[id]!;
+    let next: Shape = shape;
+    if (isAutoColor(shape.fill) || isAutoColor(shape.stroke)) {
+      next = {
+        ...shape,
+        fill: isAutoColor(shape.fill) ? '#000000' : shape.fill,
+        stroke: isAutoColor(shape.stroke) ? '#000000' : shape.stroke,
+      };
+    }
+    if (isGroup(next)) {
+      const g = next;
+      if (
+        isAutoColor(g.backgroundColor) ||
+        isAutoColor(g.borderColor) ||
+        isAutoColor(g.labelColor)
+      ) {
+        const patched = { ...g };
+        if (isAutoColor(g.backgroundColor)) patched.backgroundColor = '#000000';
+        if (isAutoColor(g.borderColor)) patched.borderColor = '#000000';
+        if (isAutoColor(g.labelColor)) patched.labelColor = '#000000';
+        next = patched;
+      }
+    }
+    out[id] = next;
+  }
+  return out;
+}
+
+/**
+ * Per-frame memoization helper. The Renderer should construct one of these
+ * at the start of each frame and discard it after; resolutions for the same
+ * (point, exclude) tuple within a frame return cached values.
+ */
+export class ContrastCache {
+  private cache = new Map<string, string>();
+
+  resolve(
+    point: { x: number; y: number },
+    shapes: Record<string, Shape>,
+    shapeOrder: string[],
+    pageBackground: string,
+    excludeId?: string
+  ): string {
+    // Quantize the cache key to integer world coords — sub-pixel differences
+    // never change contrast. This collapses near-identical samples (e.g. an
+    // entire shape's fill region) onto a single cache slot.
+    const key = `${Math.round(point.x)},${Math.round(point.y)}|${excludeId ?? ''}`;
+    const hit = this.cache.get(key);
+    if (hit !== undefined) return hit;
+
+    const resolved = resolveAutoColor(point, shapes, shapeOrder, pageBackground, excludeId);
+    this.cache.set(key, resolved);
+    return resolved;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}

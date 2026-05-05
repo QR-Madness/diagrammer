@@ -52,6 +52,63 @@
   box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
+/* Swatch button — opens our palette instead of the OS picker */
+.compact-color-swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.compact-color-swatch:hover {
+  border-color: var(--color-primary, #2196f3);
+  transform: translateY(-1px);
+}
+
+.compact-color-swatch:focus {
+  outline: none;
+  border-color: var(--color-primary, #2196f3);
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.25);
+}
+
+.compact-color-swatch-auto {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--color-primary, #2196f3);
+  background: rgba(255, 255, 255, 0.85);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compact-color-swatch-none {
+  color: #cc0000;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+[data-theme="dark"] .compact-color-swatch {
+  border-color: var(--border-color, #404040);
+}
+
+[data-theme="dark"] .compact-color-swatch:hover,
+[data-theme="dark"] .compact-color-swatch:focus {
+  border-color: var(--color-primary, #0078d4);
+}
+
 /* Hex Input / Button */
 .compact-color-hex-input {
   flex: 1;

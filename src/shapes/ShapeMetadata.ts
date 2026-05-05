@@ -88,6 +88,9 @@ export interface PropertyDefinition {
 
   /** Help text/tooltip */
   helpText?: string;
+
+  /** For type === 'color': allow the contrast-aware "Automatic" sentinel. */
+  colorAllowAuto?: boolean;
 }
 
 /**
@@ -148,12 +151,14 @@ export const STANDARD_APPEARANCE_PROPERTIES: PropertyDefinition[] = [
     label: 'Fill',
     type: 'color',
     section: 'appearance',
+    colorAllowAuto: true,
   },
   {
     key: 'stroke',
     label: 'Stroke',
     type: 'color',
     section: 'appearance',
+    colorAllowAuto: true,
   },
   {
     key: 'strokeWidth',
@@ -246,6 +251,7 @@ export const STANDARD_LABEL_PROPERTIES: PropertyDefinition[] = [
     label: 'Color',
     type: 'color',
     section: 'label',
+    colorAllowAuto: true,
   },
 ];
 

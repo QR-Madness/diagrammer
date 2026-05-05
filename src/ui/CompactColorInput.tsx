@@ -18,6 +18,8 @@ interface CompactColorInputProps {
   showPalette?: boolean;
   /** Whether to show the "no fill" option in palette */
   showNoFill?: boolean;
+  /** Whether to show the "Automatic" (contrast-aware) option */
+  showAuto?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export function CompactColorInput({
   label,
   showPalette = true,
   showNoFill = false,
+  showAuto = false,
 }: CompactColorInputProps) {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -189,7 +192,8 @@ export function CompactColorInput({
   }, [isEditing]);
 
   const displayValue = value || '';
-  const hasValue = displayValue && displayValue !== 'transparent';
+  const isAuto = displayValue === 'auto';
+  const hasValue = displayValue && displayValue !== 'transparent' && !isAuto;
 
   // Render dropdown via portal
   const dropdownContent = isPaletteOpen && showPalette && dropdownPosition && (
@@ -207,22 +211,57 @@ export function CompactColorInput({
         value={displayValue}
         onChange={handlePaletteSelect}
         showNoFill={showNoFill}
+        showAuto={showAuto}
         compact
       />
     </div>
   );
 
+  // Visual style for the swatch button: solid colour, "no fill" diagonal, or
+  // the contrast-aware "Auto" half-and-half pattern.
+  const swatchStyle: React.CSSProperties = isAuto
+    ? {
+        background:
+          'linear-gradient(135deg, #ffffff 0%, #ffffff 50%, #000000 50%, #000000 100%)',
+      }
+    : hasValue
+      ? { backgroundColor: displayValue }
+      : {
+          background:
+            'repeating-linear-gradient(45deg, #fff, #fff 4px, #eee 4px, #eee 8px)',
+        };
+
+  const swatchTitle = showPalette
+    ? `Open ${label.toLowerCase()} palette`
+    : `Pick ${label.toLowerCase()} color`;
+
   return (
     <div className="compact-color-input" ref={containerRef}>
       <label className="compact-color-label">{label}</label>
       <div className="compact-color-controls" ref={triggerRef}>
-        <input
-          type="color"
-          value={hasValue ? displayValue : '#000000'}
-          onChange={handlePickerChange}
-          className="compact-color-picker"
-          title={`Pick ${label.toLowerCase()} color`}
-        />
+        {showPalette ? (
+          <button
+            type="button"
+            className="compact-color-swatch"
+            style={swatchStyle}
+            onClick={handleHexClick}
+            title={swatchTitle}
+            aria-label={swatchTitle}
+          >
+            {isAuto && <span className="compact-color-swatch-auto">A</span>}
+            {!hasValue && !isAuto && (
+              <span className="compact-color-swatch-none">/</span>
+            )}
+          </button>
+        ) : (
+          <input
+            type="color"
+            value={hasValue ? displayValue : '#000000'}
+            onChange={handlePickerChange}
+            className="compact-color-picker"
+            title={swatchTitle}
+          />
+        )}
         {isEditing ? (
           <input
             ref={inputRef}
@@ -240,10 +279,10 @@ export function CompactColorInput({
             onClick={handleHexClick}
             title={showPalette ? 'Open color palette' : 'Edit color'}
           >
-            {hasValue ? displayValue : 'none'}
+            {isAuto ? 'auto' : hasValue ? displayValue : 'none'}
           </button>
         )}
-        {hasValue && showPalette && !isEditing && (
+        {(hasValue || isAuto) && showPalette && !isEditing && (
           <button
             className="compact-color-edit"
             onClick={handleStartEdit}
