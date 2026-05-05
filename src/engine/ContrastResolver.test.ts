@@ -220,6 +220,14 @@ describe('normalizeAutoColorsForPdf', () => {
     expect(g.labelColor).toBe('#000000');
   });
 
+  it('replaces AUTO labelColor on non-group shapes', () => {
+    const shapes: Record<string, Shape> = {
+      r: baseRect({ id: 'r', fill: null, labelColor: AUTO_COLOR, label: 'hi' }),
+    };
+    const out = normalizeAutoColorsForPdf(shapes);
+    expect((out['r'] as RectangleShape).labelColor).toBe('#000000');
+  });
+
   it('does not mutate the input shapes', () => {
     const original = baseRect({ id: 'a', fill: AUTO_COLOR });
     const shapes = { a: original };

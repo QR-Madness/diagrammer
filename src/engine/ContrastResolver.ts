@@ -137,17 +137,19 @@ export function normalizeAutoColorsForPdf(
         stroke: isAutoColor(shape.stroke) ? '#000000' : shape.stroke,
       };
     }
+    // `labelColor` is optional on rectangle/ellipse/connector/file/library
+    // (and group, handled below). Normalise it generically when present.
+    if ('labelColor' in next && isAutoColor((next as { labelColor?: string }).labelColor)) {
+      const patched = { ...next } as typeof next & { labelColor?: string };
+      patched.labelColor = '#000000';
+      next = patched;
+    }
     if (isGroup(next)) {
       const g = next;
-      if (
-        isAutoColor(g.backgroundColor) ||
-        isAutoColor(g.borderColor) ||
-        isAutoColor(g.labelColor)
-      ) {
+      if (isAutoColor(g.backgroundColor) || isAutoColor(g.borderColor)) {
         const patched = { ...g };
         if (isAutoColor(g.backgroundColor)) patched.backgroundColor = '#000000';
         if (isAutoColor(g.borderColor)) patched.borderColor = '#000000';
-        if (isAutoColor(g.labelColor)) patched.labelColor = '#000000';
         next = patched;
       }
     }
