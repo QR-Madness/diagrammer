@@ -782,7 +782,7 @@ export const DEFAULT_ELLIPSE = {
 export const DEFAULT_LINE = {
   ...DEFAULT_SHAPE_STYLE,
   fill: null,
-  stroke: '#2c5282',
+  stroke: 'auto',
   strokeWidth: 2,
   startArrow: false,
   endArrow: true,
@@ -810,7 +810,7 @@ export const DEFAULT_TEXT = {
 export const DEFAULT_CONNECTOR = {
   ...DEFAULT_SHAPE_STYLE,
   fill: null,
-  stroke: '#2c5282',
+  stroke: 'auto',
   strokeWidth: 2,
   startShapeId: null,
   startAnchor: 'center' as AnchorPosition,

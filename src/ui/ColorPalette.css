@@ -17,12 +17,6 @@
   gap: 4px;
 }
 
-.color-palette-section:last-child {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-
 /* Section Labels */
 .color-palette-label {
   font-size: 0.625rem;
@@ -66,7 +60,130 @@
   box-shadow: 0 0 0 2px var(--color-primary, #2196f3);
 }
 
-/* No Fill Swatch */
+/* ── Automatic swatch row ─────────────────────────────── */
+
+.color-palette-auto-row,
+.color-palette-nofill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Larger swatch for Auto and No Fill */
+.color-swatch--auto,
+.color-swatch--nofill {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-swatch--auto {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 50%, #000000 50%, #000000 100%);
+}
+
+.auto-color-icon {
+  color: var(--color-primary, #2196f3);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-swatch--nofill {
+  background: repeating-linear-gradient(
+    45deg,
+    #fff,
+    #fff 4px,
+    #eee 4px,
+    #eee 8px
+  );
+  position: relative;
+}
+
+.no-fill-icon {
+  color: #cc0000;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.color-palette-special-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary, #212529);
+}
+
+/* ── Info button with CSS tooltip ────────────────────── */
+
+.color-palette-info-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg-secondary, #e9ecef);
+  color: var(--text-secondary, #6c757d);
+  font-size: 11px;
+  font-weight: 700;
+  font-style: normal;
+  cursor: default;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.color-palette-info-btn:hover {
+  background: var(--color-primary, #2196f3);
+  color: #fff;
+}
+
+.color-palette-info-tooltip {
+  display: none;
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--bg-tooltip, #1a1a2e);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 10001;
+  pointer-events: none;
+  white-space: normal;
+}
+
+.color-palette-info-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: var(--bg-tooltip, #1a1a2e);
+}
+
+.color-palette-info-btn:hover .color-palette-info-tooltip {
+  display: block;
+}
+
+/* ── No-fill swatch (legacy class kept for compat) ─────── */
+
 .color-swatch.no-fill {
   background: repeating-linear-gradient(
     45deg,
@@ -76,37 +193,6 @@
     #eee 8px
   );
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.no-fill-icon {
-  color: #cc0000;
-  font-size: 16px;
-  font-weight: bold;
-  line-height: 1;
-}
-
-/* Automatic (contrast-aware) Swatch */
-.color-swatch.auto-color {
-  background: linear-gradient(135deg, #ffffff 0%, #ffffff 50%, #000000 50%, #000000 100%);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auto-color-icon {
-  color: var(--color-primary, #2196f3);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  width: 16px;
-  height: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -206,6 +292,7 @@
   border-color: var(--border-color, #404040);
 }
 
+[data-theme="dark"] .color-swatch--nofill,
 [data-theme="dark"] .color-swatch.no-fill {
   background: repeating-linear-gradient(
     45deg,
@@ -232,6 +319,11 @@
 [data-theme="dark"] .color-palette-custom-input {
   background: var(--bg-primary, #1e1e1e);
   color: var(--text-primary, #cccccc);
+}
+
+[data-theme="dark"] .color-palette-info-btn {
+  background: var(--bg-hover, #3c3c3c);
+  color: var(--text-secondary, #aaa);
 }
 
 /* Legacy .color-palette support for backwards compatibility */

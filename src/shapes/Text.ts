@@ -2,6 +2,8 @@ import { Vec2 } from '../math/Vec2';
 import { Box } from '../math/Box';
 import { ShapeHandler, shapeRegistry } from './ShapeRegistry';
 import { TextShape, Handle, HandleType, DEFAULT_TEXT } from './Shape';
+import { isAutoColor } from '../engine/ContrastResolver';
+import { getRenderContext } from '../engine/RenderContext';
 
 /**
  * Transform a local point to world space.
@@ -114,8 +116,21 @@ export const textHandler: ShapeHandler<TextShape> = {
       textY = halfHeight - totalTextHeight;
     }
 
-    if (fill) {
-      ctx.fillStyle = fill;
+    let resolvedFill = fill;
+    if (fill && isAutoColor(fill)) {
+      const rc = getRenderContext();
+      if (rc) {
+        resolvedFill = rc.contrastCache.resolve(
+          { x: shape.x, y: shape.y },
+          rc.shapes, rc.shapeOrder, rc.pageBackground, shape.id
+        );
+      } else {
+        resolvedFill = '#000000';
+      }
+    }
+
+    if (resolvedFill) {
+      ctx.fillStyle = resolvedFill;
       lines.forEach((line, index) => {
         ctx.fillText(line, textX, textY + index * lineHeight);
       });
@@ -217,7 +232,7 @@ export const textHandler: ShapeHandler<TextShape> = {
       opacity: DEFAULT_TEXT.opacity,
       locked: DEFAULT_TEXT.locked,
       visible: DEFAULT_TEXT.visible,
-      fill: '#000000',
+      fill: 'auto',
       stroke: DEFAULT_TEXT.stroke,
       strokeWidth: DEFAULT_TEXT.strokeWidth,
     };

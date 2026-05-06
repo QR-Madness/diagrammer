@@ -48,7 +48,7 @@ export class TextTool extends BaseTool {
       opacity: DEFAULT_TEXT.opacity,
       locked: DEFAULT_TEXT.locked,
       visible: DEFAULT_TEXT.visible,
-      fill: '#000000',
+      fill: 'auto',
       stroke: DEFAULT_TEXT.stroke,
       strokeWidth: DEFAULT_TEXT.strokeWidth,
     };

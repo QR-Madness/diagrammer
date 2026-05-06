@@ -279,7 +279,7 @@ export function CompactColorInput({
             onClick={handleHexClick}
             title={showPalette ? 'Open color palette' : 'Edit color'}
           >
-            {isAuto ? 'auto' : hasValue ? displayValue : 'none'}
+            {isAuto ? <span className="compact-color-auto-label">Auto</span> : hasValue ? displayValue : 'none'}
           </button>
         )}
         {(hasValue || isAuto) && showPalette && !isEditing && (

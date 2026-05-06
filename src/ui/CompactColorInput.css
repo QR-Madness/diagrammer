@@ -109,6 +109,13 @@
   border-color: var(--color-primary, #0078d4);
 }
 
+/* "Auto" accent label inside the hex button */
+.compact-color-auto-label {
+  color: var(--color-primary, #2196f3);
+  font-style: italic;
+  font-weight: 600;
+}
+
 /* Hex Input / Button */
 .compact-color-hex-input {
   flex: 1;

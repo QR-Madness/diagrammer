@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useColorPaletteStore } from '../store/colorPaletteStore';
+import { lighten, darken } from '../utils/color';
 import './ColorPalette.css';
 
 /**
@@ -19,9 +20,20 @@ const COLOR_RAMPS: { name: string; shades: string[] }[] = [
   { name: 'Pink',    shades: ['#fce7f3', '#f9a8d4', '#ec4899', '#be185d', '#831843'] },
 ];
 
-/**
- * Props for the ColorPalette component.
- */
+const HEX_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/** Generate 5-shade harmonics: dark→base→light */
+function buildHarmonics(hex: string): string[] {
+  if (!HEX_REGEX.test(hex)) return [];
+  return [
+    darken(hex, 40),
+    darken(hex, 20),
+    hex,
+    lighten(hex, 20),
+    lighten(hex, 40),
+  ];
+}
+
 interface ColorPaletteProps {
   /** Currently selected color */
   value: string;
@@ -35,9 +47,6 @@ interface ColorPaletteProps {
   compact?: boolean;
 }
 
-/**
- * Color swatch button component.
- */
 function ColorSwatch({
   color,
   selected,
@@ -60,15 +69,6 @@ function ColorSwatch({
   );
 }
 
-/**
- * Enhanced ColorPalette component with Tailwind-style color ramps.
- *
- * Features:
- * - Recent colors section (persisted across sessions)
- * - Custom color input with hex support
- * - 10 hue families × 5 shades (light→dark ramps)
- * - No fill option
- */
 export function ColorPalette({
   value,
   onChange,
@@ -84,27 +84,24 @@ export function ColorPalette({
 
   const normalizedValue = value?.toLowerCase() || '';
 
-  // Handle color selection
   const handleColorSelect = useCallback(
     (color: string) => {
       onChange(color);
-      if (color && color !== 'transparent' && color !== '') {
+      if (color && color !== 'transparent' && color !== '' && color !== 'auto') {
         addRecentColor(color);
       }
     },
     [onChange, addRecentColor]
   );
 
-  // Handle custom color apply
   const handleCustomApply = useCallback(() => {
-    if (customInputValue && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(customInputValue)) {
+    if (customInputValue && HEX_REGEX.test(customInputValue)) {
       setCustomColor(customInputValue);
       handleColorSelect(customInputValue);
       setShowCustomInput(false);
     }
   }, [customInputValue, setCustomColor, handleColorSelect]);
 
-  // Handle native color picker change
   const handleNativePickerChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const color = e.target.value;
@@ -114,7 +111,6 @@ export function ColorPalette({
     [setCustomColor]
   );
 
-  // Handle custom input change
   const handleCustomInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       let val = e.target.value;
@@ -126,7 +122,6 @@ export function ColorPalette({
     []
   );
 
-  // Handle custom input keydown
   const handleCustomInputKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
@@ -139,8 +134,66 @@ export function ColorPalette({
     [handleCustomApply, customColor]
   );
 
+  const harmonics = buildHarmonics(normalizedValue);
+  const isAutoSelected = normalizedValue === 'auto';
+  const isNoFillSelected = normalizedValue === '' || normalizedValue === 'transparent';
+
   return (
     <div className={`color-palette-container ${compact ? 'compact' : ''}`}>
+
+      {/* Automatic (contrast-aware) — promoted to top */}
+      {showAuto && (
+        <div className="color-palette-auto-row">
+          <button
+            className={`color-swatch color-swatch--auto ${isAutoSelected ? 'selected' : ''}`}
+            onClick={() => onChange('auto')}
+            aria-label="Automatic color"
+          >
+            <span className="auto-color-icon">A</span>
+          </button>
+          <span className="color-palette-special-label">Automatic</span>
+          <span className="color-palette-info-btn" role="tooltip" aria-label="What is Automatic color?">
+            ℹ
+            <span className="color-palette-info-tooltip">
+              Adapts to the canvas background — white text on dark shapes, black on light shapes.
+              Always renders as black in exported PDFs.
+            </span>
+          </span>
+        </div>
+      )}
+
+      {/* No Fill */}
+      {showNoFill && (
+        <div className="color-palette-nofill-row">
+          <button
+            className={`color-swatch color-swatch--nofill ${isNoFillSelected ? 'selected' : ''}`}
+            onClick={() => onChange('')}
+            aria-label="No fill"
+          >
+            <span className="no-fill-icon">/</span>
+          </button>
+          <span className="color-palette-special-label">No Fill</span>
+        </div>
+      )}
+
+      {/* Harmonics — 5 shades of the currently selected color */}
+      {harmonics.length > 0 && (
+        <div className="color-palette-section">
+          {!compact && <div className="color-palette-label">Shades</div>}
+          <div className="color-palette-row">
+            {harmonics.map((color, i) => (
+              <ColorSwatch
+                key={`harmonic-${i}-${color}`}
+                color={color}
+                selected={normalizedValue === color.toLowerCase()}
+                onClick={() => handleColorSelect(color)}
+                title={color}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Colors */}
       {recentColors.length > 0 && (
         <div className="color-palette-section">
@@ -226,37 +279,6 @@ export function ColorPalette({
         ))}
       </div>
 
-      {/* Automatic (contrast-aware) option */}
-      {showAuto && (
-        <div className="color-palette-section">
-          <button
-            className={`color-swatch auto-color ${normalizedValue === 'auto' ? 'selected' : ''}`}
-            onClick={() => onChange('auto')}
-            title="Automatic — contrast-aware (white on dark, black on light; black in PDFs)"
-            aria-label="Automatic color"
-          >
-            <span className="auto-color-icon">A</span>
-          </button>
-          {!compact && <span className="color-palette-nofill-label">Auto</span>}
-        </div>
-      )}
-
-      {/* No Fill Option */}
-      {showNoFill && (
-        <div className="color-palette-section">
-          <button
-            className={`color-swatch no-fill ${
-              normalizedValue === '' || normalizedValue === 'transparent' ? 'selected' : ''
-            }`}
-            onClick={() => onChange('')}
-            title="No fill"
-            aria-label="No fill"
-          >
-            <span className="no-fill-icon">/</span>
-          </button>
-          {!compact && <span className="color-palette-nofill-label">No Fill</span>}
-        </div>
-      )}
     </div>
   );
 }

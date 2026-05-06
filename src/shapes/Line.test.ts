@@ -204,7 +204,7 @@ describe('Line Handler', () => {
       expect(line.opacity).toBe(1);
       expect(line.locked).toBe(false);
       expect(line.fill).toBe(null);
-      expect(line.stroke).toBe('#2c5282');
+      expect(line.stroke).toBe('auto');
       expect(line.strokeWidth).toBe(2);
       expect(line.startArrow).toBe(false);
       expect(line.endArrow).toBe(true);
