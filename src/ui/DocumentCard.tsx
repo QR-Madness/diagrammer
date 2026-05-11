@@ -17,8 +17,10 @@ interface DocumentCardProps {
   isOfflineAvailable?: boolean | undefined;
   /** Whether this document is currently active/open */
   isActive?: boolean | undefined;
-  /** Whether the document is currently selected */
+  /** Whether the document is currently selected (multi-select) */
   isSelected?: boolean | undefined;
+  /** Show the selection checkbox affordance even when not hovered */
+  showSelectionCheckbox?: boolean | undefined;
   /** Callback when document is clicked (to open) */
   onOpen?: ((id: string) => void | Promise<void>) | undefined;
   /** Callback when delete is requested */
@@ -29,8 +31,14 @@ interface DocumentCardProps {
   onEditPermissions?: ((id: string) => void) | undefined;
   /** Callback to publish local document to team */
   onPublishToTeam?: ((id: string) => void | Promise<void>) | undefined;
+  /** Callback when the card's selection checkbox is toggled. Receives the modifier flags so callers can implement range-select on shift-click. */
+  onSelectToggle?:
+    | ((id: string, mods: { shift: boolean; meta: boolean }) => void)
+    | undefined;
+  /** Optional group accent (used to surface group membership in the card). */
+  groupAccent?: { name: string; color?: string | undefined } | undefined;
   /** Display mode */
-  mode?: 'compact' | 'full' | undefined;
+  mode?: 'compact' | 'full' | 'grid' | undefined;
 }
 
 function formatDate(timestamp: number): string {
@@ -90,12 +98,15 @@ export function DocumentCard({
   record,
   isActive = false,
   isSelected = false,
+  showSelectionCheckbox = false,
   isOfflineAvailable = false,
   onOpen,
   onDelete,
   onRename,
   onEditPermissions,
   onPublishToTeam,
+  onSelectToggle,
+  groupAccent,
   mode = 'compact',
 }: DocumentCardProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -121,11 +132,36 @@ export function DocumentCard({
     }
   }, [onPublishToTeam, record.id]);
 
-  const handleClick = useCallback(() => {
-    if (!isEditing && onOpen) {
-      onOpen(record.id);
-    }
-  }, [isEditing, onOpen, record.id]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (isEditing) return;
+      // Modifier-click selects rather than opens, when selection is available.
+      if (onSelectToggle && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+        e.preventDefault();
+        onSelectToggle(record.id, {
+          shift: e.shiftKey,
+          meta: e.metaKey || e.ctrlKey,
+        });
+        return;
+      }
+      if (onOpen) {
+        onOpen(record.id);
+      }
+    },
+    [isEditing, onOpen, onSelectToggle, record.id]
+  );
+
+  const handleCheckboxClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!onSelectToggle) return;
+      onSelectToggle(record.id, {
+        shift: e.shiftKey,
+        meta: e.metaKey || e.ctrlKey,
+      });
+    },
+    [onSelectToggle, record.id]
+  );
 
   const handleDoubleClick = useCallback(() => {
     if (onRename) {
@@ -174,12 +210,25 @@ export function DocumentCard({
   const syncState = getSyncState(record);
   const isRemoteOrCached = record.type === 'remote' || record.type === 'cached';
 
+  const showCheckbox = Boolean(onSelectToggle) && (showSelectionCheckbox || isSelected);
+
   return (
     <div
       className={`document-card document-card--${mode} ${isActive ? 'document-card--active' : ''} ${isSelected ? 'document-card--selected' : ''}`}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
+      {onSelectToggle && (
+        <button
+          type="button"
+          className={`document-card__select ${showCheckbox ? 'document-card__select--visible' : ''} ${isSelected ? 'document-card__select--checked' : ''}`}
+          onClick={handleCheckboxClick}
+          title={isSelected ? 'Deselect' : 'Select'}
+          aria-pressed={isSelected}
+        >
+          {isSelected ? '✓' : ''}
+        </button>
+      )}
       <div className="document-card__content">
         {/* Name */}
         <div className="document-card__name-row">
@@ -200,6 +249,15 @@ export function DocumentCard({
             </span>
           )}
           {isActive && <span className="document-card__active-badge">Open</span>}
+          {groupAccent && (
+            <span
+              className="document-card__group-chip"
+              title={`Group: ${groupAccent.name}`}
+              style={groupAccent.color ? { background: groupAccent.color } : undefined}
+            >
+              {groupAccent.name}
+            </span>
+          )}
         </div>
 
         {/* Metadata row */}

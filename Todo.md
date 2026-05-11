@@ -46,15 +46,16 @@
 
 ### 19.2 - Additional Features
 
+- [X] Better documents browser UX — flat document **groups** (local-only metadata, single group per doc, tag-style) with collapsible sections + "Ungrouped" bucket; per-group rename / recolor (preset swatches) / delete via `⋯` menu; **grid / list** view toggle (persisted); **sort** options (Recently modified, Least recently modified, Name A–Z / Z–A, Recently created); **multi-select** via Cmd/Ctrl-click and Shift-click range, with bulk *Assign to group* (incl. "New group…" + "Remove from group"), *Export*, *Delete*; group accent chip on cards in flat view; all preferences persisted in `uiPreferencesStore`; groups stored in new `documentGroupStore` (no document-schema change, no protocol change).
 - [X] Code-Block is needed (language support is not recommended unless it's lightweight + cross-plat., but it should be highly format-aware (preserving rich formatting where possible), especially with indentation.
 - [X] Spellcheck (custom dictionary; "Add to Dictionary" button) — grammar check still pending.
 - [X] Contrast Awareness Font Coloring System: 'Automatic' colour sentinel resolves at render time via a topmost-shape spatial walk (per-segment for connectors, group-bg aware), and forces black for PDF export. Available for fill, stroke, label colour, group background, and group border.
-- [ ] Add a tree (quite literally a file tree) element which formats (prettified) similar to a tree using ASCII operators or another effective format.
 - [X] Remember scroll position in tiptap editor.
 - [ ] Make the PDF exporter full-screen, and add a preview PDF feature which saves the PDF to temp dir and shows it on the side, users can either save it (copy to downloads with a fallback to exporting to downloads), or close it (deleting the temp file)
 - [X] Table of contents for PDF
 - [X] Document Outline for PDF Readers
 - [X] LINKS! We need web links and internal document links!
+- [ ] Bidirectional connectors (selective arrow directions and sides)
 
 ### 19.3 - PDF Styling Features, Document Features, and General Fixes
 
@@ -69,6 +70,16 @@
 
 - [ ] The standard DPI's images are terrible quality; apply a better compression profile to the DPI settings.
 - [ ] Background export jobs; large documents can take a while to compress + export and the export UI menu get's stuck whilst running, close the menu, and apply a dismissable toast which indicates the PDF is being built.
+
+### 19.5 - Layer Panel Refinements
+
+- [ ] Layer panel is too small when first expanded, consider maybe a side bar (tabbed with the propertly panel); similar to graphics editors
+- [ ] Layer panel context menu needs add-to-group functionality
+- [ ] When dragging multiple items in the layer panel, only one gets moved; also the panel does not scroll as you drag at the bottom.
+
+### 19.9 - General Fixes
+
+- [ ] Draggable items in property panel don't move at at all (ie. ERD entity attributes; among others).
 
 ## Phase 20: Open-Source Beta ([Pre-]Release 1.5.0-beta.1)
 

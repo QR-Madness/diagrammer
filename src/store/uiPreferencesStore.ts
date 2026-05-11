@@ -7,6 +7,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type DocumentBrowserView = 'list' | 'grid';
+export type DocumentBrowserSort =
+  | 'modified-desc'
+  | 'modified-asc'
+  | 'name-asc'
+  | 'name-desc'
+  | 'created-desc';
+export type DocumentBrowserGroupBy = 'none' | 'group';
+
 /**
  * UI preferences state.
  */
@@ -15,6 +24,14 @@ export interface UIPreferencesState {
   expandedSections: Record<string, boolean>;
   /** Property panel width */
   propertyPanelWidth: number;
+  /** Document browser layout */
+  documentBrowserView: DocumentBrowserView;
+  /** Document browser sort key */
+  documentBrowserSort: DocumentBrowserSort;
+  /** Document browser grouping mode */
+  documentBrowserGroupBy: DocumentBrowserGroupBy;
+  /** Per-group collapsed state in the browser (groupId -> collapsed). */
+  documentBrowserCollapsed: Record<string, boolean>;
 }
 
 /**
@@ -29,6 +46,14 @@ export interface UIPreferencesActions {
   isSectionExpanded: (sectionId: string, defaultExpanded?: boolean) => boolean;
   /** Set property panel width */
   setPropertyPanelWidth: (width: number) => void;
+  /** Set the document browser view (list/grid) */
+  setDocumentBrowserView: (view: DocumentBrowserView) => void;
+  /** Set the document browser sort key */
+  setDocumentBrowserSort: (sort: DocumentBrowserSort) => void;
+  /** Set the document browser grouping mode */
+  setDocumentBrowserGroupBy: (groupBy: DocumentBrowserGroupBy) => void;
+  /** Toggle a group's collapsed state in the document browser */
+  toggleDocumentBrowserGroupCollapsed: (groupId: string) => void;
   /** Reset to initial state */
   reset: () => void;
 }
@@ -51,6 +76,10 @@ const DEFAULT_EXPANDED: Record<string, boolean> = {
 const initialState: UIPreferencesState = {
   expandedSections: { ...DEFAULT_EXPANDED },
   propertyPanelWidth: 240,
+  documentBrowserView: 'list',
+  documentBrowserSort: 'modified-desc',
+  documentBrowserGroupBy: 'none',
+  documentBrowserCollapsed: {},
 };
 
 /**
@@ -112,6 +141,19 @@ export const useUIPreferencesStore = create<UIPreferencesState & UIPreferencesAc
         set({ propertyPanelWidth: width });
       },
 
+      setDocumentBrowserView: (view) => set({ documentBrowserView: view }),
+      setDocumentBrowserSort: (sort) => set({ documentBrowserSort: sort }),
+      setDocumentBrowserGroupBy: (groupBy) => set({ documentBrowserGroupBy: groupBy }),
+      toggleDocumentBrowserGroupCollapsed: (groupId) => {
+        const { documentBrowserCollapsed } = get();
+        set({
+          documentBrowserCollapsed: {
+            ...documentBrowserCollapsed,
+            [groupId]: !documentBrowserCollapsed[groupId],
+          },
+        });
+      },
+
       reset: () => {
         set(initialState);
       },
@@ -121,6 +163,10 @@ export const useUIPreferencesStore = create<UIPreferencesState & UIPreferencesAc
       partialize: (state) => ({
         expandedSections: state.expandedSections,
         propertyPanelWidth: state.propertyPanelWidth,
+        documentBrowserView: state.documentBrowserView,
+        documentBrowserSort: state.documentBrowserSort,
+        documentBrowserGroupBy: state.documentBrowserGroupBy,
+        documentBrowserCollapsed: state.documentBrowserCollapsed,
       }),
     }
   )

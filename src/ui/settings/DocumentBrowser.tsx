@@ -2,12 +2,11 @@
  * DocumentBrowser component
  *
  * Unified document browser that combines local and remote document management.
- * Replaces DocumentsSettings and TeamDocumentsManager with a single, consistent UI.
  *
- * Phase 14.1.6 UI Consolidation
+ * Phase 14.1.6 UI Consolidation, Phase 20: document groups, grid view, multi-select.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useDocumentRegistry } from '../../store/documentRegistry';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useTeamStore } from '../../store/teamStore';
@@ -15,6 +14,17 @@ import { useTeamDocumentStore } from '../../store/teamDocumentStore';
 import { useUserStore } from '../../store/userStore';
 import { usePageStore } from '../../store/pageStore';
 import { useRichTextStore } from '../../store/richTextStore';
+import {
+  useUIPreferencesStore,
+  type DocumentBrowserSort,
+  type DocumentBrowserGroupBy,
+  type DocumentBrowserView,
+} from '../../store/uiPreferencesStore';
+import {
+  useDocumentGroupStore,
+  DOCUMENT_GROUP_SWATCHES,
+  type DocumentGroup,
+} from '../../store/documentGroupStore';
 import { DocumentCard } from '../DocumentCard';
 import { SyncStatusBadge } from '../SyncStatusBadge';
 import { PDFExportDialog } from '../PDFExportDialog';
@@ -25,11 +35,35 @@ import type { DiagramDocument } from '../../types/Document';
 import './DocumentBrowser.css';
 
 type FilterMode = 'all' | 'local' | 'team' | 'cached';
+const UNGROUPED_KEY = '__ungrouped__';
 
 interface DocumentBrowserProps {
   /** Compact mode for sidebar usage */
   compact?: boolean;
 }
+
+function compareRecords(a: DocumentRecord, b: DocumentRecord, sort: DocumentBrowserSort): number {
+  switch (sort) {
+    case 'modified-desc':
+      return b.modifiedAt - a.modifiedAt;
+    case 'modified-asc':
+      return a.modifiedAt - b.modifiedAt;
+    case 'name-asc':
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    case 'name-desc':
+      return b.name.localeCompare(a.name, undefined, { sensitivity: 'base' });
+    case 'created-desc':
+      return b.createdAt - a.createdAt;
+  }
+}
+
+const SORT_LABELS: Record<DocumentBrowserSort, string> = {
+  'modified-desc': 'Recently modified',
+  'modified-asc': 'Least recently modified',
+  'name-asc': 'Name (A–Z)',
+  'name-desc': 'Name (Z–A)',
+  'created-desc': 'Recently created',
+};
 
 export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   // Registry store
@@ -61,21 +95,47 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   // User store
   const currentUser = useUserStore((s) => s.currentUser);
 
+  // UI preferences
+  const view = useUIPreferencesStore((s) => s.documentBrowserView);
+  const sort = useUIPreferencesStore((s) => s.documentBrowserSort);
+  const groupBy = useUIPreferencesStore((s) => s.documentBrowserGroupBy);
+  const collapsedMap = useUIPreferencesStore((s) => s.documentBrowserCollapsed);
+  const setView = useUIPreferencesStore((s) => s.setDocumentBrowserView);
+  const setSort = useUIPreferencesStore((s) => s.setDocumentBrowserSort);
+  const setGroupBy = useUIPreferencesStore((s) => s.setDocumentBrowserGroupBy);
+  const toggleCollapsed = useUIPreferencesStore((s) => s.toggleDocumentBrowserGroupCollapsed);
+
+  // Group store
+  const groupsMap = useDocumentGroupStore((s) => s.groups);
+  const assignments = useDocumentGroupStore((s) => s.assignments);
+  const createGroup = useDocumentGroupStore((s) => s.createGroup);
+  const renameGroup = useDocumentGroupStore((s) => s.renameGroup);
+  const recolorGroup = useDocumentGroupStore((s) => s.recolorGroup);
+  const deleteGroupAction = useDocumentGroupStore((s) => s.deleteGroup);
+  const assignMany = useDocumentGroupStore((s) => s.assignMany);
+
+  const groups = useMemo<DocumentGroup[]>(
+    () => Object.values(groupsMap).sort((a, b) => a.order - b.order),
+    [groupsMap]
+  );
+
   // Local state
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [pdfExportOpen, setPdfExportOpen] = useState(false);
   const [permissionsDocId, setPermissionsDocId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [assignMenuOpen, setAssignMenuOpen] = useState(false);
+  const [activeGroupMenu, setActiveGroupMenu] = useState<string | null>(null);
 
   const isInTeamMode = serverMode !== 'offline';
   const isConnectedToHost = serverMode === 'client' && authenticated;
   const isHost = serverMode === 'host';
 
-  // Get filtered documents from registry
+  // Filtered + sorted documents (flat list — the same list used to drive grouping).
   const documentList = useMemo(() => {
     const allDocs = getFilteredDocuments();
-
-    // Apply local filter mode
     let filtered = allDocs;
     if (filterMode === 'local') {
       filtered = allDocs.filter((d) => d.type === 'local');
@@ -85,15 +145,36 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       filtered = allDocs.filter((d) => d.type === 'cached');
     }
 
-    // Apply search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((d) => d.name.toLowerCase().includes(query));
     }
 
-    // Sort by modified date (newest first)
-    return filtered.sort((a, b) => b.modifiedAt - a.modifiedAt);
-  }, [entries, getFilteredDocuments, filterMode, searchQuery]);
+    return [...filtered].sort((a, b) => compareRecords(a, b, sort));
+  }, [entries, getFilteredDocuments, filterMode, searchQuery, sort]);
+
+  // Bucket documents by group when group-by is enabled.
+  const groupedSections = useMemo(() => {
+    if (groupBy !== 'group') return null;
+    const buckets = new Map<string, DocumentRecord[]>();
+    for (const doc of documentList) {
+      const gid = assignments[doc.id];
+      const key = gid && groupsMap[gid] ? gid : UNGROUPED_KEY;
+      const arr = buckets.get(key);
+      if (arr) arr.push(doc);
+      else buckets.set(key, [doc]);
+    }
+    const sections: { key: string; group: DocumentGroup | null; docs: DocumentRecord[] }[] = [];
+    for (const g of groups) {
+      sections.push({ key: g.id, group: g, docs: buckets.get(g.id) ?? [] });
+    }
+    sections.push({
+      key: UNGROUPED_KEY,
+      group: null,
+      docs: buckets.get(UNGROUPED_KEY) ?? [],
+    });
+    return sections;
+  }, [groupBy, documentList, assignments, groupsMap, groups]);
 
   // Count documents by type
   const documentCounts = useMemo(() => {
@@ -106,33 +187,32 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
     };
   }, [entries]);
 
-  // Handlers
-  const handleNewDocument = useCallback(() => {
-    newDocument();
-  }, [newDocument]);
+  // Clear selection when the visible list changes meaningfully.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(documentList.map((d) => d.id));
+      const next = new Set<string>();
+      for (const id of prev) if (visible.has(id)) next.add(id);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [documentList]);
 
-  const handleSave = useCallback(() => {
-    saveDocument();
-  }, [saveDocument]);
+  // Handlers
+  const handleNewDocument = useCallback(() => newDocument(), [newDocument]);
+  const handleSave = useCallback(() => saveDocument(), [saveDocument]);
 
   const handleRefresh = useCallback(() => {
-    if (isConnectedToHost || isHost) {
-      fetchDocumentList();
-    }
+    if (isConnectedToHost || isHost) fetchDocumentList();
   }, [fetchDocumentList, isConnectedToHost, isHost]);
 
   const handleOpen = useCallback(
     async (docId: string) => {
       if (docId === currentDocumentId) return;
-
-      // Get record from registry
       const entry = entries[docId];
       if (!entry) return;
-
       const record = entry.record;
-
       if (record.type === 'remote' || record.type === 'cached') {
-        // Load from team document store
         try {
           const doc = await loadTeamDocument(docId);
           const snapshot = {
@@ -142,7 +222,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           };
           usePageStore.getState().loadSnapshot(snapshot);
           useRichTextStore.getState().loadContent(doc.richTextContent);
-
           usePersistenceStore.setState({
             currentDocumentId: doc.id,
             currentDocumentName: doc.name,
@@ -153,7 +232,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           console.error('Failed to load team document:', error);
         }
       } else {
-        // Load from local storage
         loadDocument(docId);
       }
     },
@@ -164,18 +242,14 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
     async (docId: string) => {
       const entry = entries[docId];
       if (!entry) return;
-
       const record = entry.record;
-
       if (record.type === 'remote') {
-        // Delete from server
         try {
           await deleteFromHost(docId);
         } catch (error) {
           console.error('Failed to delete team document:', error);
         }
       } else {
-        // Delete from local storage
         deleteDocument(docId);
       }
     },
@@ -184,10 +258,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
 
   const handleRename = useCallback(
     (docId: string, newName: string) => {
-      // renameDocument only works for current document
-      if (docId === currentDocumentId) {
-        renameDocument(newName);
-      }
+      if (docId === currentDocumentId) renameDocument(newName);
     },
     [currentDocumentId, renameDocument]
   );
@@ -195,36 +266,21 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   const handlePublishToTeam = useCallback(
     async (docId: string) => {
       if (!currentUser?.id) return;
-
-      // Load the document if not current
       if (docId !== currentDocumentId) {
         loadDocument(docId);
-        // Give it a moment to load
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
-
-      // Get document data via export
       const json = usePersistenceStore.getState().exportJSON();
       const doc = JSON.parse(json) as DiagramDocument;
-
-      // Mark as team document
       const teamDoc: DiagramDocument = {
         ...doc,
         isTeamDocument: true,
         ownerId: currentUser.id,
         ownerName: currentUser.displayName || currentUser.username || 'Unknown',
       };
-
       await saveToHost(teamDoc);
-
-      // Remove the local copy from localStorage and registry
-      // This prevents it from being re-registered as local
       deleteDocument(docId);
-
-      // Remove from registry (deleteDocument may have done this, but be explicit)
       useDocumentRegistry.getState().removeDocument(docId);
-
-      // Refresh document list - this will re-add it as a remote document
       await fetchDocumentList();
     },
     [currentDocumentId, loadDocument, saveToHost, deleteDocument, fetchDocumentList, currentUser]
@@ -232,7 +288,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
 
   const handleExport = useCallback(() => {
     if (!currentDocumentId) return;
-    // Save first to ensure latest state is in storage
     saveDocument();
     exportAndDownloadDocumentArchive(currentDocumentId).catch((err) => {
       console.error('Failed to export document archive:', err);
@@ -257,7 +312,6 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   const handleFilterChange = useCallback(
     (mode: FilterMode) => {
       setFilterMode(mode);
-      // Update registry filter
       const types: ('local' | 'remote' | 'cached')[] =
         mode === 'all'
           ? ['local', 'remote', 'cached']
@@ -271,8 +325,177 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
     [setFilter]
   );
 
+  // Multi-select handlers
+  const handleSelectToggle = useCallback(
+    (id: string, mods: { shift: boolean; meta: boolean }) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (mods.shift && lastSelectedId && lastSelectedId !== id) {
+          const ids = documentList.map((d) => d.id);
+          const a = ids.indexOf(lastSelectedId);
+          const b = ids.indexOf(id);
+          if (a !== -1 && b !== -1) {
+            const [start, end] = a < b ? [a, b] : [b, a];
+            for (let i = start; i <= end; i++) {
+              const v = ids[i];
+              if (v !== undefined) next.add(v);
+            }
+            return next;
+          }
+        }
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setLastSelectedId(id);
+    },
+    [documentList, lastSelectedId]
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setLastSelectedId(null);
+  }, []);
+
+  // Clear selection when filters / sort / grouping change.
+  useEffect(() => {
+    clearSelection();
+  }, [filterMode, sort, groupBy, clearSelection]);
+
+  const handleBulkAssign = useCallback(
+    (groupId: string | null) => {
+      assignMany(Array.from(selectedIds), groupId);
+      setAssignMenuOpen(false);
+    },
+    [assignMany, selectedIds]
+  );
+
+  const handleBulkAssignNewGroup = useCallback(() => {
+    const name = window.prompt('New group name');
+    if (!name || !name.trim()) return;
+    const id = createGroup(name);
+    if (id) assignMany(Array.from(selectedIds), id);
+    setAssignMenuOpen(false);
+  }, [assignMany, createGroup, selectedIds]);
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    const deletable = ids.filter((id) => {
+      const entry = entries[id];
+      if (!entry) return false;
+      return canDelete(entry.record, currentUser?.id, currentUser?.role);
+    });
+    if (deletable.length === 0) return;
+    if (!window.confirm(`Delete ${deletable.length} document(s)? This cannot be undone.`)) return;
+    for (const id of deletable) {
+      await handleDelete(id);
+    }
+    clearSelection();
+  }, [selectedIds, entries, currentUser, handleDelete, clearSelection]);
+
+  const handleBulkExport = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      try {
+        await exportAndDownloadDocumentArchive(id);
+      } catch (err) {
+        console.error('Failed to export', id, err);
+      }
+    }
+  }, [selectedIds]);
+
+  // Group management
+  const handleCreateGroup = useCallback(() => {
+    const name = window.prompt('New group name');
+    if (!name || !name.trim()) return;
+    createGroup(name);
+  }, [createGroup]);
+
+  const handleRenameGroup = useCallback(
+    (group: DocumentGroup) => {
+      const name = window.prompt('Rename group', group.name);
+      if (!name) return;
+      renameGroup(group.id, name);
+      setActiveGroupMenu(null);
+    },
+    [renameGroup]
+  );
+
+  const handleDeleteGroup = useCallback(
+    (group: DocumentGroup) => {
+      if (!window.confirm(`Delete group "${group.name}"? Documents in it will become Ungrouped.`)) return;
+      deleteGroupAction(group.id);
+      setActiveGroupMenu(null);
+    },
+    [deleteGroupAction]
+  );
+
+  const handleRecolor = useCallback(
+    (group: DocumentGroup, color: string | undefined) => {
+      recolorGroup(group.id, color);
+    },
+    [recolorGroup]
+  );
+
   const error = registryError || teamStoreError;
   const isLoading = isFetchingRemote || isLoadingList;
+  const hasSelection = selectedIds.size > 0;
+  const showSelectionAffordance = hasSelection;
+
+  const cardMode: 'compact' | 'full' | 'grid' =
+    view === 'grid' ? 'grid' : compact ? 'compact' : 'full';
+
+  const renderCard = useCallback(
+    (record: DocumentRecord) => {
+      const gid = assignments[record.id];
+      const group = gid ? groupsMap[gid] : undefined;
+      const accent =
+        group && groupBy !== 'group'
+          ? group.color !== undefined
+            ? { name: group.name, color: group.color }
+            : { name: group.name }
+          : undefined;
+      return (
+        <DocumentCard
+          key={record.id}
+          record={record}
+          isActive={record.id === currentDocumentId}
+          isSelected={selectedIds.has(record.id)}
+          showSelectionCheckbox={showSelectionAffordance}
+          isOfflineAvailable={record.type === 'remote' && isAvailableOffline(record.id)}
+          onOpen={handleOpen}
+          onSelectToggle={handleSelectToggle}
+          onDelete={canDelete(record, currentUser?.id, currentUser?.role) ? handleDelete : undefined}
+          onRename={canEdit(record, currentUser?.id, currentUser?.role) ? handleRename : undefined}
+          onEditPermissions={
+            canManagePermissions(record, isInTeamMode, currentUser?.id, currentUser?.role)
+              ? setPermissionsDocId
+              : undefined
+          }
+          onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
+          groupAccent={accent}
+          mode={cardMode}
+        />
+      );
+    },
+    [
+      assignments,
+      groupsMap,
+      groupBy,
+      currentDocumentId,
+      selectedIds,
+      showSelectionAffordance,
+      isAvailableOffline,
+      handleOpen,
+      handleSelectToggle,
+      currentUser,
+      handleDelete,
+      handleRename,
+      isInTeamMode,
+      handlePublishToTeam,
+      cardMode,
+    ]
+  );
 
   return (
     <div className={`document-browser ${compact ? 'document-browser--compact' : ''}`}>
@@ -286,32 +509,16 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           <span className="document-browser__action-icon">+</span>
           New
         </button>
-        <button
-          className="document-browser__action"
-          onClick={handleSave}
-          title="Save current document"
-        >
+        <button className="document-browser__action" onClick={handleSave} title="Save current document">
           Save
         </button>
-        <button
-          className="document-browser__action"
-          onClick={handleImport}
-          title="Import .diagrammer file"
-        >
+        <button className="document-browser__action" onClick={handleImport} title="Import .diagrammer file">
           Import
         </button>
-        <button
-          className="document-browser__action"
-          onClick={handleExport}
-          title="Export as .diagrammer"
-        >
+        <button className="document-browser__action" onClick={handleExport} title="Export as .diagrammer">
           Export
         </button>
-        <button
-          className="document-browser__action"
-          onClick={() => setPdfExportOpen(true)}
-          title="Export as PDF"
-        >
+        <button className="document-browser__action" onClick={() => setPdfExportOpen(true)} title="Export as PDF">
           PDF
         </button>
       </div>
@@ -363,42 +570,152 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <div className="document-browser__filter">
-          <button
-            className={`document-browser__filter-btn ${filterMode === 'all' ? 'document-browser__filter-btn--active' : ''}`}
-            onClick={() => handleFilterChange('all')}
-          >
-            All ({documentCounts.total})
-          </button>
-          <button
-            className={`document-browser__filter-btn ${filterMode === 'local' ? 'document-browser__filter-btn--active' : ''}`}
-            onClick={() => handleFilterChange('local')}
-          >
-            Personal ({documentCounts.local})
-          </button>
-          {isInTeamMode && (
-            <>
-              <button
-                className={`document-browser__filter-btn ${filterMode === 'team' ? 'document-browser__filter-btn--active' : ''}`}
-                onClick={() => handleFilterChange('team')}
-              >
-                Team ({documentCounts.team})
-              </button>
-              {documentCounts.cached > 0 && (
+
+        <div className="document-browser__controls">
+          <div className="document-browser__filter">
+            <button
+              className={`document-browser__filter-btn ${filterMode === 'all' ? 'document-browser__filter-btn--active' : ''}`}
+              onClick={() => handleFilterChange('all')}
+            >
+              All ({documentCounts.total})
+            </button>
+            <button
+              className={`document-browser__filter-btn ${filterMode === 'local' ? 'document-browser__filter-btn--active' : ''}`}
+              onClick={() => handleFilterChange('local')}
+            >
+              Personal ({documentCounts.local})
+            </button>
+            {isInTeamMode && (
+              <>
                 <button
-                  className={`document-browser__filter-btn ${filterMode === 'cached' ? 'document-browser__filter-btn--active' : ''}`}
-                  onClick={() => handleFilterChange('cached')}
+                  className={`document-browser__filter-btn ${filterMode === 'team' ? 'document-browser__filter-btn--active' : ''}`}
+                  onClick={() => handleFilterChange('team')}
                 >
-                  Offline ({documentCounts.cached})
+                  Team ({documentCounts.team})
                 </button>
-              )}
-            </>
-          )}
+                {documentCounts.cached > 0 && (
+                  <button
+                    className={`document-browser__filter-btn ${filterMode === 'cached' ? 'document-browser__filter-btn--active' : ''}`}
+                    onClick={() => handleFilterChange('cached')}
+                  >
+                    Offline ({documentCounts.cached})
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="document-browser__view-controls">
+            <SelectControl
+              label="Sort"
+              value={sort}
+              onChange={(v) => setSort(v as DocumentBrowserSort)}
+              options={Object.entries(SORT_LABELS).map(([value, label]) => ({ value, label }))}
+            />
+            <SelectControl
+              label="Group"
+              value={groupBy}
+              onChange={(v) => setGroupBy(v as DocumentBrowserGroupBy)}
+              options={[
+                { value: 'none', label: 'No grouping' },
+                { value: 'group', label: 'By group' },
+              ]}
+            />
+            <div className="document-browser__view-toggle" role="group" aria-label="View mode">
+              <button
+                className={`document-browser__view-btn ${view === 'list' ? 'document-browser__view-btn--active' : ''}`}
+                onClick={() => setView('list' as DocumentBrowserView)}
+                title="List view"
+                aria-pressed={view === 'list'}
+              >
+                ☰
+              </button>
+              <button
+                className={`document-browser__view-btn ${view === 'grid' ? 'document-browser__view-btn--active' : ''}`}
+                onClick={() => setView('grid' as DocumentBrowserView)}
+                title="Grid view"
+                aria-pressed={view === 'grid'}
+              >
+                ⊞
+              </button>
+            </div>
+            <button
+              className="document-browser__new-group-btn"
+              onClick={handleCreateGroup}
+              title="Create document group"
+            >
+              + Group
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Selection bar */}
+      {hasSelection && (
+        <div className="document-browser__selection-bar">
+          <span className="document-browser__selection-count">
+            {selectedIds.size} selected
+          </span>
+          <div className="document-browser__selection-actions">
+            <div className="document-browser__assign-wrap">
+              <button
+                className="document-browser__bulk-btn"
+                onClick={() => setAssignMenuOpen((v) => !v)}
+              >
+                Assign to group ▾
+              </button>
+              {assignMenuOpen && (
+                <div className="document-browser__assign-menu" role="menu">
+                  <button
+                    className="document-browser__assign-item"
+                    onClick={() => handleBulkAssign(null)}
+                  >
+                    Remove from group
+                  </button>
+                  {groups.length > 0 && <div className="document-browser__assign-sep" />}
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      className="document-browser__assign-item"
+                      onClick={() => handleBulkAssign(g.id)}
+                    >
+                      <span
+                        className="document-browser__assign-swatch"
+                        style={g.color ? { background: g.color } : undefined}
+                      />
+                      {g.name}
+                    </button>
+                  ))}
+                  <div className="document-browser__assign-sep" />
+                  <button
+                    className="document-browser__assign-item document-browser__assign-item--new"
+                    onClick={handleBulkAssignNewGroup}
+                  >
+                    + New group…
+                  </button>
+                </div>
+              )}
+            </div>
+            <button className="document-browser__bulk-btn" onClick={handleBulkExport}>
+              Export
+            </button>
+            <button
+              className="document-browser__bulk-btn document-browser__bulk-btn--danger"
+              onClick={handleBulkDelete}
+            >
+              Delete
+            </button>
+            <button className="document-browser__bulk-btn" onClick={clearSelection}>
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Document List */}
-      <div className="document-browser__list">
+      <div
+        className={`document-browser__list ${view === 'grid' ? 'document-browser__list--grid' : ''}`}
+      >
         {documentList.length === 0 ? (
           <div className="document-browser__empty">
             {searchQuery ? (
@@ -409,21 +726,30 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               <p>No documents yet. Create a new one to get started!</p>
             )}
           </div>
+        ) : groupedSections ? (
+          groupedSections.map(({ key, group, docs }) => {
+            if (docs.length === 0 && group === null) return null;
+            const collapsed = collapsedMap[key] === true;
+            return (
+              <GroupSection
+                key={key}
+                group={group}
+                docs={docs}
+                collapsed={collapsed}
+                onToggle={() => toggleCollapsed(key)}
+                view={view}
+                renderCard={renderCard}
+                isMenuOpen={activeGroupMenu === key}
+                onOpenMenu={() => setActiveGroupMenu(activeGroupMenu === key ? null : key)}
+                onCloseMenu={() => setActiveGroupMenu(null)}
+                onRename={handleRenameGroup}
+                onDelete={handleDeleteGroup}
+                onRecolor={handleRecolor}
+              />
+            );
+          })
         ) : (
-          documentList.map((record) => (
-            <DocumentCard
-              key={record.id}
-              record={record}
-              isActive={record.id === currentDocumentId}
-              isOfflineAvailable={record.type === 'remote' && isAvailableOffline(record.id)}
-              onOpen={handleOpen}
-              onDelete={canDelete(record, currentUser?.id, currentUser?.role) ? handleDelete : undefined}
-              onRename={canEdit(record, currentUser?.id, currentUser?.role) ? handleRename : undefined}
-              onEditPermissions={canManagePermissions(record, isInTeamMode, currentUser?.id, currentUser?.role) ? setPermissionsDocId : undefined}
-              onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
-              mode={compact ? 'compact' : 'full'}
-            />
-          ))
+          documentList.map((record) => renderCard(record))
         )}
       </div>
 
@@ -441,23 +767,174 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
   );
 }
 
+interface SelectControlProps {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}
+
+function SelectControl({ label, value, options, onChange }: SelectControlProps) {
+  return (
+    <label className="document-browser__select">
+      <span className="document-browser__select-label">{label}</span>
+      <select
+        className="document-browser__select-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+interface GroupSectionProps {
+  group: DocumentGroup | null;
+  docs: DocumentRecord[];
+  collapsed: boolean;
+  view: DocumentBrowserView;
+  onToggle: () => void;
+  renderCard: (record: DocumentRecord) => React.ReactNode;
+  isMenuOpen: boolean;
+  onOpenMenu: () => void;
+  onCloseMenu: () => void;
+  onRename: (group: DocumentGroup) => void;
+  onDelete: (group: DocumentGroup) => void;
+  onRecolor: (group: DocumentGroup, color: string | undefined) => void;
+}
+
+function GroupSection({
+  group,
+  docs,
+  collapsed,
+  view,
+  onToggle,
+  renderCard,
+  isMenuOpen,
+  onOpenMenu,
+  onCloseMenu,
+  onRename,
+  onDelete,
+  onRecolor,
+}: GroupSectionProps) {
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onCloseMenu();
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [isMenuOpen, onCloseMenu]);
+
+  const isUngrouped = group === null;
+  return (
+    <div className="document-browser__section">
+      <div className="document-browser__section-header">
+        <button
+          className="document-browser__section-toggle"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+        >
+          <span className={`document-browser__caret ${collapsed ? 'document-browser__caret--collapsed' : ''}`}>
+            ▾
+          </span>
+          {!isUngrouped && (
+            <span
+              className="document-browser__section-swatch"
+              style={group?.color ? { background: group.color } : undefined}
+            />
+          )}
+          <span className="document-browser__section-title">
+            {isUngrouped ? 'Ungrouped' : group.name}
+          </span>
+          <span className="document-browser__section-count">{docs.length}</span>
+        </button>
+        {!isUngrouped && (
+          <div className="document-browser__section-menu-wrap" ref={menuRef}>
+            <button
+              className="document-browser__section-menu-btn"
+              onClick={onOpenMenu}
+              title="Group actions"
+              aria-haspopup="menu"
+            >
+              ⋯
+            </button>
+            {isMenuOpen && (
+              <div className="document-browser__section-menu" role="menu">
+                <button
+                  className="document-browser__assign-item"
+                  onClick={() => onRename(group)}
+                >
+                  Rename…
+                </button>
+                <div className="document-browser__assign-sep" />
+                <div className="document-browser__swatch-row">
+                  {DOCUMENT_GROUP_SWATCHES.map((color) => (
+                    <button
+                      key={color}
+                      className="document-browser__swatch"
+                      style={{ background: color }}
+                      onClick={() => onRecolor(group, color)}
+                      title={color}
+                    />
+                  ))}
+                  <button
+                    className="document-browser__swatch document-browser__swatch--clear"
+                    onClick={() => onRecolor(group, undefined)}
+                    title="Clear colour"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="document-browser__assign-sep" />
+                <button
+                  className="document-browser__assign-item document-browser__assign-item--danger"
+                  onClick={() => onDelete(group)}
+                >
+                  Delete group
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {!collapsed && (
+        <div
+          className={`document-browser__section-body ${view === 'grid' ? 'document-browser__section-body--grid' : ''}`}
+        >
+          {docs.length === 0 ? (
+            <div className="document-browser__section-empty">No documents in this group.</div>
+          ) : (
+            docs.map((d) => renderCard(d))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Check if user can delete a document */
 function canDelete(record: DocumentRecord, _userId?: string, userRole?: string): boolean {
   if (record.type === 'local') return true;
-  // Owner can delete
   if (record.type === 'remote' && record.permission === 'owner') return true;
-  // Admin can delete any team document
   if (record.type === 'remote' && userRole === 'admin') return true;
-  if (record.type === 'cached') return true; // Can delete local cache
+  if (record.type === 'cached') return true;
   return false;
 }
 
 /** Check if user can edit a document */
 function canEdit(record: DocumentRecord, _userId?: string, userRole?: string): boolean {
   if (record.type === 'local') return true;
-  // Owner or editor can edit
   if (record.type === 'remote' && (record.permission === 'owner' || record.permission === 'editor')) return true;
-  // Admin can edit any team document
   if (record.type === 'remote' && userRole === 'admin') return true;
   if (record.type === 'cached') return true;
   return false;
@@ -470,19 +947,15 @@ function canManagePermissions(
   _userId?: string,
   userRole?: string
 ): boolean {
-  // Only remote documents in team mode can have permissions managed
   if (!isInTeamMode) return false;
   if (record.type !== 'remote') return false;
-  // Owners can manage their own documents
   if (record.permission === 'owner') return true;
-  // Admins can manage any document
   if (userRole === 'admin') return true;
   return false;
 }
 
 /** Check if user can publish a document to the team */
 function canPublishToTeam(record: DocumentRecord, isInTeamMode: boolean): boolean {
-  // Only local documents can be published, and only in team mode
   if (!isInTeamMode) return false;
   return record.type === 'local';
 }

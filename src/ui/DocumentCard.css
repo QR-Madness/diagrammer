@@ -228,6 +228,92 @@
   margin-bottom: 4px;
 }
 
+/* Grid mode */
+.document-card--grid {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px;
+  min-height: 96px;
+}
+
+.document-card--grid .document-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.document-card--grid .document-card__name-row {
+  margin-bottom: 0;
+}
+
+.document-card--grid .document-card__meta {
+  font-size: 10px;
+  gap: 6px;
+}
+
+.document-card--grid .document-card__actions {
+  margin-top: 6px;
+  justify-content: flex-end;
+}
+
+/* Selection checkbox */
+.document-card__select {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  margin-top: 2px;
+  border: 1.5px solid var(--border-color, #cbd5e1);
+  border-radius: 4px;
+  background: var(--bg-primary, #ffffff);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.document-card:hover .document-card__select,
+.document-card__select--visible {
+  opacity: 1;
+}
+
+.document-card__select--checked {
+  background: var(--accent-color, #3b82f6);
+  border-color: var(--accent-color, #3b82f6);
+  opacity: 1;
+}
+
+.document-card--grid .document-card__select {
+  position: absolute;
+  margin: 0;
+}
+
+.document-card--grid {
+  position: relative;
+}
+
+/* Group chip */
+.document-card__group-chip {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  color: white;
+  background: var(--text-muted, #94a3b8);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* Dark mode */
 :root[data-theme="dark"] .document-card {
   background: var(--bg-secondary, #1e293b);
