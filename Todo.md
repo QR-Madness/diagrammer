@@ -55,14 +55,14 @@
 - [X] Table of contents for PDF
 - [X] Document Outline for PDF Readers
 - [X] LINKS! We need web links and internal document links!
-- [ ] Bidirectional connectors (selective arrow directions and sides)
+- [X] Bidirectional connectors (selective arrow directions and sides) — per-endpoint `ArrowStyle` (none/triangle/open/diamond) on `ConnectorShape`, legacy `startArrow`/`endArrow` booleans kept for back-compat via `resolveArrowStyle`; exposed in PropertyPanel and the MCP DSL adapter.
 
 ### 19.3 - PDF Styling Features, Document Features, and General Fixes
 
-- [ ] When exported to PDF, table cells won't break-word for word-wrapping leading to large words/numbers being overflow out of the cell. 
-- [ ] Large strings (one giant word or number; a edge case but needs to be fixed) in the PDF don't break; they overflow the page.
-- [ ] Saving PDF defaults saves application-level; it should be document level as other documents data get pulled by others, and it get's messy. 
-- [ ] When a cover-page has a logo selected, display the name and size in the PDF exporter section.
+- [X] When exported to PDF, table cells won't break-word for word-wrapping leading to large words/numbers being overflow out of the cell. — shared char-break fallback in `renderSegmentedText` (table cells route through the same path).
+- [X] Large strings (one giant word or number; a edge case but needs to be fixed) in the PDF don't break; they overflow the page. — same fix; `breakOversizedWord` greedily splits any token wider than the available width.
+- [X] Saving PDF defaults saves application-level; it should be document level as other documents data get pulled by others, and it get's messy. — `pdfSettings` snapshot on `DiagramDocument`; dialog reads/writes only the active doc and pushes through to team docs via the host save path. App-level state no longer writable from the dialog.
+- [X] When a cover-page has a logo selected, display the name and size in the PDF exporter section.
 - [ ] Marking document sections as WIP (add an icon next indicating it's still in construction); we can also add hide properties for PDFs to exclude document WIPs in the future.
 - [ ] The document toolbar switches to the table ribbon/tab when editing a table, but doesn't change to Home on text selection or after exiting the table, I suggest removing the toolbar ribbon auto-switch.
 
