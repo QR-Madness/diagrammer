@@ -31,6 +31,8 @@ interface DocumentCardProps {
   onEditPermissions?: ((id: string) => void) | undefined;
   /** Callback to publish local document to team */
   onPublishToTeam?: ((id: string) => void | Promise<void>) | undefined;
+  /** Callback to move a team document back to personal */
+  onMoveToPersonal?: ((id: string) => void | Promise<void>) | undefined;
   /** Callback when the card's selection checkbox is toggled. Receives the modifier flags so callers can implement range-select on shift-click. */
   onSelectToggle?:
     | ((id: string, mods: { shift: boolean; meta: boolean }) => void)
@@ -105,6 +107,7 @@ export function DocumentCard({
   onRename,
   onEditPermissions,
   onPublishToTeam,
+  onMoveToPersonal,
   onSelectToggle,
   groupAccent,
   mode = 'compact',
@@ -113,6 +116,7 @@ export function DocumentCard({
   const [editName, setEditName] = useState(record.name);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isMovingToPersonal, setIsMovingToPersonal] = useState(false);
 
   // Sync editName when record.name changes externally
   useEffect(() => {
@@ -131,6 +135,17 @@ export function DocumentCard({
       setIsPublishing(false);
     }
   }, [onPublishToTeam, record.id]);
+
+  const handleMoveToPersonal = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onMoveToPersonal) return;
+    setIsMovingToPersonal(true);
+    try {
+      await onMoveToPersonal(record.id);
+    } finally {
+      setIsMovingToPersonal(false);
+    }
+  }, [onMoveToPersonal, record.id]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -309,9 +324,19 @@ export function DocumentCard({
             className="document-card__action document-card__action--publish"
             onClick={handlePublish}
             disabled={isPublishing}
-            title="Share with team"
+            title="Move to team"
           >
             {isPublishing ? '⏳' : '📤'}
+          </button>
+        )}
+        {onMoveToPersonal && (
+          <button
+            className="document-card__action document-card__action--move-personal"
+            onClick={handleMoveToPersonal}
+            disabled={isMovingToPersonal}
+            title="Move to personal"
+          >
+            {isMovingToPersonal ? '⏳' : '📥'}
           </button>
         )}
         {onEditPermissions && (

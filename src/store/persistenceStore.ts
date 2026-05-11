@@ -56,6 +56,13 @@ export interface PersistenceState {
   lastSavedAt: number | null;
   /** Whether auto-save is enabled */
   autoSaveEnabled: boolean;
+  /**
+   * True when the last-opened document was a team doc that could not be
+   * loaded because the collab connection wasn't available at startup.
+   * UI uses this to show a "Reconnecting…" indicator and the collab
+   * provider uses it to auto-reattach once authentication succeeds.
+   */
+  isAwaitingTeamLoad?: boolean;
 }
 
 /**
@@ -580,6 +587,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           currentDocumentName: doc.name,
           isDirty: false,
           lastSavedAt: doc.modifiedAt,
+          isAwaitingTeamLoad: false,
         });
 
         // Register in document registry and set as active
@@ -939,6 +947,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           },
           isDirty: false,
           lastSavedAt: docWithTeamFlag.modifiedAt,
+          isAwaitingTeamLoad: false,
         }));
 
         // Register in document registry
@@ -1000,13 +1009,58 @@ export function initializePersistence(): void {
   // Try to load the last opened document
   const lastDocId = localStorage.getItem(STORAGE_KEYS.CURRENT_DOCUMENT);
 
-  if (lastDocId && store.documentExists(lastDocId)) {
-    const success = store.loadDocument(lastDocId);
-    if (success) return;
+  if (lastDocId) {
+    // If the last doc is a team document, don't fall back to a fresh local
+    // doc when it can't be loaded (server may not be up yet). Instead, park
+    // the selection and let the collab provider reattach on auth.
+    const metadata = store.documents[lastDocId];
+    const isTeamMetadata = metadata?.isTeamDocument === true;
+    const isTeamRegistryEntry = registry.entries[lastDocId]?.record.type === 'remote';
+
+    if (store.documentExists(lastDocId)) {
+      const success = store.loadDocument(lastDocId);
+      if (success) {
+        if (isTeamMetadata || isTeamRegistryEntry) {
+          // Mark as awaiting fresh server data even though we hydrated from
+          // local cache — keeps the reattach hook engaged.
+          usePersistenceStore.setState({ isAwaitingTeamLoad: true });
+        }
+        return;
+      }
+    }
+
+    if (isTeamMetadata || isTeamRegistryEntry) {
+      const name = metadata?.name ?? registry.entries[lastDocId]?.record.name ?? 'Team Document';
+      usePersistenceStore.setState({
+        currentDocumentId: lastDocId,
+        currentDocumentName: name,
+        isDirty: false,
+        lastSavedAt: null,
+        isAwaitingTeamLoad: true,
+      });
+      return;
+    }
   }
 
   // No last document or failed to load - create new document
   store.newDocument();
+}
+
+/**
+ * Attempt to reload the team document the user had open at startup, after
+ * the collab connection has authenticated. Called from collaborationStore's
+ * onAuthenticated hook. Safe to call repeatedly; no-op if not awaiting.
+ */
+export async function reattachAwaitingTeamDocument(): Promise<void> {
+  const state = usePersistenceStore.getState();
+  if (!state.isAwaitingTeamLoad || !state.currentDocumentId) return;
+  const docId = state.currentDocumentId;
+  try {
+    const doc = await useTeamDocumentStore.getState().loadTeamDocument(docId);
+    usePersistenceStore.getState().loadRemoteDocument(doc);
+  } catch (error) {
+    console.warn('[persistence] Failed to reattach team document on auth:', error);
+  }
 }
 
 /**

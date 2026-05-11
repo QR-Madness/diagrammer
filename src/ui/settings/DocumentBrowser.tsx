@@ -12,8 +12,6 @@ import { usePersistenceStore } from '../../store/persistenceStore';
 import { useTeamStore } from '../../store/teamStore';
 import { useTeamDocumentStore } from '../../store/teamDocumentStore';
 import { useUserStore } from '../../store/userStore';
-import { usePageStore } from '../../store/pageStore';
-import { useRichTextStore } from '../../store/richTextStore';
 import {
   useUIPreferencesStore,
   type DocumentBrowserSort,
@@ -215,19 +213,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       if (record.type === 'remote' || record.type === 'cached') {
         try {
           const doc = await loadTeamDocument(docId);
-          const snapshot = {
-            pages: doc.pages,
-            pageOrder: doc.pageOrder,
-            activePageId: doc.activePageId,
-          };
-          usePageStore.getState().loadSnapshot(snapshot);
-          useRichTextStore.getState().loadContent(doc.richTextContent);
-          usePersistenceStore.setState({
-            currentDocumentId: doc.id,
-            currentDocumentName: doc.name,
-            isDirty: false,
-            lastSavedAt: doc.modifiedAt,
-          });
+          usePersistenceStore.getState().loadRemoteDocument(doc);
         } catch (error) {
           console.error('Failed to load team document:', error);
         }
@@ -278,12 +264,47 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
         ownerId: currentUser.id,
         ownerName: currentUser.displayName || currentUser.username || 'Unknown',
       };
-      await saveToHost(teamDoc);
+      try {
+        await saveToHost(teamDoc);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to publish to team';
+        const { useNotificationStore } = await import('../../store/notificationStore');
+        useNotificationStore.getState().error(`Move to Team failed: ${message}`);
+        return;
+      }
       deleteDocument(docId);
       useDocumentRegistry.getState().removeDocument(docId);
       await fetchDocumentList();
     },
     [currentDocumentId, loadDocument, saveToHost, deleteDocument, fetchDocumentList, currentUser]
+  );
+
+  const handleMoveToPersonal = useCallback(
+    async (docId: string) => {
+      const entry = entries[docId];
+      if (!entry) return;
+      const record = entry.record;
+      if (record.type !== 'remote') return;
+      try {
+        // Fetch the remote doc and stash it locally so transferToPersonal can find it.
+        const doc = await loadTeamDocument(docId);
+        usePersistenceStore.getState().loadRemoteDocument(doc);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to fetch team document';
+        const { useNotificationStore } = await import('../../store/notificationStore');
+        useNotificationStore.getState().error(`Move to Personal failed: ${message}`);
+        return;
+      }
+      const ok = usePersistenceStore.getState().transferToPersonal(docId);
+      if (!ok) {
+        console.warn('transferToPersonal returned false for', docId);
+        return;
+      }
+      // Refresh registry / list so the row reflects its new type.
+      useDocumentRegistry.getState().removeDocument(docId);
+      await fetchDocumentList();
+    },
+    [entries, loadTeamDocument, fetchDocumentList]
   );
 
   const handleExport = useCallback(() => {
@@ -472,7 +493,8 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
               ? setPermissionsDocId
               : undefined
           }
-          onPublishToTeam={canPublishToTeam(record, isInTeamMode) ? handlePublishToTeam : undefined}
+          onPublishToTeam={canPublishToTeam(record, isInTeamMode, authenticated) ? handlePublishToTeam : undefined}
+          onMoveToPersonal={canMoveToPersonal(record, authenticated, currentUser?.id, currentUser?.role) ? handleMoveToPersonal : undefined}
           groupAccent={accent}
           mode={cardMode}
         />
@@ -492,7 +514,9 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       handleDelete,
       handleRename,
       isInTeamMode,
+      authenticated,
       handlePublishToTeam,
+      handleMoveToPersonal,
       cardMode,
     ]
   );
@@ -955,9 +979,25 @@ function canManagePermissions(
 }
 
 /** Check if user can publish a document to the team */
-function canPublishToTeam(record: DocumentRecord, isInTeamMode: boolean): boolean {
-  if (!isInTeamMode) return false;
+function canPublishToTeam(
+  record: DocumentRecord,
+  isInTeamMode: boolean,
+  isAuthenticated: boolean
+): boolean {
+  if (!isInTeamMode || !isAuthenticated) return false;
   return record.type === 'local';
+}
+
+/** Check if user can move a team document back to personal */
+function canMoveToPersonal(
+  record: DocumentRecord,
+  isAuthenticated: boolean,
+  userId?: string,
+  userRole?: string
+): boolean {
+  if (record.type !== 'remote') return false;
+  if (!isAuthenticated) return false;
+  return record.permission === 'owner' || record.ownerId === userId || userRole === 'admin';
 }
 
 export default DocumentBrowser;

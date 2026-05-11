@@ -42,6 +42,7 @@ function formatRelativeTime(timestamp: number): string {
 interface DocumentActionsProps {
   isOwner: boolean;
   isAdmin: boolean;
+  isTeamDocument: boolean;
   onRename: () => void;
   onShare: () => void;
   onTransfer: () => void;
@@ -51,6 +52,7 @@ interface DocumentActionsProps {
 function DocumentActions({
   isOwner,
   isAdmin,
+  isTeamDocument,
   onRename,
   onShare,
   onTransfer,
@@ -135,7 +137,7 @@ function DocumentActions({
                   onTransfer();
                 }}
               >
-                Transfer Ownership
+                {isTeamDocument ? 'Move to Personal' : 'Move to Team'}
               </button>
             )}
             {canDelete && (
@@ -492,6 +494,7 @@ export function TeamDocumentsManager() {
                 <DocumentActions
                   isOwner={isOwner}
                   isAdmin={isAdmin}
+                  isTeamDocument={doc.isTeamDocument === true}
                   onRename={() => handleRename(doc)}
                   onShare={() => handleShare(doc)}
                   onTransfer={() => handleTransfer(doc)}

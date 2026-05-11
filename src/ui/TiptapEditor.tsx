@@ -237,7 +237,12 @@ export function TiptapEditor({ className, onEditorReady }: TiptapEditorProps) {
     extensions,
     content: content.content,
     onUpdate: ({ editor }) => {
-      setContent(editor.getJSON());
+      // Defer the Zustand write so it doesn't run inside Tiptap's
+      // transaction dispatch (which itself is wrapped in flushSync under
+      // @tiptap/react), avoiding "flushSync was called from inside a
+      // lifecycle method" warnings in React 18.
+      const json = editor.getJSON();
+      queueMicrotask(() => setContent(json));
     },
     editorProps: {
       attributes: {
@@ -323,54 +328,64 @@ export function TiptapEditor({ className, onEditorReady }: TiptapEditorProps) {
     const words = content.customDictionary;
     if (words && words.length > 0) {
       SpellcheckService.loadCustomWords(words);
-      rebuildSpellcheck(editor.view);
+      // rebuildSpellcheck dispatches a Tiptap transaction; defer past
+      // the effect commit so flushSync doesn't fire inside a lifecycle.
+      queueMicrotask(() => {
+        if (!editor.isDestroyed) rebuildSpellcheck(editor.view);
+      });
     }
   }, [editor, content.customDictionary]);
 
-  // Update editor content when loaded from document
+  // Update editor content when loaded from document.
+  // setContent dispatches a Tiptap transaction that synchronously mounts
+  // ReactNodeViews via flushSync; running it inside the effect's commit
+  // phase trips React's "flushSync called from inside a lifecycle method"
+  // warning. Defer the whole swap to a microtask so the dispatch happens
+  // after React's commit.
   useEffect(() => {
-    if (editor && content.content) {
-      // Only update if content is different to avoid cursor jump
-      const currentContent = JSON.stringify(editor.getJSON());
-      const newContent = JSON.stringify(content.content);
-      if (currentContent !== newContent) {
-        editor.commands.setContent(content.content);
-        // Drop history so the "load document" transaction can never be
-        // undone, and so any leftover entries from a previously-loaded
-        // document don't leak across. Reconfigure with a fresh history
-        // plugin instance — this resets only the history plugin's state
-        // and leaves @tiptap/react's ReactNodeView tracking plugin alone
-        // (a wholesale `EditorState.create` would crash mid-render here
-        // by forcing every plugin to reinit and remounting node views
-        // against a partial desc tree).
-        const newPlugins = editor.state.plugins.map((p) => {
-          const key = (p as unknown as { key?: string }).key;
-          return typeof key === 'string' && key.startsWith('history$') ? history() : p;
-        });
-        editor.view.updateState(editor.state.reconfigure({ plugins: newPlugins }));
+    if (!editor || !content.content) return;
+    const newContent = content.content;
+    const currentContent = JSON.stringify(editor.getJSON());
+    if (currentContent === JSON.stringify(newContent)) return;
 
-        // Convert blob:// URLs after content is set (slight delay for DOM update)
-        requestAnimationFrame(async () => {
-          const editorElement = editor.view.dom;
-          const images = editorElement.querySelectorAll('img[src^="blob://"]');
+    queueMicrotask(() => {
+      if (editor.isDestroyed) return;
+      editor.commands.setContent(newContent);
+      // Drop history so the "load document" transaction can never be
+      // undone, and so any leftover entries from a previously-loaded
+      // document don't leak across. Reconfigure with a fresh history
+      // plugin instance — this resets only the history plugin's state
+      // and leaves @tiptap/react's ReactNodeView tracking plugin alone
+      // (a wholesale `EditorState.create` would crash mid-render here
+      // by forcing every plugin to reinit and remounting node views
+      // against a partial desc tree).
+      const newPlugins = editor.state.plugins.map((p) => {
+        const key = (p as unknown as { key?: string }).key;
+        return typeof key === 'string' && key.startsWith('history$') ? history() : p;
+      });
+      editor.view.updateState(editor.state.reconfigure({ plugins: newPlugins }));
 
-          for (const element of Array.from(images)) {
-            const img = element as HTMLImageElement;
-            const blobUrl = img.getAttribute('src');
-            if (!blobUrl) continue;
+      // Convert blob:// URLs after content is set (slight delay for DOM update)
+      requestAnimationFrame(async () => {
+        const editorElement = editor.view.dom;
+        const images = editorElement.querySelectorAll('img[src^="blob://"]');
 
-            const objectUrl = await getBlobObjectUrl(blobUrl);
-            if (objectUrl && objectUrl !== blobUrl) {
-              img.setAttribute('src', objectUrl);
-            } else if (!objectUrl) {
-              img.setAttribute('alt', '(Image not found)');
-              img.style.border = '2px dashed var(--border-color)';
-              img.style.padding = '8px';
-            }
+        for (const element of Array.from(images)) {
+          const img = element as HTMLImageElement;
+          const blobUrl = img.getAttribute('src');
+          if (!blobUrl) continue;
+
+          const objectUrl = await getBlobObjectUrl(blobUrl);
+          if (objectUrl && objectUrl !== blobUrl) {
+            img.setAttribute('src', objectUrl);
+          } else if (!objectUrl) {
+            img.setAttribute('alt', '(Image not found)');
+            img.style.border = '2px dashed var(--border-color)';
+            img.style.padding = '8px';
           }
-        });
-      }
-    }
+        }
+      });
+    });
   }, [editor, content.content]);
 
   // Expose editor instance via callback for parent to provide context

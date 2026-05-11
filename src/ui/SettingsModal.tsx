@@ -21,6 +21,10 @@ import {
   Library,
   Plug,
 } from 'lucide-react';
+import { useTeamStore } from '../store/teamStore';
+import { useUserStore } from '../store/userStore';
+import { usePersistenceStore } from '../store/persistenceStore';
+import { useCollaborationStore } from '../collaboration';
 import { ShapeLibraryManager } from './ShapeLibraryManager';
 import { DocumentBrowser } from './settings/DocumentBrowser';
 import { GeneralSettings } from './settings/GeneralSettings';
@@ -67,6 +71,60 @@ export interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, initialTab = 'documents' }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const serverMode = useTeamStore((s) => s.serverMode);
+  const hostPort = useTeamStore((s) => s.hostPort);
+  const startHosting = useTeamStore((s) => s.startHosting);
+  const stopHosting = useTeamStore((s) => s.stopHosting);
+  const startSession = useCollaborationStore((s) => s.startSession);
+  const stopSession = useCollaborationStore((s) => s.stopSession);
+  const currentUser = useUserStore((s) => s.currentUser);
+  const sessionToken = useUserStore((s) => s.sessionToken);
+  const currentDocumentId = usePersistenceStore((s) => s.currentDocumentId);
+  const [serverBusy, setServerBusy] = useState(false);
+
+  const isOnline = serverMode === 'host';
+  const toggleServer = useCallback(async () => {
+    if (serverBusy) return;
+    setServerBusy(true);
+    try {
+      if (isOnline) {
+        // Tear down the collab session first so docProvider is released
+        // before the WebSocket server stops accepting connections.
+        stopSession();
+        await stopHosting();
+      } else {
+        await startHosting(hostPort);
+        // Host is also a client of its own server — join the collab
+        // session so docProvider is available for team-doc writes
+        // (saveToHost, etc.) right after the server is up.
+        const docId = currentDocumentId || 'default';
+        const user = currentUser || { id: 'host', displayName: 'Host', role: 'admin' as const };
+        startSession({
+          serverUrl: `ws://localhost:${hostPort}/ws`,
+          documentId: docId,
+          user: {
+            id: user.id,
+            name: user.displayName,
+            color: '#4a90d9',
+          },
+          ...(sessionToken?.token ? { token: sessionToken.token } : {}),
+        });
+      }
+    } finally {
+      setServerBusy(false);
+    }
+  }, [
+    isOnline,
+    serverBusy,
+    hostPort,
+    stopHosting,
+    stopSession,
+    startHosting,
+    startSession,
+    currentDocumentId,
+    currentUser,
+    sessionToken,
+  ]);
 
   // Reset to initial tab when modal opens
   useEffect(() => {
@@ -131,6 +189,18 @@ export function SettingsModal({ isOpen, onClose, initialTab = 'documents' }: Set
                 </button>
               );
             })}
+            <button
+              type="button"
+              className={`settings-server-badge ${isOnline ? 'is-online' : 'is-offline'}`}
+              onClick={toggleServer}
+              disabled={serverBusy}
+              title={isOnline ? 'Click to take server offline' : 'Click to start the collaboration server'}
+            >
+              <span className={`settings-server-badge__dot ${isOnline ? 'is-online' : 'is-offline'}`} />
+              <span className="settings-server-badge__label">
+                {serverBusy ? '…' : isOnline ? 'Online' : 'Offline'}
+              </span>
+            </button>
           </nav>
 
           {/* Tab content */}

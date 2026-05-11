@@ -19,6 +19,7 @@ import { create } from 'zustand';
 import { YjsDocument } from './YjsDocument';
 import { UnifiedSyncProvider, AwarenessUserState } from './UnifiedSyncProvider';
 import { useTeamDocumentStore } from '../store/teamDocumentStore';
+import { reattachAwaitingTeamDocument } from '../store/persistenceStore';
 import { useConnectionStore, type ConnectionStatus } from '../store/connectionStore';
 import { usePresenceStore } from '../store/presenceStore';
 import type { Shape } from '../shapes/Shape';
@@ -186,6 +187,12 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
             if (user.username) {
               config.user.name = user.username;
             }
+          }
+
+          // If a team doc was selected at startup but couldn't be loaded
+          // (server wasn't up yet), reattach now that we're authenticated.
+          if (success) {
+            void reattachAwaitingTeamDocument();
           }
         },
         onDocumentEvent: (event: DocEvent) => {
