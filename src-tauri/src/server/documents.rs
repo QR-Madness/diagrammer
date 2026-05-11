@@ -87,6 +87,13 @@ impl DocumentStore {
         self.documents_dir.join("docs").join(format!("{}.json", doc_id))
     }
 
+    /// Reload the metadata index from disk. Public so external callers
+    /// (e.g. the MCP server) can refresh their view after another component
+    /// has written to the same documents directory.
+    pub fn reload_index(&self) {
+        self.load_index();
+    }
+
     /// Load the metadata index from disk
     fn load_index(&self) {
         let path = self.index_path();

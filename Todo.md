@@ -77,6 +77,27 @@
 - [ ] Layer panel context menu needs add-to-group functionality
 - [ ] When dragging multiple items in the layer panel, only one gets moved; also the panel does not scroll as you drag at the bottom.
 
+### 19.6 - MCP (Model Context Protocol) Integration
+
+- [x] Foundation: embedded MCP HTTP server in Tauri Rust backend (`src-tauri/src/mcp/`)
+  - [x] Bearer-token auth (`mcp_token` under app data dir, `0600` on unix, constant-time validate)
+  - [x] Streamable HTTP transport: `POST /mcp` (JSON-RPC), `GET /mcp` (SSE keep-alive), `DELETE /mcp`, unauth liveness at `/`
+  - [x] Four read/draft tools: `diagrammer.list_documents`, `get_document`, `get_page`, `add_shape`
+  - [x] LLM-optimized DSL with adapter (rectangle / ellipse / text; AUTO colour sentinel honoured)
+  - [x] Writes broadcast `DocEvent::Updated` so the running app reloads
+  - [x] Auto-start on app launch
+- [x] Settings tab "MCP Server" with status, endpoint, token (Show/Copy/Regenerate/Set manually) and a ready-to-copy `claude mcp add` line
+- [x] Manual-token paste flow (URL-safe alphabet, 16–128 chars) for syncing tokens across machines
+- [ ] Make non-team (localStorage) documents reachable via MCP — currently only host-stored team docs are visible. Likely needs a "Promote to team document" path or a sync command.
+- [ ] Follow-up write tools (post-foundation debug):
+  - [ ] `add_shapes` (batch), `connect`, `update_shape`
+  - [ ] Layout tools: `align`, `distribute`, `grid_layout`, `group`
+- [ ] Rich-text read + comments (Tiptap comment mark, `commentsStore`, MCP comment tools)
+- [ ] Live CRDT writes via `yrs` (avoids last-write-wins when user edits during a draft)
+- [ ] Spatial-index-aware layout (reuse `SpatialIndex` to avoid overlap)
+- [ ] Blob/image authoring via MCP
+- [ ] Plan reference: `~/.claude/plans/so-i-really-want-ancient-kay.md`
+
 ### 19.9 - General Fixes
 
 - [ ] Draggable items in property panel don't move at at all (ie. ERD entity attributes; among others).

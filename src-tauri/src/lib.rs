@@ -4,12 +4,14 @@
 //! including WebSocket server for Protected Local mode collaboration.
 
 mod auth;
+mod mcp;
 mod server;
 
 use auth::{
     create_token, hash_password, verify_password, LoginResponse, SessionToken, TokenConfig, User,
     UserInfo, UserRole, UserStore,
 };
+use mcp::{McpServer, McpStatus};
 use server::{get_local_ips, ServerConfig, ServerStatus, WebSocketServer};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -27,17 +29,8 @@ pub struct AppState {
     pub user_store: Arc<UserStore>,
     /// JWT token configuration
     pub token_config: TokenConfig,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            server_mode: AtomicBool::new(false),
-            server: Arc::new(RwLock::new(WebSocketServer::new())),
-            user_store: Arc::new(UserStore::new()),
-            token_config: TokenConfig::default(),
-        }
-    }
+    /// Embedded MCP server (foundation scope: read + single shape draft)
+    pub mcp_server: Arc<RwLock<Option<Arc<McpServer>>>>,
 }
 
 /// Get the current server mode status
@@ -453,6 +446,88 @@ async fn delete_team_document(
     Ok(deleted)
 }
 
+// ============ MCP Server Commands ============
+
+/// Get current MCP server status (running, port, address).
+#[tauri::command]
+async fn mcp_status(state: tauri::State<'_, AppState>) -> Result<McpStatus, String> {
+    let guard = state.mcp_server.read().await;
+    match guard.as_ref() {
+        Some(server) => Ok(server.status().await),
+        None => Ok(McpStatus {
+            running: false,
+            port: 0,
+            address: String::new(),
+        }),
+    }
+}
+
+/// Start the MCP server (idempotent — returns error if already running).
+#[tauri::command]
+async fn mcp_start(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let guard = state.mcp_server.read().await;
+    let server = guard
+        .as_ref()
+        .ok_or("MCP server not initialized")?
+        .clone();
+    drop(guard);
+    server.start().await
+}
+
+/// Stop the MCP server.
+#[tauri::command]
+async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let guard = state.mcp_server.read().await;
+    let server = guard
+        .as_ref()
+        .ok_or("MCP server not initialized")?
+        .clone();
+    drop(guard);
+    server.stop().await
+}
+
+/// Return the current MCP bearer token (for display in Settings UI).
+#[tauri::command]
+async fn mcp_get_token(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let guard = state.mcp_server.read().await;
+    let server = guard
+        .as_ref()
+        .ok_or("MCP server not initialized")?
+        .clone();
+    drop(guard);
+    Ok(server.get_token().await)
+}
+
+/// Replace the MCP bearer token with a user-supplied value. The new token
+/// must use the URL-safe alphabet [A-Za-z0-9_-] and be 16–128 characters.
+/// Returns the trimmed token that was persisted.
+#[tauri::command]
+async fn mcp_set_token(
+    state: tauri::State<'_, AppState>,
+    token: String,
+) -> Result<String, String> {
+    let guard = state.mcp_server.read().await;
+    let server = guard
+        .as_ref()
+        .ok_or("MCP server not initialized")?
+        .clone();
+    drop(guard);
+    server.set_token(&token).await
+}
+
+/// Regenerate the MCP bearer token. Existing sessions using the old token
+/// will start receiving 401s on their next request.
+#[tauri::command]
+async fn mcp_regenerate_token(state: tauri::State<'_, AppState>) -> Result<String, String> {
+    let guard = state.mcp_server.read().await;
+    let server = guard
+        .as_ref()
+        .ok_or("MCP server not initialized")?
+        .clone();
+    drop(guard);
+    server.regenerate_token().await
+}
+
 use std::sync::atomic::AtomicU16;
 
 /// Port for the local documentation server
@@ -628,11 +703,53 @@ pub fn run() {
 
             log::info!("WebSocket server initialized with document store and user store");
 
+            let server_arc = Arc::new(RwLock::new(server));
+
+            // Build the MCP server. on_doc_changed forwards into the
+            // WebSocketServer's broadcast so connected clients reload the
+            // mutated doc. We capture an Arc to the same RwLock the rest
+            // of AppState uses, dispatched onto the Tauri async runtime.
+            let server_for_mcp = server_arc.clone();
+            let on_doc_changed: Arc<dyn Fn(String) + Send + Sync> =
+                Arc::new(move |doc_id: String| {
+                    let server = server_for_mcp.clone();
+                    tauri::async_runtime::spawn(async move {
+                        let guard = server.read().await;
+                        guard
+                            .broadcast_doc_event(
+                                &doc_id,
+                                server::protocol::DocEventType::Updated,
+                                None,
+                            )
+                            .await;
+                    });
+                });
+
+            let mcp_server = match McpServer::new(app_data_dir.clone(), on_doc_changed) {
+                Ok(s) => Some(Arc::new(s)),
+                Err(e) => {
+                    log::error!("Failed to initialize MCP server: {}", e);
+                    None
+                }
+            };
+
+            // Auto-start the MCP server so external clients (Claude Code)
+            // can connect as soon as the app is running.
+            if let Some(server) = mcp_server.as_ref() {
+                let server = server.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = server.start().await {
+                        log::error!("MCP server failed to start: {}", e);
+                    }
+                });
+            }
+
             app.manage(AppState {
                 server_mode: AtomicBool::new(false),
-                server: Arc::new(RwLock::new(server)),
+                server: server_arc,
                 user_store,
                 token_config,
+                mcp_server: Arc::new(RwLock::new(mcp_server)),
             });
 
             // Set window icon (for development mode - bundle icons handle production)
@@ -680,6 +797,13 @@ pub fn run() {
             delete_team_document,
             // Documentation
             open_docs,
+            // MCP server
+            mcp_status,
+            mcp_start,
+            mcp_stop,
+            mcp_get_token,
+            mcp_regenerate_token,
+            mcp_set_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Diagrammer");

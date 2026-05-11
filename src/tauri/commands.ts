@@ -170,3 +170,65 @@ export async function openDocs(): Promise<void> {
   }
   return invoke<void>('open_docs');
 }
+
+// ============ MCP Server (Model Context Protocol) ============
+
+/**
+ * MCP server status reported by the Tauri backend.
+ */
+export interface McpStatus {
+  /** True if the MCP HTTP listener is bound */
+  running: boolean;
+  /** Port the listener is bound to (0 if not running) */
+  port: number;
+  /** Loopback address + port, e.g. "127.0.0.1:9877" */
+  address: string;
+}
+
+/** Length bounds for user-supplied MCP tokens. Mirrors the Rust constants. */
+export const MCP_TOKEN_MIN_LEN = 16;
+export const MCP_TOKEN_MAX_LEN = 128;
+/** URL-safe alphabet accepted for MCP tokens (matches the Rust validator). */
+export const MCP_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+export async function mcpStatus(): Promise<McpStatus> {
+  if (!isTauri()) {
+    return { running: false, port: 0, address: '' };
+  }
+  return invoke<McpStatus>('mcp_status');
+}
+
+export async function mcpStart(): Promise<string> {
+  if (!isTauri()) {
+    throw new Error('MCP server only available in desktop app');
+  }
+  return invoke<string>('mcp_start');
+}
+
+export async function mcpStop(): Promise<void> {
+  if (!isTauri()) {
+    throw new Error('MCP server only available in desktop app');
+  }
+  return invoke<void>('mcp_stop');
+}
+
+export async function mcpGetToken(): Promise<string> {
+  if (!isTauri()) {
+    throw new Error('MCP server only available in desktop app');
+  }
+  return invoke<string>('mcp_get_token');
+}
+
+export async function mcpRegenerateToken(): Promise<string> {
+  if (!isTauri()) {
+    throw new Error('MCP server only available in desktop app');
+  }
+  return invoke<string>('mcp_regenerate_token');
+}
+
+export async function mcpSetToken(token: string): Promise<string> {
+  if (!isTauri()) {
+    throw new Error('MCP server only available in desktop app');
+  }
+  return invoke<string>('mcp_set_token', { token });
+}

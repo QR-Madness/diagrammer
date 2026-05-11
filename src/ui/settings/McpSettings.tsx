@@ -1,0 +1,282 @@
+/**
+ * MCP (Model Context Protocol) Settings panel.
+ *
+ * Surfaces the embedded MCP HTTP server's status, port, and bearer token
+ * so the user can register Diagrammer as an MCP source in clients like
+ * Claude Code. Tokens can be copied, regenerated, or replaced with a
+ * user-supplied value (handy for syncing the same token across machines).
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import {
+  isTauri,
+  mcpStatus,
+  mcpGetToken,
+  mcpRegenerateToken,
+  mcpSetToken,
+  mcpStart,
+  mcpStop,
+  type McpStatus,
+  MCP_TOKEN_MIN_LEN,
+  MCP_TOKEN_MAX_LEN,
+  MCP_TOKEN_PATTERN,
+} from '../../tauri/commands';
+import './McpSettings.css';
+
+type Banner = { kind: 'info' | 'error'; text: string } | null;
+
+function validateToken(candidate: string): string | null {
+  const trimmed = candidate.trim();
+  if (trimmed.length === 0) return 'Token cannot be empty.';
+  if (trimmed.length < MCP_TOKEN_MIN_LEN)
+    return `Token is too short (need at least ${MCP_TOKEN_MIN_LEN} characters, got ${trimmed.length}).`;
+  if (trimmed.length > MCP_TOKEN_MAX_LEN)
+    return `Token is too long (max ${MCP_TOKEN_MAX_LEN} characters).`;
+  if (!MCP_TOKEN_PATTERN.test(trimmed))
+    return "Token may only contain letters, digits, '-', and '_'.";
+  return null;
+}
+
+export function McpSettings() {
+  const tauri = isTauri();
+  const [status, setStatus] = useState<McpStatus | null>(null);
+  const [token, setToken] = useState<string>('');
+  const [tokenVisible, setTokenVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [banner, setBanner] = useState<Banner>(null);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const draftError = editing ? validateToken(draft) : null;
+
+  const refresh = useCallback(async () => {
+    if (!tauri) return;
+    try {
+      const [s, t] = await Promise.all([mcpStatus(), mcpGetToken()]);
+      setStatus(s);
+      setToken(t);
+    } catch (e) {
+      setBanner({ kind: 'error', text: `Failed to load MCP state: ${String(e)}` });
+    }
+  }, [tauri]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(token);
+      setBanner({ kind: 'info', text: 'Token copied to clipboard.' });
+    } catch (e) {
+      setBanner({ kind: 'error', text: `Copy failed: ${String(e)}` });
+    }
+  }, [token]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!confirm('Regenerate the MCP token? Any client using the old token will need to be updated.')) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const fresh = await mcpRegenerateToken();
+      setToken(fresh);
+      setBanner({ kind: 'info', text: 'Token regenerated.' });
+    } catch (e) {
+      setBanner({ kind: 'error', text: `Regenerate failed: ${String(e)}` });
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const handleSaveManual = useCallback(async () => {
+    const err = validateToken(draft);
+    if (err) {
+      setBanner({ kind: 'error', text: err });
+      return;
+    }
+    setBusy(true);
+    try {
+      const stored = await mcpSetToken(draft);
+      setToken(stored);
+      setEditing(false);
+      setDraft('');
+      setBanner({ kind: 'info', text: 'Token saved.' });
+    } catch (e) {
+      setBanner({ kind: 'error', text: `Save failed: ${String(e)}` });
+    } finally {
+      setBusy(false);
+    }
+  }, [draft]);
+
+  const handleToggleServer = useCallback(async () => {
+    if (!status) return;
+    setBusy(true);
+    try {
+      if (status.running) {
+        await mcpStop();
+        setBanner({ kind: 'info', text: 'MCP server stopped.' });
+      } else {
+        await mcpStart();
+        setBanner({ kind: 'info', text: 'MCP server started.' });
+      }
+      await refresh();
+    } catch (e) {
+      setBanner({ kind: 'error', text: `Server toggle failed: ${String(e)}` });
+    } finally {
+      setBusy(false);
+    }
+  }, [status, refresh]);
+
+  if (!tauri) {
+    return (
+      <div className="mcp-settings">
+        <h3>MCP Server</h3>
+        <div className="settings-notice">
+          The MCP server runs inside the desktop app and is not available in the web build.
+        </div>
+      </div>
+    );
+  }
+
+  const endpoint = status?.running ? `http://${status.address}/mcp` : '—';
+  const exampleCmd = status?.running && token
+    ? `claude mcp add diagrammer --transport http ${endpoint} --header "Authorization: Bearer ${token}"`
+    : null;
+
+  return (
+    <div className="mcp-settings">
+      <h3>MCP Server</h3>
+      <p className="mcp-blurb">
+        Lets external MCP clients (e.g. Claude Code) read your team documents and draft shapes.
+        Runs locally on <code>127.0.0.1</code> and requires the bearer token below.
+      </p>
+
+      {banner && (
+        <div className={`mcp-banner mcp-banner-${banner.kind}`} onClick={() => setBanner(null)}>
+          {banner.text}
+        </div>
+      )}
+
+      <div className="mcp-row">
+        <div className="mcp-label">Status</div>
+        <div className="mcp-value">
+          <span className={`mcp-dot ${status?.running ? 'on' : 'off'}`} />
+          {status?.running ? `Running on ${status.address}` : 'Stopped'}
+          <button
+            type="button"
+            className="mcp-btn mcp-btn-secondary"
+            onClick={handleToggleServer}
+            disabled={busy || !status}
+          >
+            {status?.running ? 'Stop' : 'Start'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mcp-row">
+        <div className="mcp-label">Endpoint</div>
+        <div className="mcp-value">
+          <code>{endpoint}</code>
+        </div>
+      </div>
+
+      <div className="mcp-row mcp-row-token">
+        <div className="mcp-label">Token</div>
+        <div className="mcp-value mcp-token-value">
+          <input
+            type={tokenVisible ? 'text' : 'password'}
+            className="mcp-token-input"
+            value={token}
+            readOnly
+            onFocus={(e) => e.target.select()}
+          />
+          <button
+            type="button"
+            className="mcp-btn mcp-btn-secondary"
+            onClick={() => setTokenVisible((v) => !v)}
+          >
+            {tokenVisible ? 'Hide' : 'Show'}
+          </button>
+          <button
+            type="button"
+            className="mcp-btn mcp-btn-secondary"
+            onClick={handleCopy}
+            disabled={!token}
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            className="mcp-btn mcp-btn-secondary"
+            onClick={handleRegenerate}
+            disabled={busy}
+          >
+            Regenerate
+          </button>
+          {!editing ? (
+            <button
+              type="button"
+              className="mcp-btn mcp-btn-secondary"
+              onClick={() => {
+                setEditing(true);
+                setDraft('');
+              }}
+            >
+              Set manually…
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {editing && (
+        <div className="mcp-manual">
+          <label htmlFor="mcp-manual-input" className="mcp-manual-label">
+            Paste a token to use across machines ({MCP_TOKEN_MIN_LEN}–{MCP_TOKEN_MAX_LEN} chars,
+            URL-safe characters only):
+          </label>
+          <input
+            id="mcp-manual-input"
+            className="mcp-token-input"
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="e.g. AbCdEf0123456789_-..."
+            autoFocus
+          />
+          {draftError && <div className="mcp-manual-error">{draftError}</div>}
+          <div className="mcp-manual-actions">
+            <button
+              type="button"
+              className="mcp-btn"
+              onClick={handleSaveManual}
+              disabled={busy || draftError !== null}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="mcp-btn mcp-btn-secondary"
+              onClick={() => {
+                setEditing(false);
+                setDraft('');
+              }}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {exampleCmd && (
+        <div className="mcp-row mcp-row-stacked">
+          <div className="mcp-label">Register in Claude Code</div>
+          <pre className="mcp-code-block">{exampleCmd}</pre>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default McpSettings;
