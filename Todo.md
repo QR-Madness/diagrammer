@@ -89,9 +89,8 @@
 - [x] Settings tab "MCP Server" with status, endpoint, token (Show/Copy/Regenerate/Set manually) and a ready-to-copy `claude mcp add` line
 - [x] Manual-token paste flow (URL-safe alphabet, 16–128 chars) for syncing tokens across machines
 - [x] Local document mirror so MCP clients can read renderer-owned (local-only) documents. Default-on toggle in MCP Settings with "Sync now" button; on-save / on-delete hooks in `persistenceStore`; one-shot bulk sync on app start. Local docs are read-only via MCP for now (writes restricted to team docs to avoid localStorage write races).
-- [ ] Follow-up write tools (post-foundation debug):
-  - [ ] `add_shapes` (batch), `connect`, `update_shape`
-  - [ ] Layout tools: `align`, `distribute`, `grid_layout`, `group`
+- [x] Write tools: `add_shapes` (batch, all-or-nothing), `connect` (validates endpoints), `update_shape` (partial DSL patch). Connector kind added to adapter. All mutating tools refuse local-mirror docs with a "promote to team document" message.
+- [ ] Layout tools: `align`, `distribute`, `grid_layout`, `group`
 - [ ] Rich-text read + comments (Tiptap comment mark, `commentsStore`, MCP comment tools)
 - [ ] Live CRDT writes via `yrs` (avoids last-write-wins when user edits during a draft)
 - [ ] Spatial-index-aware layout (reuse `SpatialIndex` to avoid overlap)

@@ -332,7 +332,10 @@ mod tests {
         let names: Vec<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
         assert!(names.contains(&"diagrammer.list_documents"));
         assert!(names.contains(&"diagrammer.add_shape"));
-        assert_eq!(tools.len(), 4);
+        assert!(names.contains(&"diagrammer.add_shapes"));
+        assert!(names.contains(&"diagrammer.connect"));
+        assert!(names.contains(&"diagrammer.update_shape"));
+        assert_eq!(tools.len(), 7);
     }
 
     #[tokio::test]

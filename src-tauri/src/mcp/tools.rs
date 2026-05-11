@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 
 use crate::server::documents::DocumentStore;
 
-use super::adapter::{dsl_to_shape_json, shape_json_to_dsl, DslShape};
+use super::adapter::{apply_dsl_patch, dsl_to_shape_json, shape_json_to_dsl, DslPatch, DslShape};
 use super::local_mirror::LocalDocumentMirror;
 
 /// Where a document came from, surfaced in MCP tool results so clients
@@ -85,42 +85,123 @@ pub fn descriptors() -> Vec<ToolDescriptor> {
         ToolDescriptor {
             name: "diagrammer.add_shape",
             description:
-                "Add a single shape (rectangle, ellipse, or text) to a page. Returns the id assigned. Warns if the document is locked by another user.",
+                "Add a single shape (rectangle, ellipse, text, or connector) to a page. Returns the id assigned. Warns if the document is locked by another user. Refuses local (renderer-owned) documents — those are read-only via MCP.",
+            input_schema: dsl_shape_input_schema(),
+        },
+        ToolDescriptor {
+            name: "diagrammer.add_shapes",
+            description:
+                "Add multiple shapes to a page in a single call. All-or-nothing: if any shape is invalid the whole batch is rejected and nothing is written. Returns the assigned ids in order.",
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "docId": {"type": "string"},
                     "pageId": {"type": "string"},
-                    "shape": {
+                    "shapes": {
+                        "type": "array",
+                        "items": dsl_shape_schema_inline(),
+                        "minItems": 1
+                    }
+                },
+                "required": ["docId", "pageId", "shapes"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDescriptor {
+            name: "diagrammer.connect",
+            description:
+                "Convenience over add_shape for connectors: creates a connector between two existing shapes on the same page. Anchors default to 'center'. Returns the new connector id.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "docId": {"type": "string"},
+                    "pageId": {"type": "string"},
+                    "fromId": {"type": "string"},
+                    "toId": {"type": "string"},
+                    "fromAnchor": {"type": "string", "enum": ["center","top","right","bottom","left"]},
+                    "toAnchor": {"type": "string", "enum": ["center","top","right","bottom","left"]},
+                    "label": {"type": "string"}
+                },
+                "required": ["docId", "pageId", "fromId", "toId"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDescriptor {
+            name: "diagrammer.update_shape",
+            description:
+                "Apply a partial DSL patch to an existing shape. Any subset of x, y, w, h, text, and style may be supplied; absent fields are left untouched. Refuses local documents.",
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "docId": {"type": "string"},
+                    "pageId": {"type": "string"},
+                    "id": {"type": "string"},
+                    "patch": {
                         "type": "object",
                         "properties": {
-                            "kind": {"type": "string", "enum": ["rectangle", "ellipse", "text"]},
                             "x": {"type": "number"},
                             "y": {"type": "number"},
                             "w": {"type": "number"},
                             "h": {"type": "number"},
                             "text": {"type": "string"},
-                            "id": {"type": "string"},
-                            "style": {
-                                "type": "object",
-                                "properties": {
-                                    "fill": {"type": "string"},
-                                    "stroke": {"type": "string"},
-                                    "strokeWidth": {"type": "number"},
-                                    "labelColor": {"type": "string"}
-                                },
-                                "additionalProperties": false
-                            }
+                            "style": dsl_style_schema_inline()
                         },
-                        "required": ["kind", "x", "y"],
                         "additionalProperties": false
                     }
                 },
-                "required": ["docId", "pageId", "shape"],
+                "required": ["docId", "pageId", "id", "patch"],
                 "additionalProperties": false
             }),
         },
     ]
+}
+
+fn dsl_style_schema_inline() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "fill": {"type": "string"},
+            "stroke": {"type": "string"},
+            "strokeWidth": {"type": "number"},
+            "labelColor": {"type": "string"}
+        },
+        "additionalProperties": false
+    })
+}
+
+fn dsl_shape_schema_inline() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "kind": {"type": "string", "enum": ["rectangle", "ellipse", "text", "connector"]},
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "w": {"type": "number"},
+            "h": {"type": "number"},
+            "text": {"type": "string"},
+            "id": {"type": "string"},
+            "startShapeId": {"type": "string"},
+            "endShapeId": {"type": "string"},
+            "startAnchor": {"type": "string", "enum": ["center","top","right","bottom","left"]},
+            "endAnchor": {"type": "string", "enum": ["center","top","right","bottom","left"]},
+            "style": dsl_style_schema_inline()
+        },
+        "required": ["kind"],
+        "additionalProperties": false
+    })
+}
+
+fn dsl_shape_input_schema() -> Value {
+    json!({
+        "type": "object",
+        "properties": {
+            "docId": {"type": "string"},
+            "pageId": {"type": "string"},
+            "shape": dsl_shape_schema_inline()
+        },
+        "required": ["docId", "pageId", "shape"],
+        "additionalProperties": false
+    })
 }
 
 /// Outcome of a tool call.
@@ -146,6 +227,9 @@ pub fn dispatch(ctx: &ToolContext, name: &str, args: &Value) -> Result<ToolOutco
         "diagrammer.get_document" => get_document(ctx, args),
         "diagrammer.get_page" => get_page(ctx, args),
         "diagrammer.add_shape" => add_shape(ctx, args),
+        "diagrammer.add_shapes" => add_shapes(ctx, args),
+        "diagrammer.connect" => connect(ctx, args),
+        "diagrammer.update_shape" => update_shape(ctx, args),
         _ => Err(format!("Unknown tool: {}", name)),
     }
 }
@@ -308,44 +392,52 @@ struct AddShapeArgs {
     shape: DslShape,
 }
 
-fn add_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
-    let parsed: AddShapeArgs =
-        serde_json::from_value(args.clone()).map_err(|e| format!("Invalid arguments: {}", e))?;
-
-    // Local-mirror docs are read-only via MCP for now — writing them would
-    // race with the renderer that owns the canonical localStorage copy.
-    if ctx.local_enabled && ctx.local.contains(&parsed.doc_id) && !ctx.team.get_document(&parsed.doc_id).is_ok() {
+/// Reject writes targeting a local-mirror document. Centralised here so
+/// every mutating tool enforces the same contract — see AGENTS.md "MCP
+/// Integration" for the rationale.
+fn reject_if_local(ctx: &ToolContext, doc_id: &str) -> Result<(), String> {
+    if ctx.local_enabled && ctx.local.contains(doc_id) && ctx.team.get_document(doc_id).is_err() {
         return Err(
             "This is a local (renderer-owned) document and is read-only via MCP. \
              Promote it to a team document to enable writes."
                 .into(),
         );
     }
+    Ok(())
+}
 
-    let mut doc = ctx.team.get_document(&parsed.doc_id)?;
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
 
-    // Surface a lock warning rather than refusing — write still proceeds.
-    let locked_warning = doc
-        .get("lockedBy")
+fn lock_warning(doc: &Value) -> Option<String> {
+    doc.get("lockedBy")
         .and_then(|v| v.as_str())
-        .map(|uid| format!("Document is locked by user '{}' — write may be overwritten.", uid));
+        .map(|uid| format!("Document is locked by user '{}' — write may be overwritten.", uid))
+}
 
-    let id = parsed
-        .shape
+/// Insert one DSL shape into a doc that's already in memory. Returns the
+/// id used. Does **not** save — callers batch a sequence of these and
+/// then call `save_document` once, so a partial failure rolls back by
+/// virtue of discarding the in-memory doc.
+fn append_shape_in_place(doc: &mut Value, page_id: &str, shape: &DslShape) -> Result<String, String> {
+    let id = shape
         .id
         .clone()
         .unwrap_or_else(|| format!("shape-{}", nanoid::nanoid!(10)));
-
-    let shape_json = dsl_to_shape_json(&parsed.shape, &id);
+    let shape_json = dsl_to_shape_json(shape, &id);
 
     let pages = doc
         .get_mut("pages")
         .and_then(|v| v.as_object_mut())
         .ok_or("Document missing 'pages'")?;
     let page = pages
-        .get_mut(&parsed.page_id)
+        .get_mut(page_id)
         .and_then(|v| v.as_object_mut())
-        .ok_or_else(|| format!("Page '{}' not found", parsed.page_id))?;
+        .ok_or_else(|| format!("Page '{}' not found", page_id))?;
 
     let shapes = page
         .entry("shapes")
@@ -362,22 +454,188 @@ fn add_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
         .or_insert_with(|| json!([]))
         .as_array_mut()
         .ok_or("Page 'shapeOrder' is not an array")?;
-    order.push(json!(id));
+    order.push(json!(id.clone()));
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0);
-    page.insert("modifiedAt".into(), json!(now));
-    doc["modifiedAt"] = json!(now);
+    Ok(id)
+}
 
+fn add_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
+    let parsed: AddShapeArgs =
+        serde_json::from_value(args.clone()).map_err(|e| format!("Invalid arguments: {}", e))?;
+
+    reject_if_local(ctx, &parsed.doc_id)?;
+    let mut doc = ctx.team.get_document(&parsed.doc_id)?;
+    let warning = lock_warning(&doc);
+    let id = append_shape_in_place(&mut doc, &parsed.page_id, &parsed.shape)?;
+    stamp_modified(&mut doc, &parsed.page_id);
     ctx.team.save_document(doc)?;
 
     Ok(ToolOutcome {
-        result: json!({
-            "id": id,
-            "warning": locked_warning,
-        }),
+        result: json!({"id": id, "warning": warning}),
+        changed_doc_id: Some(parsed.doc_id),
+    })
+}
+
+fn stamp_modified(doc: &mut Value, page_id: &str) {
+    let now = now_ms();
+    if let Some(pages) = doc.get_mut("pages").and_then(|v| v.as_object_mut()) {
+        if let Some(page) = pages.get_mut(page_id).and_then(|v| v.as_object_mut()) {
+            page.insert("modifiedAt".into(), json!(now));
+        }
+    }
+    if let Some(o) = doc.as_object_mut() {
+        o.insert("modifiedAt".into(), json!(now));
+    }
+}
+
+#[derive(Deserialize)]
+struct AddShapesArgs {
+    #[serde(rename = "docId")]
+    doc_id: String,
+    #[serde(rename = "pageId")]
+    page_id: String,
+    shapes: Vec<DslShape>,
+}
+
+fn add_shapes(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
+    let parsed: AddShapesArgs =
+        serde_json::from_value(args.clone()).map_err(|e| format!("Invalid arguments: {}", e))?;
+    if parsed.shapes.is_empty() {
+        return Err("'shapes' must contain at least one entry".into());
+    }
+
+    reject_if_local(ctx, &parsed.doc_id)?;
+    let mut doc = ctx.team.get_document(&parsed.doc_id)?;
+    let warning = lock_warning(&doc);
+
+    let mut ids = Vec::with_capacity(parsed.shapes.len());
+    for (idx, shape) in parsed.shapes.iter().enumerate() {
+        match append_shape_in_place(&mut doc, &parsed.page_id, shape) {
+            Ok(id) => ids.push(id),
+            Err(e) => return Err(format!("shape[{}]: {}", idx, e)),
+        }
+    }
+    stamp_modified(&mut doc, &parsed.page_id);
+    ctx.team.save_document(doc)?;
+
+    Ok(ToolOutcome {
+        result: json!({"ids": ids, "warning": warning}),
+        changed_doc_id: Some(parsed.doc_id),
+    })
+}
+
+#[derive(Deserialize)]
+struct ConnectArgs {
+    #[serde(rename = "docId")]
+    doc_id: String,
+    #[serde(rename = "pageId")]
+    page_id: String,
+    #[serde(rename = "fromId")]
+    from_id: String,
+    #[serde(rename = "toId")]
+    to_id: String,
+    #[serde(rename = "fromAnchor")]
+    from_anchor: Option<String>,
+    #[serde(rename = "toAnchor")]
+    to_anchor: Option<String>,
+    label: Option<String>,
+}
+
+fn connect(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
+    let parsed: ConnectArgs =
+        serde_json::from_value(args.clone()).map_err(|e| format!("Invalid arguments: {}", e))?;
+
+    reject_if_local(ctx, &parsed.doc_id)?;
+    let mut doc = ctx.team.get_document(&parsed.doc_id)?;
+
+    // Validate the endpoints actually exist on the page before we mutate.
+    let page = doc
+        .get("pages")
+        .and_then(|p| p.get(&parsed.page_id))
+        .ok_or_else(|| format!("Page '{}' not found", parsed.page_id))?;
+    let shapes = page.get("shapes").ok_or("Page has no shapes")?;
+    if shapes.get(&parsed.from_id).is_none() {
+        return Err(format!(
+            "fromId '{}' does not exist on page '{}'",
+            parsed.from_id, parsed.page_id
+        ));
+    }
+    if shapes.get(&parsed.to_id).is_none() {
+        return Err(format!(
+            "toId '{}' does not exist on page '{}'",
+            parsed.to_id, parsed.page_id
+        ));
+    }
+
+    let warning = lock_warning(&doc);
+    let dsl = DslShape {
+        kind: super::adapter::DslKind::Connector,
+        x: 0.0,
+        y: 0.0,
+        w: None,
+        h: None,
+        text: parsed.label,
+        style: None,
+        id: None,
+        start_shape_id: Some(parsed.from_id),
+        end_shape_id: Some(parsed.to_id),
+        start_anchor: parsed.from_anchor,
+        end_anchor: parsed.to_anchor,
+    };
+    let id = append_shape_in_place(&mut doc, &parsed.page_id, &dsl)?;
+    stamp_modified(&mut doc, &parsed.page_id);
+    ctx.team.save_document(doc)?;
+
+    Ok(ToolOutcome {
+        result: json!({"id": id, "warning": warning}),
+        changed_doc_id: Some(parsed.doc_id),
+    })
+}
+
+#[derive(Deserialize)]
+struct UpdateShapeArgs {
+    #[serde(rename = "docId")]
+    doc_id: String,
+    #[serde(rename = "pageId")]
+    page_id: String,
+    id: String,
+    patch: DslPatch,
+}
+
+fn update_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
+    let parsed: UpdateShapeArgs =
+        serde_json::from_value(args.clone()).map_err(|e| format!("Invalid arguments: {}", e))?;
+
+    reject_if_local(ctx, &parsed.doc_id)?;
+    let mut doc = ctx.team.get_document(&parsed.doc_id)?;
+    let warning = lock_warning(&doc);
+
+    let pages = doc
+        .get_mut("pages")
+        .and_then(|v| v.as_object_mut())
+        .ok_or("Document missing 'pages'")?;
+    let page = pages
+        .get_mut(&parsed.page_id)
+        .and_then(|v| v.as_object_mut())
+        .ok_or_else(|| format!("Page '{}' not found", parsed.page_id))?;
+    let shapes = page
+        .get_mut("shapes")
+        .and_then(|v| v.as_object_mut())
+        .ok_or("Page 'shapes' is not an object")?;
+    let shape = shapes
+        .get_mut(&parsed.id)
+        .ok_or_else(|| format!("Shape '{}' not found on page '{}'", parsed.id, parsed.page_id))?;
+
+    let changed = apply_dsl_patch(shape, &parsed.patch);
+    if changed.is_empty() {
+        return Err("Patch did not specify any updatable fields".into());
+    }
+
+    stamp_modified(&mut doc, &parsed.page_id);
+    ctx.team.save_document(doc)?;
+
+    Ok(ToolOutcome {
+        result: json!({"id": parsed.id, "changed": changed, "warning": warning}),
         changed_doc_id: Some(parsed.doc_id),
     })
 }
@@ -596,6 +854,217 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.contains("read-only"));
+    }
+
+    #[test]
+    fn add_shapes_batch_persists_all() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        let out = dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shapes",
+            &json!({
+                "docId": "doc1",
+                "pageId": "p1",
+                "shapes": [
+                    {"kind": "rectangle", "x": 0, "y": 0, "text": "A"},
+                    {"kind": "ellipse",   "x": 100, "y": 0, "text": "B"},
+                    {"kind": "text",      "x": 200, "y": 0, "text": "C"}
+                ]
+            }),
+        )
+        .unwrap();
+        let ids = out.result["ids"].as_array().unwrap();
+        assert_eq!(ids.len(), 3);
+
+        let page = dispatch(
+            &f.ctx(true),
+            "diagrammer.get_page",
+            &json!({"docId": "doc1", "pageId": "p1"}),
+        )
+        .unwrap();
+        assert_eq!(page.result["shapes"].as_array().unwrap().len(), 3);
+    }
+
+    #[test]
+    fn add_shapes_is_all_or_nothing() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        // Force the second shape to collide on id.
+        dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shape",
+            &json!({"docId":"doc1","pageId":"p1","shape":{"kind":"rectangle","x":0,"y":0,"id":"dup"}}),
+        )
+        .unwrap();
+
+        let err = dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shapes",
+            &json!({
+                "docId": "doc1",
+                "pageId": "p1",
+                "shapes": [
+                    {"kind": "rectangle", "x": 0, "y": 0},
+                    {"kind": "rectangle", "x": 0, "y": 0, "id": "dup"}
+                ]
+            }),
+        )
+        .unwrap_err();
+        assert!(err.contains("already exists"));
+
+        // Only the pre-existing "dup" shape should be present — neither
+        // shape from the failed batch was written.
+        let page = dispatch(
+            &f.ctx(true),
+            "diagrammer.get_page",
+            &json!({"docId": "doc1", "pageId": "p1"}),
+        )
+        .unwrap();
+        let shapes = page.result["shapes"].as_array().unwrap();
+        assert_eq!(shapes.len(), 1);
+        assert_eq!(shapes[0]["id"], "dup");
+    }
+
+    #[test]
+    fn connect_requires_existing_endpoints() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shapes",
+            &json!({
+                "docId":"doc1","pageId":"p1",
+                "shapes":[
+                    {"kind":"rectangle","x":0,"y":0,"id":"src"},
+                    {"kind":"rectangle","x":200,"y":0,"id":"dst"}
+                ]
+            }),
+        )
+        .unwrap();
+
+        let out = dispatch(
+            &f.ctx(true),
+            "diagrammer.connect",
+            &json!({
+                "docId":"doc1","pageId":"p1",
+                "fromId":"src","toId":"dst",
+                "fromAnchor":"right","toAnchor":"left",
+                "label":"calls"
+            }),
+        )
+        .unwrap();
+        let id = out.result["id"].as_str().unwrap().to_string();
+
+        let page = dispatch(
+            &f.ctx(true),
+            "diagrammer.get_page",
+            &json!({"docId":"doc1","pageId":"p1"}),
+        )
+        .unwrap();
+        let connector = page
+            .result["shapes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["id"].as_str() == Some(&id))
+            .expect("connector present");
+        assert_eq!(connector["kind"], "connector");
+        assert_eq!(connector["startShapeId"], "src");
+        assert_eq!(connector["endShapeId"], "dst");
+        assert_eq!(connector["startAnchor"], "right");
+    }
+
+    #[test]
+    fn connect_rejects_missing_endpoint() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        let err = dispatch(
+            &f.ctx(true),
+            "diagrammer.connect",
+            &json!({"docId":"doc1","pageId":"p1","fromId":"nope","toId":"also-nope"}),
+        )
+        .unwrap_err();
+        assert!(err.contains("does not exist"));
+    }
+
+    #[test]
+    fn update_shape_patches_known_fields() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        let added = dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shape",
+            &json!({"docId":"doc1","pageId":"p1","shape":{"kind":"rectangle","x":0,"y":0,"text":"hi"}}),
+        )
+        .unwrap();
+        let id = added.result["id"].as_str().unwrap().to_string();
+
+        let out = dispatch(
+            &f.ctx(true),
+            "diagrammer.update_shape",
+            &json!({
+                "docId":"doc1","pageId":"p1","id":id,
+                "patch":{"x":42,"text":"new","style":{"fill":"AUTO"}}
+            }),
+        )
+        .unwrap();
+        let changed = out.result["changed"].as_array().unwrap();
+        let names: Vec<&str> = changed.iter().filter_map(|v| v.as_str()).collect();
+        assert!(names.contains(&"x"));
+        assert!(names.contains(&"text"));
+        assert!(names.contains(&"style.fill"));
+    }
+
+    #[test]
+    fn update_shape_errors_on_empty_patch() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        let added = dispatch(
+            &f.ctx(true),
+            "diagrammer.add_shape",
+            &json!({"docId":"doc1","pageId":"p1","shape":{"kind":"rectangle","x":0,"y":0}}),
+        )
+        .unwrap();
+        let id = added.result["id"].as_str().unwrap().to_string();
+
+        let err = dispatch(
+            &f.ctx(true),
+            "diagrammer.update_shape",
+            &json!({"docId":"doc1","pageId":"p1","id":id,"patch":{}}),
+        )
+        .unwrap_err();
+        assert!(err.contains("updatable fields"));
+    }
+
+    #[test]
+    fn write_tools_all_refuse_local_docs() {
+        let dir = TempDir::new().unwrap();
+        let f = seed(&dir.path().to_path_buf());
+        f.local.mirror(make_doc("local1", "p1", "Local Doc")).unwrap();
+
+        for (tool, args) in [
+            (
+                "diagrammer.add_shapes",
+                json!({"docId":"local1","pageId":"p1","shapes":[{"kind":"rectangle","x":0,"y":0}]}),
+            ),
+            (
+                "diagrammer.connect",
+                json!({"docId":"local1","pageId":"p1","fromId":"a","toId":"b"}),
+            ),
+            (
+                "diagrammer.update_shape",
+                json!({"docId":"local1","pageId":"p1","id":"x","patch":{"x":1}}),
+            ),
+        ] {
+            let err = dispatch(&f.ctx(true), tool, &args).unwrap_err();
+            assert!(
+                err.contains("read-only"),
+                "{} should reject local docs, got: {}",
+                tool,
+                err
+            );
+        }
     }
 
     #[test]
