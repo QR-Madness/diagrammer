@@ -135,6 +135,26 @@ MCP, auth, and document storage. The Tauri desktop becomes a pure
 client that holds local documents and connects to a Relay for
 collaborative ones.
 
+> **Active handoff:** see [`Todo.Relay.md`](./Todo.Relay.md) for the
+> remaining checklist organized by execution order. That file is the
+> single source of truth for "what's left until v2 is functional";
+> this file tracks the original plan and which slices have shipped.
+
+**Decisions locked in (from the 2026-05-12 planning session):**
+
+1. Renderer pre-fills `http://localhost:9876`; custom-URL UX deferred.
+2. No credential persistence in v2 — login screen each launch.
+3. Single TCP port for all docs. Current `/ws?doc=<id>` shape stays —
+   no cosmetic rewrite to `/sync/:doc_id`.
+4. Defer the bcrypt → argon2 swap.
+5. Rename `'to-team'` direction enum → `'to-relay'` in `DocumentTransferService`
+   (team functionality is severed in v2).
+6. Rename `DocumentMetadata.isTeamDocument` wire field → `isRelayDocument`
+   on the same justification. Bumps `PROTOCOL_VERSION` to 2.
+7. The relay is never embedded in the Tauri app — users deploy it
+   separately (locally, behind Tailscale / Cloudflare Tunnel, or
+   later a managed tier). No "be a host" desktop affordance.
+
 **Pre-extraction (foundation, in order):**
 
 - [x] Freeze and version the wire protocol. Add a protocol-version
@@ -179,11 +199,10 @@ collaborative ones.
   `/api/docs/*` live next to the existing `/api/blobs/*`. `/mcp` is
   a bearer-auth'd HTTP listener on its own port per the lifted
   Tauri shape. `/backup` not yet implemented — deferred.)_
-- [ ] WebSocket: `/sync/:doc_id` carries SYNC + AWARENESS only. CRUD
-  moves to REST (current code multiplexes CRUD over WS — cleanup).
-  _(Server-side REST is in place since D.3. The cleanup — removing
-  WS DOC_LIST/GET/SAVE/DELETE — is bundled into Slice E after the
-  renderer switches off the multiplex.)_
+- [ ] WebSocket: SYNC + AWARENESS only (single port for all docs —
+  not restructuring to `/sync/:doc_id`; decision #3). CRUD already
+  moved to REST (Slice D.3); pending removal of dead WS message
+  handlers + fixtures. Tracked as **E.3** in `Todo.Relay.md`.
 - [ ] `Storage` trait with one filesystem implementation. Methods:
   `list_docs`, `get_doc`, `put_doc`, `delete_doc`, `append_update`,
   `put_blob`, `get_blob`. Postgres/S3 are not in scope. _(Deferred:
@@ -194,41 +213,42 @@ collaborative ones.
   signed with HS256 using a per-deploy secret in the config file.
   Design the user record so `org_id` can be added later without
   migration pain (single "default" org for now). _(Partial — Slice
-  D.1 lands the per-deploy HS256 secret generator in `relay init`.
-  Still on bcrypt rather than argon2; `org_id` field not yet on
-  `User`. Both deferred to Slice E or a follow-up D.4.)_
+  D.1 lands the per-deploy HS256 secret. argon2 swap deferred per
+  decision #4 — bcrypt stays for v2. `org_id` field still needed;
+  tracked as "Pre-flight" in `Todo.Relay.md`.)_
 - [x] Config: single TOML at `./relay.toml` (`--config` flag override).
   _(Slice D.1 — `relay/src/config.rs` with `[server]`, `[storage]`,
   `[auth]`, `[mcp]` sections; `relay init` rolls a fresh 32-byte
   hex JWT secret; `relay serve --port` and `--data-dir` override
   the file. `deny_unknown_fields` everywhere so typos fail loudly.)_
-  Includes listen address, storage backend, storage path, JWT secret,
-  optional TLS cert paths. Provide a `relay init` subcommand that
-  generates one with a fresh JWT secret.
 
 **Tauri changes (becomes a pure client):**
 
-- [ ] Delete `src-tauri/src/server/` and `src-tauri/src/mcp/` after lift.
-- [ ] Delete `LocalDocumentMirror` and its callers in `persistenceStore`.
-  MCP no longer sees local docs by design — document the regression.
-- [ ] Renderer config UI: "Relay URL + credentials" replaces host
-  discovery. Settings gains a "Relay" tab; "Protected Local" tab
-  is removed.
-- [ ] `UnifiedSyncProvider` connects to `/sync/:doc_id`; CRUD moves
-  to a new REST client.
-- [ ] Remove LAN discovery code (was only meaningful for Protected Local).
+All five items are open and tracked in `Todo.Relay.md` under **E.2**
+(`UnifiedSyncProvider` REST migration), **E.5** (settings UI rework +
+LAN-discovery deletion), and **E.4** (delete src-tauri server/mcp/auth/
++ `LocalDocumentMirror`).
+
+- [-] Delete `src-tauri/src/server/` and `src-tauri/src/mcp/` after
+  lift. _(E.4 — blocked on E.2 landing so renderer no longer depends
+  on the Tauri-side commands.)_
+- [-] Delete `LocalDocumentMirror` and its callers in `persistenceStore`.
+  MCP no longer sees local docs by design. _(E.4 — same blocker.)_
+- [-] Renderer config UI: Relay URL + credentials. _(E.5 — pre-fill
+  `http://localhost:9876` per decision #1; login screen each launch
+  per decision #2.)_
+- [-] `UnifiedSyncProvider` connects to the relay's single sync port
+  (not `/sync/:doc_id`; decision #3); CRUD moves to `RelayClient`
+  (already exists from Slice E.1). _(E.2.)_
+- [-] Remove LAN discovery code. _(E.5.)_
 
 **Migration (team docs → local docs):**
 
-- [ ] On first launch of v2, scan the Tauri data dir for
-  `team_documents/`. For each, write a local-document record into the
-  renderer's local store, then move source files into
-  `_archived_team_documents/` (idempotent + reversible).
-- [ ] One-time notification on first launch: "N team documents were
-  converted to local documents. To collaborate on them again, upload
-  them to a relay from Settings → Documents."
-- [ ] Test with a fixture set of beta team documents. Verify blob
-  hashes line up across the move.
+Tracked in `Todo.Relay.md` under **F**. All three items still open.
+
+- [-] First-launch scan of `<app-data-dir>/team_documents/` (F).
+- [-] One-time toast notification (F).
+- [-] Fixture set of beta team documents (F).
 
 **Deploy story (must be boring):**
 
@@ -249,12 +269,15 @@ collaborative ones.
 
 **Load-bearing invariants (tested, not hoped):**
 
-- [ ] `DocumentStore` is origin-blind. Add a test that fails if
-  `documentStore.ts` imports anything from `relayStore` /
-  `relayDocumentStore` / sync provider.
-- [ ] Local docs never touch the relay (no mirror, no MCP visibility).
-- [ ] Protocol fixtures round-trip in both `bun run test` and
-  `cargo test --manifest-path relay/Cargo.toml`. Drift = CI red.
+Tracked in `Todo.Relay.md` under **H**.
+
+- [-] `DocumentStore` is origin-blind. _(H — `documentStore.imports.test.ts`.)_
+- [-] Local docs never touch the relay (no mirror, no MCP visibility).
+  _(H — fake-relay HTTP recorder + zero-requests assertion.)_
+- [x] Protocol fixtures round-trip in both `bun run test` and
+  `cargo test --manifest-path relay/Cargo.toml`. _(Slice A — 18
+  fixtures in `relay/tests/protocol-fixtures/`; both TS and Rust
+  suites read them and fail loudly on field-rename drift.)_
 
 ### 20.4 - Live CRDT writes via `yrs` on the Relay (carry-over from 19.6)
 
