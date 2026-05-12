@@ -1,10 +1,13 @@
-//! WebSocket protocol message definitions
+//! WebSocket protocol message definitions.
 //!
-//! Defines the message types and structures for communication between
-//! the server and clients for team document synchronization.
+//! Mirror of `src/collaboration/protocol.ts`. Cross-language fixture
+//! tests (`/relay/tests/protocol-fixtures/`) enforce that the two stay
+//! in sync. Lifted from `src-tauri/src/server/protocol.rs` in Phase
+//! 20.3 Slice C.1; the src-tauri copy stays until Slice E for Tauri's
+//! local build, but both files must remain identical.
 
 use serde::{Deserialize, Serialize};
-use super::documents::DocumentMetadata;
+use crate::documents::DocumentMetadata;
 
 /// Wire-protocol version. Must match `PROTOCOL_VERSION` in
 /// `src/collaboration/protocol.ts`. Sent by clients as
@@ -331,12 +334,8 @@ mod fixture_tests {
     }
 
     fn fixtures_dir() -> PathBuf {
-        // Fixtures live under the relay crate's tests dir as of Slice C.1.
-        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        manifest
-            .parent()
-            .expect("repo root")
-            .join("relay")
+        // Relay-side test: fixtures live under this crate's own tests/.
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests")
             .join("protocol-fixtures")
     }

@@ -7,8 +7,8 @@
  * (`src-tauri/tests/protocol_fixtures.rs`) consumes the same files —
  * together they guarantee `protocol.ts` and `protocol.rs` stay in sync.
  *
- * Path note: fixtures will move to `/relay/tests/protocol-fixtures/` in
- * Slice C of phase 20.3. Update FIXTURES_DIR then.
+ * Fixtures live at `/relay/tests/protocol-fixtures/` (moved there in
+ * Slice C.1 of phase 20.3).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -25,7 +25,7 @@ import {
 } from './protocol';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const FIXTURES_DIR = resolve(__dirname, '../../protocol-fixtures');
+const FIXTURES_DIR = resolve(__dirname, '../../relay/tests/protocol-fixtures');
 
 interface Fixture {
   messageType: number;
