@@ -80,7 +80,7 @@ What's *known broken or vestigial*:
 
 ### Pre-flight (small, no decisions blocking)
 
-- [ ] **`User.org_id: Option<String>`** plumbed through `User` struct
+- [x] **`User.org_id: Option<String>`** plumbed through `User` struct
       and `users.json` serde. Single `"default"` org constant for now.
       Plan-mandated future-proofing. Trivial.
 

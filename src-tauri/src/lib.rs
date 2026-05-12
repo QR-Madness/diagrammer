@@ -269,6 +269,7 @@ fn create_user(
         role: user_role,
         created_at,
         last_login_at: None,
+        org_id: Some("default".to_string()),
     };
 
     state.user_store.add_user(user.clone())?;

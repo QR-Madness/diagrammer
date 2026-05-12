@@ -158,6 +158,7 @@ async fn register_handler(
         role,
         created_at: now_ms(),
         last_login_at: None,
+        org_id: Some("default".to_string()),
     };
 
     if let Err(e) = users.add_user(user.clone()) {
