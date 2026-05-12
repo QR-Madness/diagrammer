@@ -160,12 +160,19 @@ collaborative ones.
 
 **Relay crate (`/relay/`):**
 
-- [ ] Create `/relay/` directory with its own `Cargo.toml` (fully
+- [x] Create `/relay/` directory with its own `Cargo.toml` (fully
   independent crate). Layout: `src/{main,api,sync,mcp,auth,storage,
-  protocol}.rs` + `tests/protocol-fixtures/`.
-- [ ] Lift `src-tauri/src/server/` → `/relay/src/sync/` + `/relay/src/api/`.
+  protocol}.rs` + `tests/protocol-fixtures/`. _(Slice C.1 — crate
+  skeleton + protocol module + fixture move. Layout slightly deviates
+  from the original sketch: `server/`/`auth/`/`mcp/` are lifted whole
+  per the simpler structure; `sync.rs` + `api.rs` split + `storage.rs`
+  trait are Slice D's job.)_
+- [x] Lift `src-tauri/src/server/` → `/relay/src/sync/` + `/relay/src/api/`.
   Lift `src-tauri/src/mcp/` → `/relay/src/mcp/`. Behavior unchanged in
-  this step — pure move + import-path fixup.
+  this step — pure move + import-path fixup. _(Slice C.2 — wholesale
+  lift of `server/`, `auth/`, `mcp/`. `relay/src/main.rs` now runs a
+  working `relay serve` (Slice C.4). The Tauri-side copies stay until
+  Slice E.)_
 - [ ] HTTP API (Axum): `/auth/{register,login,me}`, `/docs` CRUD,
   `/blobs` (content-addressed SHA-256), `/backup`, `/mcp` (JWT-auth'd).
 - [ ] WebSocket: `/sync/:doc_id` carries SYNC + AWARENESS only. CRUD
