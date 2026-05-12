@@ -260,7 +260,7 @@ export function DocumentBrowser({ compact = false }: DocumentBrowserProps) {
       const doc = JSON.parse(json) as DiagramDocument;
       const teamDoc: DiagramDocument = {
         ...doc,
-        isTeamDocument: true,
+        isRelayDocument: true,
         ownerId: currentUser.id,
         ownerName: currentUser.displayName || currentUser.username || 'Unknown',
       };

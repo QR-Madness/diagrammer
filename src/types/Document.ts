@@ -60,7 +60,7 @@ export interface DiagramDocument {
 
   // Team document fields (Phase 14.1)
   /** Whether this is a relay document (stored on host, synced via CRDT) */
-  isTeamDocument?: boolean;
+  isRelayDocument?: boolean;
   /** User ID who currently has the document locked for editing */
   lockedBy?: string;
   /** Display name of user who locked the document */
@@ -128,7 +128,7 @@ export interface DocumentMetadata {
 
   // Team document fields (Phase 14.1)
   /** Whether this is a relay document */
-  isTeamDocument?: boolean;
+  isRelayDocument?: boolean;
   /** User ID who currently has the document locked */
   lockedBy?: string;
   /** Display name of user who locked it */
@@ -220,8 +220,8 @@ export function getDocumentMetadata(doc: DiagramDocument): DocumentMetadata {
   };
 
   // Only include relay document fields if they are defined
-  if (doc.isTeamDocument !== undefined) {
-    metadata.isTeamDocument = doc.isTeamDocument;
+  if (doc.isRelayDocument !== undefined) {
+    metadata.isRelayDocument = doc.isRelayDocument;
   }
   if (doc.lockedBy !== undefined) {
     metadata.lockedBy = doc.lockedBy;

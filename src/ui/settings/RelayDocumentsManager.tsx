@@ -42,7 +42,7 @@ function formatRelativeTime(timestamp: number): string {
 interface DocumentActionsProps {
   isOwner: boolean;
   isAdmin: boolean;
-  isTeamDocument: boolean;
+  isRelayDocument: boolean;
   onRename: () => void;
   onShare: () => void;
   onTransfer: () => void;
@@ -52,7 +52,7 @@ interface DocumentActionsProps {
 function DocumentActions({
   isOwner,
   isAdmin,
-  isTeamDocument,
+  isRelayDocument,
   onRename,
   onShare,
   onTransfer,
@@ -137,7 +137,7 @@ function DocumentActions({
                   onTransfer();
                 }}
               >
-                {isTeamDocument ? 'Move to Personal' : 'Move to Team'}
+                {isRelayDocument ? 'Move to Personal' : 'Move to Team'}
               </button>
             )}
             {canDelete && (
@@ -240,13 +240,13 @@ export function RelayDocumentsManager() {
       const localDocs = Object.values(documents);
 
       // Personal docs from local storage only
-      const personalDocs = localDocs.filter((d) => !d.isTeamDocument);
+      const personalDocs = localDocs.filter((d) => !d.isRelayDocument);
 
       // Team docs from host (source of truth for relay documents)
       // These take priority over any local cached copies
       const hostDocs = Object.values(relayDocuments).map((d) => ({
         ...d,
-        isTeamDocument: true as const,
+        isRelayDocument: true as const,
         _fromHost: true as const,
       }));
 
@@ -271,7 +271,7 @@ export function RelayDocumentsManager() {
       }
 
       // Add any local team docs not yet on host (edge case during transfer)
-      const localTeamDocs = localDocs.filter((d) => d.isTeamDocument);
+      const localTeamDocs = localDocs.filter((d) => d.isRelayDocument);
       for (const doc of localTeamDocs) {
         if (!seenIds.has(doc.id)) {
           seenIds.add(doc.id);
@@ -284,7 +284,7 @@ export function RelayDocumentsManager() {
       // Disconnected client - show local docs with team docs marked as cached
       const localDocs = Object.values(documents);
       docs = localDocs.map((d) => 
-        d.isTeamDocument 
+        d.isRelayDocument 
           ? { ...d, _cached: true as const }
           : d
       );
@@ -295,7 +295,7 @@ export function RelayDocumentsManager() {
 
     // Filter by relay documents only if toggle is on
     if (showOnlyTeam) {
-      docs = docs.filter((doc) => doc.isTeamDocument);
+      docs = docs.filter((doc) => doc.isRelayDocument);
     }
 
     // Filter by search query
@@ -389,7 +389,7 @@ export function RelayDocumentsManager() {
   const handleTransferConfirm = useCallback(() => {
     if (!transferModal) return;
 
-    if (transferModal.isTeamDocument) {
+    if (transferModal.isRelayDocument) {
       transferToPersonal(transferModal.id);
     } else {
       transferToTeam(transferModal.id);
@@ -470,7 +470,7 @@ export function RelayDocumentsManager() {
                         Cached
                       </span>
                     )}
-                    {doc.isTeamDocument && !fromHost && !isCached && (
+                    {doc.isRelayDocument && !fromHost && !isCached && (
                       <span className="team-badge" title="Team document">
                         T
                       </span>
@@ -494,7 +494,7 @@ export function RelayDocumentsManager() {
                 <DocumentActions
                   isOwner={isOwner}
                   isAdmin={isAdmin}
-                  isTeamDocument={doc.isTeamDocument === true}
+                  isRelayDocument={doc.isRelayDocument === true}
                   onRename={() => handleRename(doc)}
                   onShare={() => handleShare(doc)}
                   onTransfer={() => handleTransfer(doc)}
@@ -624,10 +624,10 @@ export function RelayDocumentsManager() {
         <div className="modal-overlay" onClick={() => setTransferModal(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">
-              {transferModal.isTeamDocument ? 'Transfer to Personal' : 'Transfer to Team'}
+              {transferModal.isRelayDocument ? 'Transfer to Personal' : 'Transfer to Team'}
             </h3>
             <p className="modal-message">
-              {transferModal.isTeamDocument
+              {transferModal.isRelayDocument
                 ? `This will convert "${transferModal.name}" to a personal document. It will no longer be shared with the team.`
                 : `This will convert "${transferModal.name}" to a relay document. It can then be shared with relay members.`}
             </p>
@@ -639,10 +639,10 @@ export function RelayDocumentsManager() {
                 Cancel
               </button>
               <button
-                className={`modal-button ${transferModal.isTeamDocument ? 'secondary' : 'primary'}`}
+                className={`modal-button ${transferModal.isRelayDocument ? 'secondary' : 'primary'}`}
                 onClick={handleTransferConfirm}
               >
-                {transferModal.isTeamDocument ? 'Make Personal' : 'Make Relay Document'}
+                {transferModal.isRelayDocument ? 'Make Personal' : 'Make Relay Document'}
               </button>
             </div>
           </div>

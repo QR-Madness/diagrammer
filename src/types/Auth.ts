@@ -120,7 +120,7 @@ export interface Ownership {
  */
 export interface TeamDocumentMetadata {
   /** Whether this is a relay document (stored on host) */
-  isTeamDocument: boolean;
+  isRelayDocument: boolean;
   /** User ID who currently has the document locked for editing */
   lockedBy?: string;
   /** Display name of user who locked it */

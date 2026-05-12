@@ -28,9 +28,9 @@ pub struct DocumentMetadata {
     pub modified_at: u64,
     pub created_at: u64,
 
-    // Team document fields
+    // Relay document fields
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_team_document: Option<bool>,
+    pub is_relay_document: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -182,7 +182,10 @@ impl DocumentStore {
             page_count: page_order,
             modified_at,
             created_at,
-            is_team_document: doc.get("isTeamDocument").and_then(|v| v.as_bool()),
+            is_relay_document: doc
+                .get("isRelayDocument")
+                .or_else(|| doc.get("isTeamDocument"))
+                .and_then(|v| v.as_bool()),
             locked_by: doc.get("lockedBy").and_then(|v| v.as_str()).map(String::from),
             locked_by_name: doc.get("lockedByName").and_then(|v| v.as_str()).map(String::from),
             locked_at: doc.get("lockedAt").and_then(|v| v.as_u64()),
@@ -420,7 +423,7 @@ mod tests {
             "createdAt": 1000,
             "modifiedAt": 2000,
             "version": 1,
-            "isTeamDocument": true
+            "isRelayDocument": true
         });
 
         // Save document
@@ -431,7 +434,7 @@ mod tests {
         assert_eq!(docs.len(), 1);
         assert_eq!(docs[0].id, "test-doc-1");
         assert_eq!(docs[0].name, "Test Document");
-        assert_eq!(docs[0].is_team_document, Some(true));
+        assert_eq!(docs[0].is_relay_document, Some(true));
 
         // Get document
         let retrieved = store.get_document("test-doc-1").unwrap();

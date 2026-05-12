@@ -86,19 +86,19 @@ What's *known broken or vestigial*:
 
 ### Wire-protocol rename (decisions #5–#6)
 
-- [ ] **Bump `PROTOCOL_VERSION` to 2** in `src/collaboration/protocol.ts`
+- [x] **Bump `PROTOCOL_VERSION` to 2** in `src/collaboration/protocol.ts`
       *and* `relay/src/server/protocol.rs` *and* `src-tauri/src/server/protocol.rs`.
-- [ ] **Rename `DocumentMetadata.isTeamDocument` → `isRelayDocument`**
+- [x] **Rename `DocumentMetadata.isTeamDocument` → `isRelayDocument`**
       on both the TS interface (`src/types/Document.ts`) and the Rust
       structs (`relay/src/server/documents.rs`,
       `src-tauri/src/server/documents.rs`). camelCase serde handles
       the JSON binding.
-- [ ] **Update fixtures**: `relay/tests/protocol-fixtures/05_doc_list_response.json`
+- [x] **Update fixtures**: `relay/tests/protocol-fixtures/05_doc_list_response.json`
       and `12_doc_event.json` carry the old field name. Edit both.
-- [ ] **Update `DocumentTransferService`** TS-side: rename
+- [x] **Update `DocumentTransferService`** TS-side: rename
       `TransferDirection` `'to-team' | 'to-personal'` → `'to-relay' | 'to-personal'`
       and every consumer.
-- [ ] **Boot migration**: extend `src/migrations/relayRename.ts` to
+- [x] **Boot migration**: extend `src/migrations/relayRename.ts` to
       rewrite stored docs that still carry `isTeamDocument` on disk.
       Add a unit test with a fixture v1 document.
 

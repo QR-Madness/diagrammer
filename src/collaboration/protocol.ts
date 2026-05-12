@@ -17,7 +17,7 @@ import type { DocumentMetadata, DiagramDocument } from '../types/Document';
  * server refuses connections with a different version. Bump on any
  * breaking change to message types, payload shapes, or framing.
  */
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /** Query-parameter name carrying the client's protocol version. */
 export const PROTOCOL_VERSION_PARAM = 'protocolVersion';

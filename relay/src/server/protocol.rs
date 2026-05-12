@@ -10,7 +10,7 @@ use super::documents::DocumentMetadata;
 /// `src/collaboration/protocol.ts`. Sent by clients as
 /// `?protocolVersion=<N>` on the WebSocket upgrade URL; the server
 /// refuses mismatched versions.
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// Query-parameter name carrying the client's protocol version.
 pub const PROTOCOL_VERSION_PARAM: &str = "protocolVersion";
@@ -280,7 +280,7 @@ mod tests {
                 page_count: 1,
                 modified_at: 1000,
                 created_at: 1000,
-                is_team_document: Some(true),
+                is_relay_document: Some(true),
                 locked_by: None,
                 locked_by_name: None,
                 locked_at: None,

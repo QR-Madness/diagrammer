@@ -246,7 +246,7 @@ mod tests {
             page_count: 1,
             modified_at: 0,
             created_at: 0,
-            is_team_document: Some(true),
+            is_relay_document: Some(true),
             locked_by: None,
             locked_by_name: None,
             locked_at: None,

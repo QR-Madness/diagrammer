@@ -78,7 +78,7 @@ export function DocumentsSettings() {
 
       // Add personal docs from local storage (non-team docs only)
       for (const [id, doc] of localDocs) {
-        if (!doc.isTeamDocument && !seenIds.has(id)) {
+        if (!doc.isRelayDocument && !seenIds.has(id)) {
           seenIds.add(id);
           dedupedDocs.push([id, doc]);
         }
@@ -86,7 +86,7 @@ export function DocumentsSettings() {
 
       // Add any local team docs not yet on host (edge case during transfer)
       for (const [id, doc] of localDocs) {
-        if (doc.isTeamDocument && !seenIds.has(id)) {
+        if (doc.isRelayDocument && !seenIds.has(id)) {
           seenIds.add(id);
           dedupedDocs.push([id, doc]);
         }
@@ -100,9 +100,9 @@ export function DocumentsSettings() {
 
     // Apply filter
     if (filterMode === 'team') {
-      allDocs = allDocs.filter(([, doc]) => doc.isTeamDocument);
+      allDocs = allDocs.filter(([, doc]) => doc.isRelayDocument);
     } else if (filterMode === 'personal') {
-      allDocs = allDocs.filter(([, doc]) => !doc.isTeamDocument);
+      allDocs = allDocs.filter(([, doc]) => !doc.isRelayDocument);
     }
 
     // Sort by last modified, newest first
@@ -114,11 +114,11 @@ export function DocumentsSettings() {
     if (isConnectedToHost) {
       return Object.keys(remoteTeamDocs).length;
     }
-    return Object.values(documents).filter((d) => d.isTeamDocument).length;
+    return Object.values(documents).filter((d) => d.isRelayDocument).length;
   }, [documents, remoteTeamDocs, isConnectedToHost]);
 
   const personalDocCount = useMemo(
-    () => Object.values(documents).filter((d) => !d.isTeamDocument).length,
+    () => Object.values(documents).filter((d) => !d.isRelayDocument).length,
     [documents]
   );
 
@@ -228,7 +228,7 @@ export function DocumentsSettings() {
   const handleStartTransfer = useCallback(
     (docId: string, doc: DocumentMetadata) => {
       setTransferDocId(docId);
-      setTransferDirection(doc.isTeamDocument ? 'toPersonal' : 'toTeam');
+      setTransferDirection(doc.isRelayDocument ? 'toPersonal' : 'toTeam');
     },
     []
   );
@@ -392,7 +392,7 @@ export function DocumentsSettings() {
                       <>
                         <div className="documents-item-name-row">
                           <span className="documents-item-name">{doc.name}</span>
-                          {doc.isTeamDocument && (
+                          {doc.isRelayDocument && (
                             <span className="documents-item-team-badge" title="Team document">
                               T
                             </span>
@@ -436,11 +436,11 @@ export function DocumentsSettings() {
                         </button>
                         {isInTeamMode && (
                           <button
-                            className={`documents-item-btn documents-item-btn-transfer ${doc.isTeamDocument ? 'to-personal' : 'to-team'}`}
+                            className={`documents-item-btn documents-item-btn-transfer ${doc.isRelayDocument ? 'to-personal' : 'to-relay'}`}
                             onClick={() => handleStartTransfer(docId, doc)}
-                            title={doc.isTeamDocument ? 'Transfer to Personal' : 'Transfer to Team'}
+                            title={doc.isRelayDocument ? 'Transfer to Personal' : 'Transfer to Team'}
                           >
-                            {doc.isTeamDocument ? '👤' : '👥'}
+                            {doc.isRelayDocument ? '👤' : '👥'}
                           </button>
                         )}
                         <button

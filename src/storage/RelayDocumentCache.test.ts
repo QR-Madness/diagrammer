@@ -119,7 +119,7 @@ function createTestDocument(id: string, overrides: Partial<DiagramDocument> = {}
     activePageId: 'page-1',
     createdAt: Date.now() - 10000,
     modifiedAt: Date.now(),
-    isTeamDocument: true,
+    isRelayDocument: true,
     ...overrides,
   } as DiagramDocument;
 }

@@ -593,7 +593,7 @@ export const useDocumentRegistry = create<DocumentRegistryState & DocumentRegist
             if (newEntries[id]) continue;
 
             // Check if it's a relay document
-            if (metadata.isTeamDocument) {
+            if (metadata.isRelayDocument) {
               // We don't know the hostId in migration, so we'll skip remote docs
               // They will be re-fetched from the host when connected
               continue;

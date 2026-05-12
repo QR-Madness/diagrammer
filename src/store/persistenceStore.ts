@@ -131,7 +131,7 @@ export function saveDocumentToStorage(doc: DiagramDocument): void {
     console.error('Failed to save document to localStorage:', error);
     throw new Error('Failed to save document. Storage may be full.');
   }
-  if (!doc.isTeamDocument) {
+  if (!doc.isRelayDocument) {
     void mcpMirrorLocalDocument(doc);
   }
 }
@@ -178,7 +178,7 @@ export function clearDocumentPdfSettings(id: string): boolean {
   doc.modifiedAt = Date.now();
   saveDocumentToStorage(doc);
 
-  if (doc.isTeamDocument) {
+  if (doc.isRelayDocument) {
     const serverMode = useRelayStore.getState().serverMode;
     if (serverMode === 'host' && isTauri()) {
       void import('@tauri-apps/api/core').then(({ invoke }) =>
@@ -229,7 +229,7 @@ export function saveDocumentPdfSettings(
   doc.modifiedAt = Date.now();
   saveDocumentToStorage(doc);
 
-  if (doc.isTeamDocument) {
+  if (doc.isRelayDocument) {
     const serverMode = useRelayStore.getState().serverMode;
     if (serverMode === 'host' && isTauri()) {
       // Host: persist directly to the Rust-side DocumentStore.
@@ -413,8 +413,8 @@ function createDocumentFromPageStore(
 
   // Preserve team-related fields from existing document
   if (existingDoc) {
-    if (existingDoc.isTeamDocument !== undefined) {
-      doc.isTeamDocument = existingDoc.isTeamDocument;
+    if (existingDoc.isRelayDocument !== undefined) {
+      doc.isRelayDocument = existingDoc.isRelayDocument;
     }
     if (existingDoc.ownerId !== undefined) {
       doc.ownerId = existingDoc.ownerId;
@@ -600,7 +600,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }));
 
         // Register in document registry (for local documents)
-        if (!doc.isTeamDocument) {
+        if (!doc.isRelayDocument) {
           useDocumentRegistry.getState().registerLocal(metadata);
           useDocumentRegistry.getState().setActiveDocument(docId);
         }
@@ -609,7 +609,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, docId);
 
         // If relay document, also save to host
-        if (doc.isTeamDocument) {
+        if (doc.isRelayDocument) {
           const serverMode = useRelayStore.getState().serverMode;
 
           if (serverMode === 'host' && isTauri()) {
@@ -705,7 +705,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
         // Register in document registry and set as active
         const metadata = getDocumentMetadata(doc);
-        if (!doc.isTeamDocument) {
+        if (!doc.isRelayDocument) {
           useDocumentRegistry.getState().registerLocal(metadata);
         }
         useDocumentRegistry.getState().setActiveDocument(id);
@@ -925,7 +925,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }
 
         // Already a relay document
-        if (doc.isTeamDocument) {
+        if (doc.isRelayDocument) {
           console.warn(`Document ${docId} is already a relay document`);
           return false;
         }
@@ -934,7 +934,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         const currentUser = useUserStore.getState().currentUser;
 
         // Update team fields
-        doc.isTeamDocument = true;
+        doc.isRelayDocument = true;
         if (currentUser?.id) {
           doc.ownerId = currentUser.id;
           doc.lastModifiedBy = currentUser.id;
@@ -994,7 +994,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }
 
         // Not a relay document
-        if (!doc.isTeamDocument) {
+        if (!doc.isRelayDocument) {
           console.warn(`Document ${docId} is already a personal document`);
           return false;
         }
@@ -1008,7 +1008,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }
 
         // Clear team-specific fields
-        doc.isTeamDocument = false;
+        doc.isRelayDocument = false;
         delete doc.ownerId;
         delete doc.ownerName;
         delete doc.lockedBy;
@@ -1039,7 +1039,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         // Ensure relay document flag is set for documents loaded from host
         const docWithTeamFlag = {
           ...doc,
-          isTeamDocument: true,
+          isRelayDocument: true,
         };
 
         // Load into page store
@@ -1114,7 +1114,7 @@ export function initializePersistence(): void {
   // Migrate existing documents to registry (only local documents)
   const existingDocs = store.documents;
   for (const [id, metadata] of Object.entries(existingDocs)) {
-    if (!registry.hasDocument(id) && !metadata.isTeamDocument) {
+    if (!registry.hasDocument(id) && !metadata.isRelayDocument) {
       registry.registerLocal(metadata);
     }
   }
@@ -1127,7 +1127,7 @@ export function initializePersistence(): void {
     // doc when it can't be loaded (server may not be up yet). Instead, park
     // the selection and let the collab provider reattach on auth.
     const metadata = store.documents[lastDocId];
-    const isTeamMetadata = metadata?.isTeamDocument === true;
+    const isTeamMetadata = metadata?.isRelayDocument === true;
     const isTeamRegistryEntry = registry.entries[lastDocId]?.record.type === 'remote';
 
     if (store.documentExists(lastDocId)) {

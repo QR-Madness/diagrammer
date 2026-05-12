@@ -12,7 +12,7 @@
       "pageCount": 4,
       "modifiedAt": 1893451000000,
       "createdAt": 1893440000000,
-      "isTeamDocument": true,
+      "isRelayDocument": true,
       "ownerId": "user-001",
       "ownerName": "Alice",
       "lastModifiedBy": "user-002",
