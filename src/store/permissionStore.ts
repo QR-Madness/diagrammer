@@ -1,7 +1,7 @@
 /**
  * Permission Store
  *
- * Provides permission checking for team mode operations.
+ * Provides permission checking for relay mode operations.
  * Computes permissions based on current user, ownership, and team role.
  */
 
@@ -15,7 +15,7 @@ import {
   isOwner,
 } from '../types/Auth';
 import { useUserStore } from './userStore';
-import { useTeamStore, isTeamMode } from './teamStore';
+import { useRelayStore, isRelayMode } from './relayStore';
 import { GroupShape } from '../shapes/Shape';
 import { StyleProfile } from './styleProfileStore';
 
@@ -93,7 +93,7 @@ interface PermissionActions {
  * All permission checks follow these rules:
  *
  * 1. In offline mode: All actions allowed (single user)
- * 2. In team mode:
+ * 2. In relay mode:
  *    - Documents: Owned by SYSTEM, all users can edit
  *    - Groups: Can be owned by users, owner can lock
  *    - Style Profiles: Can be owned by users, owner can lock
@@ -109,13 +109,13 @@ export const usePermissionStore = create<PermissionState & PermissionActions>()(
       ownership?: Ownership | null
     ): PermissionResult => {
       // In offline mode, everything is allowed
-      if (!isTeamMode()) {
+      if (!isRelayMode()) {
         return { allowed: true };
       }
 
       const currentUser = useUserStore.getState().currentUser;
 
-      // Not logged in = no permissions in team mode
+      // Not logged in = no permissions in relay mode
       if (!currentUser) {
         return {
           allowed: false,
@@ -165,8 +165,8 @@ export const usePermissionStore = create<PermissionState & PermissionActions>()(
     },
 
     canEditDocument: (): PermissionResult => {
-      // Documents are SYSTEM-owned, all team members can edit
-      if (!isTeamMode()) {
+      // Documents are SYSTEM-owned, all relay members can edit
+      if (!isRelayMode()) {
         return { allowed: true };
       }
 
@@ -246,8 +246,8 @@ export const usePermissionStore = create<PermissionState & PermissionActions>()(
     },
 
     canCreateShapes: (): PermissionResult => {
-      // In team mode, need to be logged in
-      if (!isTeamMode()) {
+      // In relay mode, need to be logged in
+      if (!isRelayMode()) {
         return { allowed: true };
       }
 
@@ -263,7 +263,7 @@ export const usePermissionStore = create<PermissionState & PermissionActions>()(
     },
 
     canDeleteShapes: (): PermissionResult => {
-      // Same as create - need to be logged in for team mode
+      // Same as create - need to be logged in for relay mode
       return get().canCreateShapes();
     },
 
@@ -293,6 +293,6 @@ useUserStore.subscribe(() => {
   usePermissionStore.getState().clearCache();
 });
 
-useTeamStore.subscribe(() => {
+useRelayStore.subscribe(() => {
   usePermissionStore.getState().clearCache();
 });

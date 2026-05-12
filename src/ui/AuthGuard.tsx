@@ -11,7 +11,7 @@
 
 import { useEffect, useState, ReactNode } from 'react';
 import { useUserStore, validateStoredSession } from '../store/userStore';
-import { useTeamStore } from '../store/teamStore';
+import { useRelayStore } from '../store/relayStore';
 import { useConnectionStore } from '../store/connectionStore';
 import { LoginPage } from './LoginPage';
 
@@ -21,7 +21,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const serverMode = useTeamStore((state) => state.serverMode);
+  const serverMode = useRelayStore((state) => state.serverMode);
   
   // Local auth (for host mode - Tauri)
   const localUser = useUserStore((state) => state.currentUser);

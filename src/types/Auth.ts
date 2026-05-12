@@ -2,7 +2,7 @@
  * Authentication and Authorization Types
  *
  * Defines types for user authentication, roles, and permissions
- * in Protected Local (Team) mode.
+ * in Relay (Team) mode.
  */
 
 /**
@@ -119,7 +119,7 @@ export interface Ownership {
  * Team document metadata (extends DocumentMetadata)
  */
 export interface TeamDocumentMetadata {
-  /** Whether this is a team document (stored on host) */
+  /** Whether this is a relay document (stored on host) */
   isTeamDocument: boolean;
   /** User ID who currently has the document locked for editing */
   lockedBy?: string;

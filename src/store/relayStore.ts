@@ -1,8 +1,14 @@
 /**
- * Team Store
+ * Relay Store
  *
- * Manages team members, server mode, and connection status
- * for Protected Local (Team) mode collaboration.
+ * Manages relay membership, server mode, and connection status for
+ * collaboration. Renamed from `teamStore` in Phase 20.3 Slice B; the
+ * persisted zustand key migrates from `diagrammer-team` to
+ * `diagrammer-relay` via `src/migrations/relayRename.ts`.
+ *
+ * In v2 the host/client distinction collapses (every client connects
+ * to an external relay) — Slice E will simplify this module further.
+ * For now it retains the pre-extraction host/client API surface.
  */
 
 import { create } from 'zustand';
@@ -21,12 +27,12 @@ import {
 } from '../tauri/commands';
 
 /**
- * Team store state
+ * Relay store state.
  */
-interface TeamState {
+interface RelayState {
   /** Current server mode */
   serverMode: ServerMode;
-  /** Team members (only populated in host mode) */
+  /** Connected members (only populated in host mode) */
   members: TeamMember[];
   /** Connection status */
   connectionStatus: ConnectionStatus;
@@ -37,22 +43,22 @@ interface TeamState {
 }
 
 /**
- * Team store actions
+ * Relay store actions.
  */
-interface TeamActions {
-  /** Start hosting (Protected Local mode) */
+interface RelayActions {
+  /** Start hosting a relay (legacy Relay path — removed in Slice E) */
   startHosting: (port?: number) => Promise<void>;
   /** Stop hosting */
   stopHosting: () => Promise<void>;
-  /** Connect to a host as client */
+  /** Connect to a relay as client */
   connectToHost: (address: string) => Promise<void>;
-  /** Disconnect from host */
+  /** Disconnect from relay */
   disconnect: () => Promise<void>;
   /** Go offline (stop all connections) */
   goOffline: () => Promise<void>;
-  /** Add a team member (host only) */
+  /** Add a member (host only) */
   addMember: (user: User) => void;
-  /** Remove a team member (host only) */
+  /** Remove a member (host only) */
   removeMember: (userId: string) => void;
   /** Update member online status */
   updateMemberStatus: (userId: string, online: boolean) => void;
@@ -62,15 +68,9 @@ interface TeamActions {
   setHostPort: (port: number) => void;
 }
 
-/**
- * Default host port
- */
 const DEFAULT_HOST_PORT = 9876;
 
-/**
- * Initial state
- */
-const initialState: TeamState = {
+const initialState: RelayState = {
   serverMode: 'offline',
   members: [],
   connectionStatus: {
@@ -82,9 +82,9 @@ const initialState: TeamState = {
 };
 
 /**
- * Team store for managing collaboration in Protected Local mode.
+ * Relay store for managing collaboration connections.
  */
-export const useTeamStore = create<TeamState & TeamActions>()(
+export const useRelayStore = create<RelayState & RelayActions>()(
   persist(
     (set, get) => ({
       ...initialState,
@@ -146,21 +146,18 @@ export const useTeamStore = create<TeamState & TeamActions>()(
       },
 
       connectToHost: async (address: string) => {
-        // Update state to indicate client mode
-        // Actual WebSocket connection is handled by collaborationStore.startSession()
         set({
           serverMode: 'client',
           hostAddress: address,
           connectionStatus: {
             mode: 'client',
-            connected: false, // Will be true once WebSocket connects
+            connected: false,
             hostAddress: address,
           },
         });
       },
 
       disconnect: async () => {
-        // TODO: Implement WebSocket disconnect in Phase 14.0
         set({
           serverMode: 'offline',
           hostAddress: '',
@@ -246,41 +243,32 @@ export const useTeamStore = create<TeamState & TeamActions>()(
       },
     }),
     {
-      name: 'diagrammer-team',
+      name: 'diagrammer-relay',
       version: 1,
       partialize: (state) => ({
-        // Only persist preferences, not runtime state
         hostPort: state.hostPort,
       }),
     }
   )
 );
 
-/**
- * Get the number of online team members
- */
+/** Number of online members. */
 export function getOnlineMemberCount(): number {
-  return useTeamStore.getState().members.filter((m) => m.online).length;
+  return useRelayStore.getState().members.filter((m) => m.online).length;
 }
 
-/**
- * Check if currently hosting
- */
+/** True if currently hosting. */
 export function isHosting(): boolean {
-  return useTeamStore.getState().serverMode === 'host';
+  return useRelayStore.getState().serverMode === 'host';
 }
 
-/**
- * Check if currently connected as client
- */
+/** True if currently connected as client. */
 export function isClient(): boolean {
-  return useTeamStore.getState().serverMode === 'client';
+  return useRelayStore.getState().serverMode === 'client';
 }
 
-/**
- * Check if in any team mode (host or client)
- */
-export function isTeamMode(): boolean {
-  const mode = useTeamStore.getState().serverMode;
+/** True if in any relay mode (host or client). */
+export function isRelayMode(): boolean {
+  const mode = useRelayStore.getState().serverMode;
   return mode === 'host' || mode === 'client';
 }

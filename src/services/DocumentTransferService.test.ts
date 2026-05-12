@@ -140,13 +140,13 @@ describe('DocumentTransferService', () => {
       expect(result.error).toContain('not found');
     });
 
-    it('fails if document is already a team document', async () => {
+    it('fails if document is already a relay document', async () => {
       testDoc.isTeamDocument = true;
 
       const result = await service.transferToTeam(testDoc.id);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('already a team document');
+      expect(result.error).toContain('already a relay document');
     });
 
     it('rolls back on server sync failure', async () => {
@@ -207,7 +207,7 @@ describe('DocumentTransferService', () => {
       });
     });
 
-    it('successfully transfers a team document to personal', async () => {
+    it('successfully transfers a relay document to personal', async () => {
       const result = await service.transferToPersonal(teamDoc.id);
 
       expect(result.success).toBe(true);

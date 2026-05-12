@@ -57,7 +57,7 @@ export function isTauri(): boolean {
 
 /**
  * Get the current server mode status
- * @returns true if Protected Local mode is enabled
+ * @returns true if Relay mode is enabled
  */
 export async function getServerMode(): Promise<boolean> {
   if (!isTauri()) return false;
@@ -65,7 +65,7 @@ export async function getServerMode(): Promise<boolean> {
 }
 
 /**
- * Set the server mode (Protected Local on/off)
+ * Set the server mode (Relay on/off)
  * @param enabled - Whether to enable server mode
  */
 export async function setServerMode(enabled: boolean): Promise<void> {
@@ -83,7 +83,7 @@ export async function getAppVersion(): Promise<string> {
 }
 
 /**
- * Start the WebSocket server for Protected Local mode
+ * Start the WebSocket server for Relay mode
  * @param port - Port to listen on
  * @returns Server URL on success
  */

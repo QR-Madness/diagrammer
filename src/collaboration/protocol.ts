@@ -1,5 +1,5 @@
 /**
- * Protocol message types and structures for team document synchronization.
+ * Protocol message types and structures for relay document synchronization.
  *
  * These constants and types must match the Rust backend definitions in
  * src-tauri/src/server/protocol.rs

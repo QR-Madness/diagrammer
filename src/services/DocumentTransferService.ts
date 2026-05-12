@@ -137,7 +137,7 @@ export class DocumentTransferService {
   }
 
   /**
-   * Transfer a team document to personal storage.
+   * Transfer a relay document to personal storage.
    */
   async transferToPersonal(
     docId: string,
@@ -275,7 +275,7 @@ export class DocumentTransferService {
 
     // Validate direction
     if (direction === 'to-team' && doc.isTeamDocument) {
-      return { success: false, error: 'Document is already a team document' };
+      return { success: false, error: 'Document is already a relay document' };
     }
     if (direction === 'to-personal' && !doc.isTeamDocument) {
       return { success: false, error: 'Document is already a personal document' };

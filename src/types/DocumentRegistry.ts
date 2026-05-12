@@ -60,7 +60,7 @@ export interface LocalDocument extends DocumentEntryBase {
 }
 
 /**
- * Remote Document - Team document with source of truth on host.
+ * Remote Document - Relay-backed document; source of truth on the relay.
  * Synced via CRDT in real-time when connected.
  */
 export interface RemoteDocument extends DocumentEntryBase {
@@ -244,7 +244,7 @@ export function getDocumentTypeLabel(record: DocumentRecord): string {
     case 'local':
       return 'Personal';
     case 'remote':
-      return 'Team';
+      return 'Relay';
     case 'cached':
       return 'Offline';
   }

@@ -59,7 +59,7 @@ export interface DiagramDocument {
   blobReferences?: string[];
 
   // Team document fields (Phase 14.1)
-  /** Whether this is a team document (stored on host, synced via CRDT) */
+  /** Whether this is a relay document (stored on host, synced via CRDT) */
   isTeamDocument?: boolean;
   /** User ID who currently has the document locked for editing */
   lockedBy?: string;
@@ -127,7 +127,7 @@ export interface DocumentMetadata {
   createdAt: number;
 
   // Team document fields (Phase 14.1)
-  /** Whether this is a team document */
+  /** Whether this is a relay document */
   isTeamDocument?: boolean;
   /** User ID who currently has the document locked */
   lockedBy?: string;
@@ -219,7 +219,7 @@ export function getDocumentMetadata(doc: DiagramDocument): DocumentMetadata {
     createdAt: doc.createdAt,
   };
 
-  // Only include team document fields if they are defined
+  // Only include relay document fields if they are defined
   if (doc.isTeamDocument !== undefined) {
     metadata.isTeamDocument = doc.isTeamDocument;
   }

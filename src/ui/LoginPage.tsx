@@ -1,5 +1,5 @@
 /**
- * Login Page component for Protected Local mode authentication.
+ * Login Page component for Relay mode authentication.
  *
  * Features:
  * - Username/password login form
@@ -207,7 +207,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <div className="setup-features">
             <div className="setup-feature">
               <span className="setup-feature-icon">👥</span>
-              <span>Invite team members to collaborate in real-time</span>
+              <span>Invite relay members to collaborate in real-time</span>
             </div>
             <div className="setup-feature">
               <span className="setup-feature-icon">🔒</span>

@@ -1,7 +1,7 @@
 /**
- * Team Members Manager
+ * Relay Members Manager
  *
- * Admin panel for managing team members:
+ * Admin panel for managing relay members:
  * - List all users (name, role, last active)
  * - Add new user button with modal form
  * - Per-user actions: Change Role, Reset Password, Delete
@@ -11,10 +11,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useUserStore } from '../../store/userStore';
-import { useTeamStore } from '../../store/teamStore';
+import { useRelayStore } from '../../store/relayStore';
 import { UserRole, TeamMember } from '../../types/Auth';
 import { isTauri } from '../../tauri/commands';
-import './TeamMembersManager.css';
+import './RelayMembersManager.css';
 
 /**
  * User info returned from backend (without password hash)
@@ -68,10 +68,10 @@ function OnlineIndicator({ online }: { online: boolean }) {
   );
 }
 
-export function TeamMembersManager() {
+export function RelayMembersManager() {
   const currentUser = useUserStore((state) => state.currentUser);
-  const onlineMembers = useTeamStore((state) => state.members);
-  const serverMode = useTeamStore((state) => state.serverMode);
+  const onlineMembers = useRelayStore((state) => state.members);
+  const serverMode = useRelayStore((state) => state.serverMode);
 
   const [isTauriEnv, setIsTauriEnv] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -304,7 +304,7 @@ export function TeamMembersManager() {
   return (
     <div className="team-members-manager">
       <div className="team-members-header">
-        <h4 className="settings-group-title">Team Members</h4>
+        <h4 className="settings-group-title">Relay Members</h4>
         <button
           className="add-user-button"
           onClick={() => {
@@ -321,7 +321,7 @@ export function TeamMembersManager() {
       <div className="team-members-list">
         {registeredUsers.length === 0 ? (
           <div className="team-members-empty">
-            No team members yet. Add a user to get started.
+            No relay members yet. Add a user to get started.
           </div>
         ) : (
           registeredUsers.map((userInfo) => {
@@ -678,4 +678,4 @@ export function TeamMembersManager() {
   );
 }
 
-export default TeamMembersManager;
+export default RelayMembersManager;

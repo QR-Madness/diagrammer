@@ -21,7 +21,7 @@ import { useHistoryStore } from '../store/historyStore';
 import { initializePersistence, usePersistenceStore } from '../store/persistenceStore';
 import { useDocumentStore } from '../store/documentStore';
 import { initConnectionNotifications } from '../store/connectionStore';
-import { useTeamDocumentStore } from '../store/teamDocumentStore';
+import { useRelayDocumentStore } from '../store/relayDocumentStore';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useCollaborationSync } from '../collaboration';
 import type { ImportContext } from '../services/FileImportService';
@@ -146,8 +146,8 @@ function App() {
     if (persistenceInitializedRef.current) return;
     persistenceInitializedRef.current = true;
 
-    // Warmup team document cache from IndexedDB (async, non-blocking)
-    useTeamDocumentStore.getState().warmupCache().catch(console.error);
+    // Warmup relay document cache from IndexedDB (async, non-blocking)
+    useRelayDocumentStore.getState().warmupCache().catch(console.error);
 
     // Check if we have any saved documents
     const documents = usePersistenceStore.getState().documents;

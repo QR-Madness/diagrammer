@@ -2,7 +2,7 @@
  * User Store
  *
  * Manages current user session, authentication state, and login/logout.
- * Used in Protected Local (Team) mode for user identification.
+ * Used in Relay (Team) mode for user identification.
  */
 
 import { create } from 'zustand';

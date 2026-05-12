@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTeamStore } from '../../store/teamStore';
+import { useRelayStore } from '../../store/relayStore';
 import { useUserStore } from '../../store/userStore';
 import { useCollaborationStore } from '../../collaboration';
 import {
@@ -23,17 +23,17 @@ import {
 } from '../../tauri/commands';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { ClientConnectionPanel } from './ClientConnectionPanel';
-import { TeamMembersManager } from './TeamMembersManager';
+import { RelayMembersManager } from './RelayMembersManager';
 import './CollaborationSettings.css';
 
 export function CollaborationSettings() {
-  const serverMode = useTeamStore((state) => state.serverMode);
-  const hostPort = useTeamStore((state) => state.hostPort);
-  const connectionStatus = useTeamStore((state) => state.connectionStatus);
-  const setHostPort = useTeamStore((state) => state.setHostPort);
-  const startHosting = useTeamStore((state) => state.startHosting);
-  const stopHosting = useTeamStore((state) => state.stopHosting);
-  const goOffline = useTeamStore((state) => state.goOffline);
+  const serverMode = useRelayStore((state) => state.serverMode);
+  const hostPort = useRelayStore((state) => state.hostPort);
+  const connectionStatus = useRelayStore((state) => state.connectionStatus);
+  const setHostPort = useRelayStore((state) => state.setHostPort);
+  const startHosting = useRelayStore((state) => state.startHosting);
+  const stopHosting = useRelayStore((state) => state.stopHosting);
+  const goOffline = useRelayStore((state) => state.goOffline);
 
   const currentUser = useUserStore((state) => state.currentUser);
   const sessionToken = useUserStore((state) => state.sessionToken);
@@ -432,9 +432,9 @@ export function CollaborationSettings() {
         </div>
       )}
 
-      {/* Team Members Manager (Admin only) */}
+      {/* Relay Members Manager (Admin only) */}
       <div className="settings-group">
-        <TeamMembersManager />
+        <RelayMembersManager />
       </div>
 
       {/* Current User */}

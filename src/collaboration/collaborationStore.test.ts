@@ -38,15 +38,15 @@ vi.mock('./UnifiedSyncProvider', () => ({
   })),
 }));
 
-vi.mock('../store/teamDocumentStore', () => ({
-  useTeamDocumentStore: {
+vi.mock('../store/relayDocumentStore', () => ({
+  useRelayDocumentStore: {
     getState: vi.fn(() => ({
       setHostConnected: vi.fn(),
       setError: vi.fn(),
       setAuthenticated: vi.fn(),
       handleDocumentEvent: vi.fn(),
       setProvider: vi.fn(),
-      clearTeamDocuments: vi.fn(),
+      clearRelayDocuments: vi.fn(),
     })),
   },
 }));
@@ -198,7 +198,7 @@ describe('collaborationStore', () => {
       }).not.toThrow();
     });
 
-    it('clears team document store', async () => {
+    it('clears relay document store', async () => {
       const config = createTestConfig();
 
       useCollaborationStore.getState().startSession(config);

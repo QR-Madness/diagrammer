@@ -202,7 +202,7 @@ export function McpSettings() {
       <h3>MCP Server</h3>
       <p className="mcp-blurb">
         Lets external MCP clients (e.g. Claude Code) read your documents and draft shapes
-        on team documents. Runs locally on <code>127.0.0.1</code> and requires the bearer
+        on relay documents. Runs locally on <code>127.0.0.1</code> and requires the bearer
         token below.
       </p>
       <p className="mcp-blurb mcp-safety">
@@ -355,7 +355,7 @@ export function McpSettings() {
       <p className="mcp-blurb mcp-hint">
         When enabled, MCP clients can <em>read</em> your local documents alongside team
         documents. Writes are never permitted on local documents — that's an enforced
-        guarantee, not a default. To let an MCP client draft changes, work in a team document.
+        guarantee, not a default. To let an MCP client draft changes, work in a relay document.
       </p>
 
       {exampleCmd && (

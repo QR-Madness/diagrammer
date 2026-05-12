@@ -1,14 +1,15 @@
 /**
- * Team Document Store
+ * Relay Document Store
  *
- * Manages team documents fetched from the host server.
- * Works alongside persistenceStore which handles local documents.
+ * Manages documents fetched from a relay server. Works alongside
+ * persistenceStore which handles local documents.
  *
- * Team documents are stored on the host and synced to clients.
- * This store maintains the client-side view of team documents.
+ * Relay documents are stored on the relay and synced to clients;
+ * this store maintains the client-side view.
  *
- * Phase 14.1: Updated to work with UnifiedSyncProvider
- * Phase 14.9.2: Added persistent offline cache support
+ * Phase 14.1: Updated to work with UnifiedSyncProvider.
+ * Phase 14.9.2: Added persistent offline cache support.
+ * Phase 20.3 Slice B: Renamed from `teamDocumentStore`.
  */
 
 import { create } from 'zustand';
@@ -25,7 +26,7 @@ import {
   hasBlobReferences,
   hasEmbeddedAssets,
 } from '../storage/AssetBundler';
-import { TeamDocumentCache } from '../storage/TeamDocumentCache';
+import { RelayDocumentCache } from '../storage/RelayDocumentCache';
 
 /**
  * Calculate the effective permission for a user on a document.
@@ -60,9 +61,9 @@ function getEffectivePermission(
 }
 
 /** Team document store state */
-interface TeamDocumentState {
+interface RelayDocumentState {
   /** Team documents from host (metadata only until loaded) */
-  teamDocuments: Record<string, DocumentMetadata>;
+  relayDocuments: Record<string, DocumentMetadata>;
 
   /** Currently loading document IDs */
   loadingDocs: Set<string>;
@@ -107,24 +108,24 @@ interface DocumentProvider {
 }
 
 /** Team document store actions */
-interface TeamDocumentActions {
+interface RelayDocumentActions {
   /** Set provider from UnifiedSyncProvider */
   setProvider: (provider: UnifiedSyncProvider | null) => void;
 
   /** Fetch document list from host */
   fetchDocumentList: () => Promise<void>;
 
-  /** Load a team document's content */
-  loadTeamDocument: (docId: string) => Promise<DiagramDocument>;
+  /** Load a relay document's content */
+  loadRelayDocument: (docId: string) => Promise<DiagramDocument>;
 
   /** 
-   * Save a document to host as team document.
+   * Save a document to host as relay document.
    * Uses optimistic locking if expectedVersion is provided.
    * @throws VersionConflictError if version mismatch detected
    */
   saveToHost: (doc: DiagramDocument, expectedVersion?: number) => Promise<{ newVersion?: number }>;
 
-  /** Delete a team document from host */
+  /** Delete a relay document from host */
   deleteFromHost: (docId: string) => Promise<void>;
 
   /** Update document sharing permissions */
@@ -149,16 +150,16 @@ interface TeamDocumentActions {
   /** Set authenticated status */
   setAuthenticated: (authenticated: boolean) => void;
 
-  /** Clear team documents (on disconnect) */
-  clearTeamDocuments: () => void;
+  /** Clear relay documents (on disconnect) */
+  clearRelayDocuments: () => void;
 
   /** Set error state */
   setError: (error: string | null) => void;
 
-  /** Check if a document is a team document */
-  isTeamDocument: (docId: string) => boolean;
+  /** Check if a document is known to this store (relay-backed). */
+  isRelayDocument: (docId: string) => boolean;
 
-  /** Get metadata for a team document */
+  /** Get metadata for a relay document. */
   getMetadata: (docId: string) => DocumentMetadata | undefined;
 
   /** Get cached document content */
@@ -180,11 +181,11 @@ interface TeamDocumentActions {
 /** Document provider instance (module-level singleton) */
 let docProvider: DocumentProvider | null = null;
 
-/** Create the team document store */
-export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActions>(
+/** Create the relay document store */
+export const useRelayDocumentStore = create<RelayDocumentState & RelayDocumentActions>(
   (set, get) => ({
     // Initial state
-    teamDocuments: {},
+    relayDocuments: {},
     loadingDocs: new Set(),
     documentCache: {},
     hostConnected: false,
@@ -213,13 +214,13 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         const documents = await docProvider.listDocuments();
 
         // Convert to record
-        const teamDocuments: Record<string, DocumentMetadata> = {};
+        const relayDocuments: Record<string, DocumentMetadata> = {};
         for (const doc of documents) {
-          teamDocuments[doc.id] = doc;
+          relayDocuments[doc.id] = doc;
         }
 
         set({
-          teamDocuments,
+          relayDocuments,
           lastSyncAt: Date.now(),
           isLoadingList: false,
         });
@@ -244,7 +245,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
     },
 
-    loadTeamDocument: async (docId) => {
+    loadRelayDocument: async (docId) => {
       const registry = useDocumentRegistry.getState();
 
       // Check in-memory cache first (fastest)
@@ -267,9 +268,9 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
 
       // Check persistent offline cache (works without connection)
-      const persistentCached = await TeamDocumentCache.get(docId);
+      const persistentCached = await RelayDocumentCache.get(docId);
       if (persistentCached) {
-        console.log('[teamDocumentStore] Loaded from offline cache:', docId);
+        console.log('[relayDocumentStore] Loaded from offline cache:', docId);
         
         // Update in-memory caches
         set((state) => ({
@@ -317,14 +318,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         // Extract embedded assets from the document if present
         // This converts data: URLs to local blob:// references
         if (hasEmbeddedAssets(doc)) {
-          console.log('[teamDocumentStore] Extracting embedded assets from document:', docId);
+          console.log('[relayDocumentStore] Extracting embedded assets from document:', docId);
           const assetResult = await extractAssetsFromBundle(doc);
           doc = assetResult.document;
           // Preserve serverVersion after extraction
           if (serverVersion !== undefined) {
             doc = { ...doc, serverVersion };
           }
-          console.log(`[teamDocumentStore] Extracted ${assetResult.assetCount} assets`);
+          console.log(`[relayDocumentStore] Extracted ${assetResult.assetCount} assets`);
         }
 
         // Cache the document in memory
@@ -346,7 +347,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         // Persist to offline cache for future offline access
         const connection = useConnectionStore.getState();
         const hostId = connection.host?.address ?? 'unknown';
-        await TeamDocumentCache.put(doc, hostId);
+        await RelayDocumentCache.put(doc, hostId);
 
         return doc;
       } catch (e) {
@@ -379,10 +380,10 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         // This ensures other clients can access the assets
         let docToSave = doc;
         if (hasBlobReferences(doc)) {
-          console.log('[teamDocumentStore] Bundling assets for document:', doc.id);
+          console.log('[relayDocumentStore] Bundling assets for document:', doc.id);
           const bundleResult = await bundleDocumentWithAssets(doc);
           docToSave = bundleResult.document;
-          console.log(`[teamDocumentStore] Bundled ${bundleResult.assetCount} assets (${bundleResult.totalSize} bytes)`);
+          console.log(`[relayDocumentStore] Bundled ${bundleResult.assetCount} assets (${bundleResult.totalSize} bytes)`);
         }
 
         // Save with optional version check
@@ -412,7 +413,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
         // Update persistent offline cache
         const connection = useConnectionStore.getState();
         const hostId = connection.host?.address ?? 'unknown';
-        await TeamDocumentCache.put(updatedDoc, hostId);
+        await RelayDocumentCache.put(updatedDoc, hostId);
 
         // Return result with proper optional property handling
         const result: { newVersion?: number } = {};
@@ -438,20 +439,20 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
 
         // Remove from local state
         set((state) => {
-          const teamDocuments = { ...state.teamDocuments };
-          delete teamDocuments[docId];
+          const relayDocuments = { ...state.relayDocuments };
+          delete relayDocuments[docId];
 
           const documentCache = { ...state.documentCache };
           delete documentCache[docId];
 
-          return { teamDocuments, documentCache };
+          return { relayDocuments, documentCache };
         });
 
         // Remove from registry
         useDocumentRegistry.getState().removeDocument(docId);
         
         // Remove from persistent offline cache
-        await TeamDocumentCache.remove(docId);
+        await RelayDocumentCache.remove(docId);
       } catch (e) {
         const error = e instanceof Error ? e.message : 'Failed to delete document';
         set({ error });
@@ -504,14 +505,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       const userRole = userState.currentUser?.role;
 
       set((state) => {
-        const teamDocuments = { ...state.teamDocuments };
+        const relayDocuments = { ...state.relayDocuments };
         const documentCache = { ...state.documentCache };
 
         switch (event.eventType) {
           case 'created':
           case 'updated':
             if (event.metadata) {
-              teamDocuments[event.docId] = event.metadata;
+              relayDocuments[event.docId] = event.metadata;
               // Calculate proper permission for this user
               const permission = getEffectivePermission(event.metadata, userId, userRole);
               // Update registry
@@ -525,14 +526,14 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
             break;
 
           case 'deleted':
-            delete teamDocuments[event.docId];
+            delete relayDocuments[event.docId];
             delete documentCache[event.docId];
             // Remove from registry
             registry.removeDocument(event.docId);
             break;
         }
 
-        return { teamDocuments, documentCache };
+        return { relayDocuments, documentCache };
       });
     },
 
@@ -559,7 +560,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
     },
 
-    clearTeamDocuments: () => {
+    clearRelayDocuments: () => {
       // Clear remote documents from registry for the current host
       const connection = useConnectionStore.getState();
       if (connection.host?.address) {
@@ -567,7 +568,7 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       }
 
       set({
-        teamDocuments: {},
+        relayDocuments: {},
         loadingDocs: new Set(),
         documentCache: {},
         hostConnected: false,
@@ -582,12 +583,12 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       set({ error });
     },
 
-    isTeamDocument: (docId) => {
-      return docId in get().teamDocuments;
+    isRelayDocument: (docId) => {
+      return docId in get().relayDocuments;
     },
 
     getMetadata: (docId) => {
-      return get().teamDocuments[docId];
+      return get().relayDocuments[docId];
     },
 
     getCachedDocument: (docId) => {
@@ -600,46 +601,46 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
       // Check registry cache
       if (useDocumentRegistry.getState().getDocumentContent(docId)) return true;
       // Check persistent cache
-      return TeamDocumentCache.has(docId);
+      return RelayDocumentCache.has(docId);
     },
     
     getOfflineDocumentIds: () => {
-      return TeamDocumentCache.getCachedIds();
+      return RelayDocumentCache.getCachedIds();
     },
     
     refreshStaleCachedDocuments: async () => {
       if (!docProvider) {
-        console.log('[teamDocumentStore] Cannot refresh: not connected');
+        console.log('[relayDocumentStore] Cannot refresh: not connected');
         return;
       }
       
-      const cachedIds = TeamDocumentCache.getCachedIds();
+      const cachedIds = RelayDocumentCache.getCachedIds();
       if (cachedIds.length === 0) {
         return;
       }
       
-      console.log(`[teamDocumentStore] Checking ${cachedIds.length} cached documents for staleness`);
+      console.log(`[relayDocumentStore] Checking ${cachedIds.length} cached documents for staleness`);
       
       // Get document list to check versions
-      const teamDocs = get().teamDocuments;
+      const teamDocs = get().relayDocuments;
       let refreshed = 0;
       
       for (const docId of cachedIds) {
         const remoteMeta = teamDocs[docId];
         if (!remoteMeta) {
           // Document no longer exists on server - could remove from cache
-          console.log(`[teamDocumentStore] Cached doc ${docId} no longer on server`);
+          console.log(`[relayDocumentStore] Cached doc ${docId} no longer on server`);
           continue;
         }
         
-        const cachedMeta = TeamDocumentCache.getMeta(docId);
+        const cachedMeta = RelayDocumentCache.getMeta(docId);
         if (!cachedMeta) continue;
         
         // Check if cache is stale (compare modifiedAt timestamps)
         const isStale = remoteMeta.modifiedAt > cachedMeta.cachedAt;
         
         if (isStale) {
-          console.log(`[teamDocumentStore] Refreshing stale cached document: ${docId}`);
+          console.log(`[relayDocumentStore] Refreshing stale cached document: ${docId}`);
           try {
             // Clear memory cache to force re-fetch
             set((state) => {
@@ -650,28 +651,28 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
             useDocumentRegistry.getState().invalidateContent(docId);
             
             // Re-fetch from server (this will update the cache)
-            await get().loadTeamDocument(docId);
+            await get().loadRelayDocument(docId);
             refreshed++;
           } catch (error) {
-            console.warn(`[teamDocumentStore] Failed to refresh ${docId}:`, error);
+            console.warn(`[relayDocumentStore] Failed to refresh ${docId}:`, error);
           }
         }
       }
       
       if (refreshed > 0) {
-        console.log(`[teamDocumentStore] Refreshed ${refreshed} stale cached documents`);
+        console.log(`[relayDocumentStore] Refreshed ${refreshed} stale cached documents`);
       }
     },
     
     warmupCache: async () => {
-      console.log('[teamDocumentStore] Warming up cache from IndexedDB...');
+      console.log('[relayDocumentStore] Warming up cache from IndexedDB...');
       
       try {
         // Preload all cached documents into memory
-        const preloaded = await TeamDocumentCache.preloadAll();
+        const preloaded = await RelayDocumentCache.preloadAll();
         
         if (preloaded.size === 0) {
-          console.log('[teamDocumentStore] No cached documents to warm up');
+          console.log('[relayDocumentStore] No cached documents to warm up');
           return;
         }
         
@@ -691,9 +692,9 @@ export const useTeamDocumentStore = create<TeamDocumentState & TeamDocumentActio
           },
         }));
         
-        console.log(`[teamDocumentStore] Warmed up ${preloaded.size} documents`);
+        console.log(`[relayDocumentStore] Warmed up ${preloaded.size} documents`);
       } catch (error) {
-        console.error('[teamDocumentStore] Cache warmup failed:', error);
+        console.error('[relayDocumentStore] Cache warmup failed:', error);
       }
     },
   })
@@ -704,4 +705,4 @@ export function getDocProvider(): DocumentProvider | null {
   return docProvider;
 }
 
-export default useTeamDocumentStore;
+export default useRelayDocumentStore;

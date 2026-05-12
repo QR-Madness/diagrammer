@@ -6,9 +6,9 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useTeamStore } from '../store/teamStore';
+import { useRelayStore } from '../store/relayStore';
 import { useUserStore } from '../store/userStore';
-import { useTeamDocumentStore } from '../store/teamDocumentStore';
+import { useRelayDocumentStore } from '../store/relayDocumentStore';
 import { useDocumentRegistry } from '../store/documentRegistry';
 import type { Permission, RemoteDocument } from '../types/DocumentRegistry';
 import type { DocumentShare } from '../types/Document';
@@ -32,11 +32,11 @@ interface MemberAccess {
 export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermissionsDialogProps) {
   const entries = useDocumentRegistry((s) => s.entries);
   const updateRecord = useDocumentRegistry((s) => s.updateRecord);
-  const members = useTeamStore((s) => s.members);
+  const members = useRelayStore((s) => s.members);
   const currentUser = useUserStore((s) => s.currentUser);
-  const updateDocumentShares = useTeamDocumentStore((s) => s.updateDocumentShares);
-  const transferDocumentOwnership = useTeamDocumentStore((s) => s.transferDocumentOwnership);
-  const teamDocuments = useTeamDocumentStore((s) => s.teamDocuments);
+  const updateDocumentShares = useRelayDocumentStore((s) => s.updateDocumentShares);
+  const transferDocumentOwnership = useRelayDocumentStore((s) => s.transferDocumentOwnership);
+  const relayDocuments = useRelayDocumentStore((s) => s.relayDocuments);
 
   const [accessList, setAccessList] = useState<MemberAccess[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,9 +49,9 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
   const record = entry?.record as RemoteDocument | undefined;
   
   // Get document metadata which includes sharedWith
-  const docMetadata = teamDocuments[documentId];
+  const docMetadata = relayDocuments[documentId];
 
-  // Build the unified access list from team members and existing shares
+  // Build the unified access list from relay members and existing shares
   useEffect(() => {
     if (!record || record.type !== 'remote') return;
 
@@ -59,7 +59,7 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
     const shareMap = new Map<string, DocumentShare>();
     existingShares.forEach((s) => shareMap.set(s.userId, s));
 
-    // Build access list from team members
+    // Build access list from relay members
     const list: MemberAccess[] = members
       .filter((m: TeamMember) => m.user.id !== currentUser?.id && m.user.id !== record.ownerId)
       .map((m: TeamMember) => {
@@ -72,7 +72,7 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
         };
       });
 
-    // Add any shares that aren't in current team members (offline users)
+    // Add any shares that aren't in current relay members (offline users)
     existingShares.forEach((share) => {
       if (!list.some((m) => m.userId === share.userId) && share.userId !== currentUser?.id && share.userId !== record.ownerId) {
         list.push({
@@ -188,7 +188,7 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
             <button className="document-permissions-dialog__close" onClick={onClose}>×</button>
           </div>
           <div className="document-permissions-dialog__content">
-            <p className="document-permissions-dialog__empty">Document not found or not a team document.</p>
+            <p className="document-permissions-dialog__empty">Document not found or not a relay document.</p>
             <div className="document-permissions-dialog__actions">
               <button className="document-permissions-dialog__btn" onClick={onClose}>Close</button>
             </div>
@@ -259,7 +259,7 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
                 <button
                   className="document-permissions-dialog__quick-btn"
                   onClick={handleGrantAllView}
-                  title="Grant view access to all team members"
+                  title="Grant view access to all relay members"
                 >
                   Grant All View
                 </button>
@@ -274,9 +274,9 @@ export function DocumentPermissionsDialog({ documentId, onClose }: DocumentPermi
 
               {/* Team members list */}
               <div className="document-permissions-dialog__section">
-                <h4>Team Members</h4>
+                <h4>Relay Members</h4>
                 {accessList.length === 0 ? (
-                  <p className="document-permissions-dialog__empty">No other team members available</p>
+                  <p className="document-permissions-dialog__empty">No other relay members available</p>
                 ) : (
                   <ul className="document-permissions-dialog__members">
                     {accessList.map((member) => (

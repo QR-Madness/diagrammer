@@ -21,8 +21,8 @@ import type { Page } from '../types/Document';
 import { useRichTextStore } from './richTextStore';
 import { useRichTextPagesStore } from './richTextPagesStore';
 import { useUserStore } from './userStore';
-import { useTeamStore } from './teamStore';
-import { useTeamDocumentStore } from './teamDocumentStore';
+import { useRelayStore } from './relayStore';
+import { useRelayDocumentStore } from './relayDocumentStore';
 import { useSessionStore } from './sessionStore';
 import { useHistoryStore } from './historyStore';
 import { useDocumentRegistry } from './documentRegistry';
@@ -93,9 +93,9 @@ export interface PersistenceActions {
   getDocumentList: () => DocumentMetadata[];
   /** Check if a document exists */
   documentExists: (id: string) => boolean;
-  /** Transfer a personal document to team documents */
+  /** Transfer a personal document to relay documents */
   transferToTeam: (docId: string) => boolean;
-  /** Transfer a team document to personal documents */
+  /** Transfer a relay document to personal documents */
   transferToPersonal: (docId: string) => boolean;
   /** Load a remote document (from host) directly into the editor */
   loadRemoteDocument: (doc: DiagramDocument) => void;
@@ -120,7 +120,7 @@ const initialState: PersistenceState = {
  *
  * Also pushes a snapshot to the MCP local-document mirror (best-effort,
  * no-op outside Tauri or when the user has disabled MCP local access).
- * Skip team documents — those flow through the host's team_documents
+ * Skip relay documents — those flow through the host's team_documents
  * store directly and don't need to be mirrored.
  */
 export function saveDocumentToStorage(doc: DiagramDocument): void {
@@ -179,7 +179,7 @@ export function clearDocumentPdfSettings(id: string): boolean {
   saveDocumentToStorage(doc);
 
   if (doc.isTeamDocument) {
-    const serverMode = useTeamStore.getState().serverMode;
+    const serverMode = useRelayStore.getState().serverMode;
     if (serverMode === 'host' && isTauri()) {
       void import('@tauri-apps/api/core').then(({ invoke }) =>
         invoke('save_team_document', { document: doc }).catch((err) => {
@@ -190,7 +190,7 @@ export function clearDocumentPdfSettings(id: string): boolean {
         }),
       );
     } else if (serverMode === 'client') {
-      const teamDocStore = useTeamDocumentStore.getState();
+      const teamDocStore = useRelayDocumentStore.getState();
       if (teamDocStore.authenticated) {
         teamDocStore.saveToHost(doc).catch((err) => {
           console.error(
@@ -230,7 +230,7 @@ export function saveDocumentPdfSettings(
   saveDocumentToStorage(doc);
 
   if (doc.isTeamDocument) {
-    const serverMode = useTeamStore.getState().serverMode;
+    const serverMode = useRelayStore.getState().serverMode;
     if (serverMode === 'host' && isTauri()) {
       // Host: persist directly to the Rust-side DocumentStore.
       void import('@tauri-apps/api/core').then(({ invoke }) =>
@@ -243,7 +243,7 @@ export function saveDocumentPdfSettings(
       );
     } else if (serverMode === 'client') {
       // Client: push through the team WebSocket — same path saveDocument uses.
-      const teamDocStore = useTeamDocumentStore.getState();
+      const teamDocStore = useRelayDocumentStore.getState();
       if (teamDocStore.authenticated) {
         teamDocStore.saveToHost(doc).catch((err) => {
           console.error(
@@ -608,27 +608,27 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         // Save current document ID
         localStorage.setItem(STORAGE_KEYS.CURRENT_DOCUMENT, docId);
 
-        // If team document, also save to host
+        // If relay document, also save to host
         if (doc.isTeamDocument) {
-          const serverMode = useTeamStore.getState().serverMode;
+          const serverMode = useRelayStore.getState().serverMode;
 
           if (serverMode === 'host' && isTauri()) {
             // Host mode: save directly to Rust DocumentStore
             import('@tauri-apps/api/core').then(({ invoke }) => {
               invoke('save_team_document', { document: doc })
                 .then(() => {
-                  console.log('[persistenceStore] Synced team document to host:', doc.id);
+                  console.log('[persistenceStore] Synced relay document to host:', doc.id);
                 })
                 .catch((error) => {
-                  console.error('[persistenceStore] Failed to sync team document to host:', error);
+                  console.error('[persistenceStore] Failed to sync relay document to host:', error);
                 });
             });
           } else if (serverMode === 'client') {
             // Client mode: save via WebSocket
-            const teamDocStore = useTeamDocumentStore.getState();
+            const teamDocStore = useRelayDocumentStore.getState();
             if (teamDocStore.authenticated) {
               teamDocStore.saveToHost(doc).catch((error) => {
-                console.error('[persistenceStore] Failed to sync team document to host:', error);
+                console.error('[persistenceStore] Failed to sync relay document to host:', error);
               });
             }
           }
@@ -915,7 +915,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         return !!get().documents[id];
       },
 
-      // Transfer a personal document to team documents
+      // Transfer a personal document to relay documents
       transferToTeam: (docId: string): boolean => {
         // Load the document
         const doc = loadDocumentFromStorage(docId);
@@ -924,9 +924,9 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           return false;
         }
 
-        // Already a team document
+        // Already a relay document
         if (doc.isTeamDocument) {
-          console.warn(`Document ${docId} is already a team document`);
+          console.warn(`Document ${docId} is already a relay document`);
           return false;
         }
 
@@ -958,25 +958,25 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         }));
 
         // Save to host/server
-        const serverMode = useTeamStore.getState().serverMode;
+        const serverMode = useRelayStore.getState().serverMode;
 
         if (serverMode === 'host' && isTauri()) {
           // Host mode: save directly to Rust DocumentStore via Tauri command
           import('@tauri-apps/api/core').then(({ invoke }) => {
             invoke('save_team_document', { document: doc })
               .then(() => {
-                console.log('[persistenceStore] Saved team document to host:', doc.id);
+                console.log('[persistenceStore] Saved relay document to host:', doc.id);
               })
               .catch((error) => {
-                console.error('[persistenceStore] Failed to save team document to host:', error);
+                console.error('[persistenceStore] Failed to save relay document to host:', error);
               });
           });
         } else if (serverMode === 'client') {
           // Client mode: save via WebSocket to host
-          const teamDocStore = useTeamDocumentStore.getState();
+          const teamDocStore = useRelayDocumentStore.getState();
           if (teamDocStore.authenticated) {
             teamDocStore.saveToHost(doc).catch((error) => {
-              console.error('[persistenceStore] Failed to save team document to host:', error);
+              console.error('[persistenceStore] Failed to save relay document to host:', error);
             });
           }
         }
@@ -984,7 +984,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
         return true;
       },
 
-      // Transfer a team document to personal documents
+      // Transfer a relay document to personal documents
       transferToPersonal: (docId: string): boolean => {
         // Load the document
         const doc = loadDocumentFromStorage(docId);
@@ -993,17 +993,17 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
           return false;
         }
 
-        // Not a team document
+        // Not a relay document
         if (!doc.isTeamDocument) {
           console.warn(`Document ${docId} is already a personal document`);
           return false;
         }
 
-        // If connected to host, delete from host first
-        const teamStore = useTeamDocumentStore.getState();
-        if (teamStore.authenticated && teamStore.isTeamDocument(docId)) {
-          teamStore.deleteFromHost(docId).catch((error) => {
-            console.error('Failed to delete team document from host:', error);
+        // If connected to a relay, delete from the relay first.
+        const relayDocs = useRelayDocumentStore.getState();
+        if (relayDocs.authenticated && relayDocs.isRelayDocument(docId)) {
+          relayDocs.deleteFromHost(docId).catch((error) => {
+            console.error('Failed to delete relay document from server:', error);
           });
         }
 
@@ -1036,7 +1036,7 @@ export const usePersistenceStore = create<PersistenceState & PersistenceActions>
 
       // Load a remote document (from host) directly into the editor
       loadRemoteDocument: (doc: DiagramDocument) => {
-        // Ensure team document flag is set for documents loaded from host
+        // Ensure relay document flag is set for documents loaded from host
         const docWithTeamFlag = {
           ...doc,
           isTeamDocument: true,
@@ -1123,7 +1123,7 @@ export function initializePersistence(): void {
   const lastDocId = localStorage.getItem(STORAGE_KEYS.CURRENT_DOCUMENT);
 
   if (lastDocId) {
-    // If the last doc is a team document, don't fall back to a fresh local
+    // If the last doc is a relay document, don't fall back to a fresh local
     // doc when it can't be loaded (server may not be up yet). Instead, park
     // the selection and let the collab provider reattach on auth.
     const metadata = store.documents[lastDocId];
@@ -1143,7 +1143,7 @@ export function initializePersistence(): void {
     }
 
     if (isTeamMetadata || isTeamRegistryEntry) {
-      const name = metadata?.name ?? registry.entries[lastDocId]?.record.name ?? 'Team Document';
+      const name = metadata?.name ?? registry.entries[lastDocId]?.record.name ?? 'Relay Document';
       usePersistenceStore.setState({
         currentDocumentId: lastDocId,
         currentDocumentName: name,
@@ -1160,7 +1160,7 @@ export function initializePersistence(): void {
 }
 
 /**
- * Attempt to reload the team document the user had open at startup, after
+ * Attempt to reload the relay document the user had open at startup, after
  * the collab connection has authenticated. Called from collaborationStore's
  * onAuthenticated hook. Safe to call repeatedly; no-op if not awaiting.
  */
@@ -1169,10 +1169,10 @@ export async function reattachAwaitingTeamDocument(): Promise<void> {
   if (!state.isAwaitingTeamLoad || !state.currentDocumentId) return;
   const docId = state.currentDocumentId;
   try {
-    const doc = await useTeamDocumentStore.getState().loadTeamDocument(docId);
+    const doc = await useRelayDocumentStore.getState().loadRelayDocument(docId);
     usePersistenceStore.getState().loadRemoteDocument(doc);
   } catch (error) {
-    console.warn('[persistence] Failed to reattach team document on auth:', error);
+    console.warn('[persistence] Failed to reattach relay document on auth:', error);
   }
 }
 

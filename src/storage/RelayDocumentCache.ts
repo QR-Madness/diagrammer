@@ -1,14 +1,17 @@
 /**
- * Team Document Cache
+ * Relay Document Cache
  *
- * Persistent cache for team documents to enable offline access.
- * Documents loaded while online are cached locally and can be
- * accessed when the connection is lost.
+ * Persistent cache for documents loaded from a relay, to enable
+ * offline access. Documents loaded while online are cached locally
+ * and remain accessible when the connection is lost.
  *
  * Uses IndexedDB for large documents, with localStorage fallback
  * for metadata and small documents.
  *
- * Phase 14.9.2 - Offline Reliability
+ * Phase 14.9.2 — Offline Reliability. Renamed from `TeamDocumentCache`
+ * in Phase 20.3 Slice B (relay extraction). Storage keys migrate from
+ * `diagrammer-team-cache*` to `diagrammer-relay-cache*` via the boot
+ * migration in `src/migrations/relayRename.ts`.
  */
 
 import type { DiagramDocument } from '../types/Document';
@@ -37,10 +40,14 @@ interface CacheEntry extends CacheEntryMeta {
 
 // ============ Constants ============
 
-const DB_NAME = 'diagrammer-team-cache';
+const DB_NAME = 'diagrammer-relay-cache';
 const DB_VERSION = 1;
 const STORE_NAME = 'documents';
-const META_STORAGE_KEY = 'diagrammer-team-cache-meta';
+const META_STORAGE_KEY = 'diagrammer-relay-cache-meta';
+
+/** Legacy storage keys read by the boot migration (Slice B). */
+export const LEGACY_DB_NAME = 'diagrammer-team-cache';
+export const LEGACY_META_STORAGE_KEY = 'diagrammer-team-cache-meta';
 const MAX_CACHE_SIZE = 50 * 1024 * 1024; // 50MB max cache size
 const MAX_CACHE_ENTRIES = 50; // Maximum number of cached documents
 
@@ -63,7 +70,7 @@ function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = () => {
-      console.error('[TeamDocumentCache] Failed to open IndexedDB:', request.error);
+      console.error('[RelayDocumentCache] Failed to open IndexedDB:', request.error);
       dbPromise = null;
       reject(request.error);
     };
@@ -100,7 +107,7 @@ async function getFromDB(id: string): Promise<CacheEntry | null> {
       request.onsuccess = () => resolve(request.result ?? null);
     });
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to get from IndexedDB:', error);
+    console.error('[RelayDocumentCache] Failed to get from IndexedDB:', error);
     return null;
   }
 }
@@ -120,7 +127,7 @@ async function putInDB(entry: CacheEntry): Promise<void> {
       request.onsuccess = () => resolve();
     });
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to put in IndexedDB:', error);
+    console.error('[RelayDocumentCache] Failed to put in IndexedDB:', error);
   }
 }
 
@@ -139,7 +146,7 @@ async function deleteFromDB(id: string): Promise<void> {
       request.onsuccess = () => resolve();
     });
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to delete from IndexedDB:', error);
+    console.error('[RelayDocumentCache] Failed to delete from IndexedDB:', error);
   }
 }
 
@@ -158,7 +165,7 @@ async function getAllFromDB(): Promise<CacheEntry[]> {
       request.onsuccess = () => resolve(request.result ?? []);
     });
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to get all from IndexedDB:', error);
+    console.error('[RelayDocumentCache] Failed to get all from IndexedDB:', error);
     return [];
   }
 }
@@ -178,7 +185,7 @@ async function clearDB(): Promise<void> {
       request.onsuccess = () => resolve();
     });
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to clear IndexedDB:', error);
+    console.error('[RelayDocumentCache] Failed to clear IndexedDB:', error);
   }
 }
 
@@ -204,7 +211,7 @@ function saveCacheMeta(meta: CacheEntryMeta[]): void {
   try {
     localStorage.setItem(META_STORAGE_KEY, JSON.stringify(meta));
   } catch (error) {
-    console.error('[TeamDocumentCache] Failed to save metadata:', error);
+    console.error('[RelayDocumentCache] Failed to save metadata:', error);
   }
 }
 
@@ -234,25 +241,25 @@ function removeCacheMeta(id: string): void {
 // ============ Public API ============
 
 /**
- * Team Document Cache
+ * Relay Document Cache
  *
- * Provides persistent caching of team documents for offline access.
+ * Provides persistent caching of relay-backed documents for offline access.
  *
  * Usage:
  * ```typescript
  * // Cache a document after loading from server
- * await TeamDocumentCache.put(document, 'host-123');
+ * await RelayDocumentCache.put(document, 'host-123');
  *
  * // Get a cached document (works offline)
- * const doc = await TeamDocumentCache.get('doc-123');
+ * const doc = await RelayDocumentCache.get('doc-123');
  *
  * // Check if document is cached
- * if (TeamDocumentCache.has('doc-123')) {
+ * if (RelayDocumentCache.has('doc-123')) {
  *   // Can work offline
  * }
  * ```
  */
-export const TeamDocumentCache = {
+export const RelayDocumentCache = {
   /**
    * Get a cached document by ID.
    * Returns null if not cached.
@@ -310,7 +317,7 @@ export const TeamDocumentCache = {
     }
     updateCacheMeta(meta);
 
-    console.log(`[TeamDocumentCache] Cached document: ${document.id} (${Math.round(size / 1024)}KB)`);
+    console.log(`[RelayDocumentCache] Cached document: ${document.id} (${Math.round(size / 1024)}KB)`);
   },
 
   /**
@@ -319,7 +326,7 @@ export const TeamDocumentCache = {
   async remove(docId: string): Promise<void> {
     await deleteFromDB(docId);
     removeCacheMeta(docId);
-    console.log(`[TeamDocumentCache] Removed from cache: ${docId}`);
+    console.log(`[RelayDocumentCache] Removed from cache: ${docId}`);
   },
 
   /**
@@ -360,7 +367,7 @@ export const TeamDocumentCache = {
   async clearAll(): Promise<void> {
     await clearDB();
     saveCacheMeta([]);
-    console.log('[TeamDocumentCache] Cleared all cached documents');
+    console.log('[RelayDocumentCache] Cleared all cached documents');
   },
 
   /**
@@ -377,7 +384,7 @@ export const TeamDocumentCache = {
     const remaining = meta.filter((m) => m.hostId !== hostId);
     saveCacheMeta(remaining);
 
-    console.log(`[TeamDocumentCache] Cleared ${toRemove.length} documents for host: ${hostId}`);
+    console.log(`[RelayDocumentCache] Cleared ${toRemove.length} documents for host: ${hostId}`);
   },
 
   /**
@@ -429,7 +436,7 @@ export const TeamDocumentCache = {
     // Perform evictions
     for (const id of toEvict) {
       await deleteFromDB(id);
-      console.log(`[TeamDocumentCache] Evicted for space: ${id}`);
+      console.log(`[RelayDocumentCache] Evicted for space: ${id}`);
     }
 
     if (toEvict.length > 0) {
@@ -460,7 +467,7 @@ export const TeamDocumentCache = {
       map.set(entry.id, entry.document);
     }
 
-    console.log(`[TeamDocumentCache] Preloaded ${map.size} documents`);
+    console.log(`[RelayDocumentCache] Preloaded ${map.size} documents`);
     return map;
   },
 };

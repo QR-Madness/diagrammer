@@ -1,9 +1,9 @@
 /**
- * Team Documents Manager
+ * Relay Documents Manager
  *
- * Manages team documents with:
+ * Manages relay documents with:
  * - Document list with name, owner, last modified, shared users
- * - Create new team document
+ * - Create new relay document
  * - Per-document actions: Rename, Share, Transfer Ownership, Delete
  * - Filter/search documents
  */
@@ -12,11 +12,11 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import { useUserStore } from '../../store/userStore';
-import { useTeamStore } from '../../store/teamStore';
-import { useTeamDocumentStore } from '../../store/teamDocumentStore';
+import { useRelayStore } from '../../store/relayStore';
+import { useRelayDocumentStore } from '../../store/relayDocumentStore';
 import { useConnectionStore } from '../../store/connectionStore';
 import { DocumentMetadata, DocumentShare } from '../../types/Document';
-import './TeamDocumentsManager.css';
+import './RelayDocumentsManager.css';
 
 /**
  * Format a timestamp as a relative time string.
@@ -190,7 +190,7 @@ function ShareBadge({ sharedWith }: { sharedWith: DocumentShare[] }) {
   );
 }
 
-export function TeamDocumentsManager() {
+export function RelayDocumentsManager() {
   const documents = usePersistenceStore((state) => state.documents);
   const currentDocumentId = usePersistenceStore((state) => state.currentDocumentId);
   const loadDocument = usePersistenceStore((state) => state.loadDocument);
@@ -201,13 +201,13 @@ export function TeamDocumentsManager() {
   const transferToPersonal = usePersistenceStore((state) => state.transferToPersonal);
 
   const currentUser = useUserStore((state) => state.currentUser);
-  const serverMode = useTeamStore((state) => state.serverMode);
+  const serverMode = useRelayStore((state) => state.serverMode);
 
   // Team documents from host (for clients)
-  const teamDocuments = useTeamDocumentStore((state) => state.teamDocuments);
-  const isAuthenticated = useTeamDocumentStore((state) => state.authenticated);
-  const loadTeamDocument = useTeamDocumentStore((state) => state.loadTeamDocument);
-  const isLoadingList = useTeamDocumentStore((state) => state.isLoadingList);
+  const relayDocuments = useRelayDocumentStore((state) => state.relayDocuments);
+  const isAuthenticated = useRelayDocumentStore((state) => state.authenticated);
+  const loadRelayDocument = useRelayDocumentStore((state) => state.loadRelayDocument);
+  const isLoadingList = useRelayDocumentStore((state) => state.isLoadingList);
 
   // Connection status for showing cached state
   const hostAddress = useConnectionStore((state) => state.host?.address);
@@ -231,7 +231,7 @@ export function TeamDocumentsManager() {
   const [createModal, setCreateModal] = useState(false);
   const [newDocName, setNewDocName] = useState('');
 
-  // Filter and sort documents - merge local and team documents for clients
+  // Filter and sort documents - merge local and relay documents for clients
   const filteredDocuments = useMemo(() => {
     let docs: (DocumentMetadata & { _fromHost?: true; _cached?: true })[] = [];
 
@@ -242,9 +242,9 @@ export function TeamDocumentsManager() {
       // Personal docs from local storage only
       const personalDocs = localDocs.filter((d) => !d.isTeamDocument);
 
-      // Team docs from host (source of truth for team documents)
+      // Team docs from host (source of truth for relay documents)
       // These take priority over any local cached copies
-      const hostDocs = Object.values(teamDocuments).map((d) => ({
+      const hostDocs = Object.values(relayDocuments).map((d) => ({
         ...d,
         isTeamDocument: true as const,
         _fromHost: true as const,
@@ -293,7 +293,7 @@ export function TeamDocumentsManager() {
       docs = Object.values(documents);
     }
 
-    // Filter by team documents only if toggle is on
+    // Filter by relay documents only if toggle is on
     if (showOnlyTeam) {
       docs = docs.filter((doc) => doc.isTeamDocument);
     }
@@ -310,7 +310,7 @@ export function TeamDocumentsManager() {
 
     // Sort by modified date (newest first)
     return docs.sort((a, b) => b.modifiedAt - a.modifiedAt);
-  }, [documents, teamDocuments, searchQuery, showOnlyTeam, isClient, isAuthenticated, showCachedDocs]);
+  }, [documents, relayDocuments, searchQuery, showOnlyTeam, isClient, isAuthenticated, showCachedDocs]);
 
   const isAdmin = currentUser?.role === 'admin';
   const userId = currentUser?.id;
@@ -322,27 +322,27 @@ export function TeamDocumentsManager() {
       if (fromHost && isClient) {
         // Load document from host first, then open it
         try {
-          const doc = await loadTeamDocument(docId);
+          const doc = await loadRelayDocument(docId);
           // Load the document into the editor
           loadRemoteDocument(doc);
-          console.log('[TeamDocumentsManager] Opened remote document:', doc.name);
+          console.log('[RelayDocumentsManager] Opened remote document:', doc.name);
         } catch (error) {
-          console.error('[TeamDocumentsManager] Failed to load team document:', error);
+          console.error('[RelayDocumentsManager] Failed to load relay document:', error);
         }
       } else {
         loadDocument(docId);
       }
     },
-    [loadDocument, loadTeamDocument, loadRemoteDocument, isClient]
+    [loadDocument, loadRelayDocument, loadRemoteDocument, isClient]
   );
 
   const handleCreateDocument = useCallback(() => {
     if (!newDocName.trim()) return;
 
-    // Save current document state as a new team document
+    // Save current document state as a new relay document
     saveDocumentAs(newDocName.trim());
 
-    // TODO: Mark as team document when saving
+    // TODO: Mark as relay document when saving
     // This would require extending saveDocumentAs or adding a new method
 
     setCreateModal(false);
@@ -466,7 +466,7 @@ export function TeamDocumentsManager() {
                       </span>
                     )}
                     {isCached && (
-                      <span className="cached-badge" title="Cached team document (offline)">
+                      <span className="cached-badge" title="Cached relay document (offline)">
                         Cached
                       </span>
                     )}
@@ -605,7 +605,7 @@ export function TeamDocumentsManager() {
             <h3 className="modal-title">Share "{shareModal.name}"</h3>
             <p className="modal-message">
               Share functionality coming soon. This will allow you to share
-              documents with specific team members.
+              documents with specific relay members.
             </p>
             <div className="modal-actions">
               <button
@@ -629,7 +629,7 @@ export function TeamDocumentsManager() {
             <p className="modal-message">
               {transferModal.isTeamDocument
                 ? `This will convert "${transferModal.name}" to a personal document. It will no longer be shared with the team.`
-                : `This will convert "${transferModal.name}" to a team document. It can then be shared with team members.`}
+                : `This will convert "${transferModal.name}" to a relay document. It can then be shared with relay members.`}
             </p>
             <div className="modal-actions">
               <button
@@ -642,7 +642,7 @@ export function TeamDocumentsManager() {
                 className={`modal-button ${transferModal.isTeamDocument ? 'secondary' : 'primary'}`}
                 onClick={handleTransferConfirm}
               >
-                {transferModal.isTeamDocument ? 'Make Personal' : 'Make Team Document'}
+                {transferModal.isTeamDocument ? 'Make Personal' : 'Make Relay Document'}
               </button>
             </div>
           </div>
@@ -652,4 +652,4 @@ export function TeamDocumentsManager() {
   );
 }
 
-export default TeamDocumentsManager;
+export default RelayDocumentsManager;

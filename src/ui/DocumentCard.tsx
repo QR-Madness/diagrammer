@@ -31,7 +31,7 @@ interface DocumentCardProps {
   onEditPermissions?: ((id: string) => void) | undefined;
   /** Callback to publish local document to team */
   onPublishToTeam?: ((id: string) => void | Promise<void>) | undefined;
-  /** Callback to move a team document back to personal */
+  /** Callback to move a relay document back to personal */
   onMoveToPersonal?: ((id: string) => void | Promise<void>) | undefined;
   /** Callback when the card's selection checkbox is toggled. Receives the modifier flags so callers can implement range-select on shift-click. */
   onSelectToggle?:

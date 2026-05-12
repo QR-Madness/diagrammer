@@ -365,7 +365,7 @@ export class UnifiedSyncProvider {
 
   // ============ Document Operations ============
 
-  /** List all team documents from host */
+  /** List all relay documents from host */
   async listDocuments(): Promise<DocumentMetadata[]> {
     const requestId = generateRequestId();
     const request: DocListRequest = { requestId };

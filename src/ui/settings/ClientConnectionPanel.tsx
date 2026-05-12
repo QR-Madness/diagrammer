@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTeamStore } from '../../store/teamStore';
+import { useRelayStore } from '../../store/relayStore';
 import { useCollaborationStore } from '../../collaboration';
 import { usePersistenceStore } from '../../store/persistenceStore';
 import './ClientConnectionPanel.css';
@@ -105,10 +105,10 @@ function isValidAddress(address: string): boolean {
 }
 
 export function ClientConnectionPanel() {
-  const serverMode = useTeamStore((state) => state.serverMode);
-  const connectionStatus = useTeamStore((state) => state.connectionStatus);
-  const connectToHost = useTeamStore((state) => state.connectToHost);
-  const disconnect = useTeamStore((state) => state.disconnect);
+  const serverMode = useRelayStore((state) => state.serverMode);
+  const connectionStatus = useRelayStore((state) => state.connectionStatus);
+  const connectToHost = useRelayStore((state) => state.connectToHost);
+  const disconnect = useRelayStore((state) => state.disconnect);
 
   const startSession = useCollaborationStore((state) => state.startSession);
   const stopSession = useCollaborationStore((state) => state.stopSession);

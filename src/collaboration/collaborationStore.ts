@@ -18,7 +18,7 @@
 import { create } from 'zustand';
 import { YjsDocument } from './YjsDocument';
 import { UnifiedSyncProvider, AwarenessUserState } from './UnifiedSyncProvider';
-import { useTeamDocumentStore } from '../store/teamDocumentStore';
+import { useRelayDocumentStore } from '../store/relayDocumentStore';
 import { reattachAwaitingTeamDocument } from '../store/persistenceStore';
 import { useConnectionStore, type ConnectionStatus } from '../store/connectionStore';
 import { usePresenceStore } from '../store/presenceStore';
@@ -166,20 +166,20 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
             get()._setError(error);
           }
 
-          // Update team document store connection status
+          // Update relay document store connection status
           const isConnected = status === 'connected' || status === 'authenticated';
-          useTeamDocumentStore.getState().setHostConnected(isConnected);
+          useRelayDocumentStore.getState().setHostConnected(isConnected);
           if (error) {
-            useTeamDocumentStore.getState().setError(`Connection: ${error}`);
+            useRelayDocumentStore.getState().setError(`Connection: ${error}`);
           } else if (isConnected) {
-            useTeamDocumentStore.getState().setError(null);
+            useRelayDocumentStore.getState().setError(null);
           }
         },
         onSynced: () => {
           get()._setSynced(true);
         },
         onAuthenticated: (success, user) => {
-          useTeamDocumentStore.getState().setAuthenticated(success);
+          useRelayDocumentStore.getState().setAuthenticated(success);
 
           // Update config user info if we logged in with credentials
           if (success && user && config.credentials) {
@@ -196,7 +196,7 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
           }
         },
         onDocumentEvent: (event: DocEvent) => {
-          useTeamDocumentStore.getState().handleDocumentEvent(event);
+          useRelayDocumentStore.getState().handleDocumentEvent(event);
         },
       });
 
@@ -219,8 +219,8 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         color: config.user.color,
       });
 
-      // Register provider with team document store
-      useTeamDocumentStore.getState().setProvider(syncProvider);
+      // Register provider with relay document store
+      useRelayDocumentStore.getState().setProvider(syncProvider);
 
       // Connect
       syncProvider.connect();
@@ -250,9 +250,9 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         yjsDoc = null;
       }
 
-      // Clear team document store
-      useTeamDocumentStore.getState().setProvider(null);
-      useTeamDocumentStore.getState().clearTeamDocuments();
+      // Clear relay document store
+      useRelayDocumentStore.getState().setProvider(null);
+      useRelayDocumentStore.getState().clearRelayDocuments();
 
       // Clear presence store
       usePresenceStore.getState().setLocalUser(null);

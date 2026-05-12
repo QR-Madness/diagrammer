@@ -21,7 +21,7 @@ import {
   Library,
   Plug,
 } from 'lucide-react';
-import { useTeamStore } from '../store/teamStore';
+import { useRelayStore } from '../store/relayStore';
 import { useUserStore } from '../store/userStore';
 import { usePersistenceStore } from '../store/persistenceStore';
 import { useCollaborationStore } from '../collaboration';
@@ -71,10 +71,10 @@ export interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, initialTab = 'documents' }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
-  const serverMode = useTeamStore((s) => s.serverMode);
-  const hostPort = useTeamStore((s) => s.hostPort);
-  const startHosting = useTeamStore((s) => s.startHosting);
-  const stopHosting = useTeamStore((s) => s.stopHosting);
+  const serverMode = useRelayStore((s) => s.serverMode);
+  const hostPort = useRelayStore((s) => s.hostPort);
+  const startHosting = useRelayStore((s) => s.startHosting);
+  const stopHosting = useRelayStore((s) => s.stopHosting);
   const startSession = useCollaborationStore((s) => s.startSession);
   const stopSession = useCollaborationStore((s) => s.stopSession);
   const currentUser = useUserStore((s) => s.currentUser);
