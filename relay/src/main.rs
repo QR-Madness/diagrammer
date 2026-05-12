@@ -17,6 +17,8 @@ use clap::{Parser, Subcommand};
 
 use diagrammer_relay::auth::UserStore;
 use diagrammer_relay::config::{NetworkMode, RelayConfig};
+use diagrammer_relay::mcp::{McpConfig as InternalMcpConfig, McpServer};
+use diagrammer_relay::server::protocol::DocEventType;
 use diagrammer_relay::server::{NetworkMode as ServerNetworkMode, ServerConfig, WebSocketServer};
 
 #[derive(Parser, Debug)]
@@ -128,7 +130,7 @@ async fn run_serve(
         users_path.to_string_lossy().into_owned(),
     ));
 
-    let server = WebSocketServer::new();
+    let server = Arc::new(WebSocketServer::new());
     server.set_app_data_dir(config.storage.path.clone()).await;
     server.set_user_store(user_store).await;
     if !config.auth.jwt_secret.is_empty() {
@@ -158,17 +160,61 @@ async fn run_serve(
     log::info!("diagrammer-relay sync listener on {}", bound);
     log::info!("storage root: {}", config.storage.path.display());
 
-    // TODO(Slice D.2): wire McpServer here when config.mcp.enabled.
-    if config.mcp.enabled {
-        log::info!(
-            "MCP endpoint configured for port {} (wiring lands in Slice D.2)",
-            config.mcp.port
-        );
-    }
+    let mcp = if config.mcp.enabled {
+        // Bridge MCP doc-write events into the WS broadcast channel so
+        // connected sync clients reload the affected doc. Mirrors what
+        // the Tauri host did in src-tauri/src/lib.rs.
+        let server_for_mcp = server.clone();
+        let on_doc_changed: Arc<dyn Fn(String) + Send + Sync> =
+            Arc::new(move |doc_id: String| {
+                let server = server_for_mcp.clone();
+                tokio::spawn(async move {
+                    server
+                        .broadcast_doc_event(&doc_id, DocEventType::Updated, None)
+                        .await;
+                });
+            });
+
+        match McpServer::new(config.storage.path.clone(), on_doc_changed) {
+            Ok(mcp) => {
+                let mcp = Arc::new(mcp);
+                mcp.set_config(InternalMcpConfig {
+                    port: config.mcp.port,
+                })
+                .await
+                .map_err(|e| anyhow::anyhow!("apply mcp config: {}", e))?;
+                match mcp.start().await {
+                    Ok(addr) => {
+                        log::info!("MCP endpoint on {}", addr);
+                        log::info!("MCP bearer token: {}", mcp.get_token().await);
+                        Some(mcp)
+                    }
+                    Err(e) => {
+                        log::error!("failed to start MCP endpoint: {}", e);
+                        log::warn!("relay sync listener stays up; MCP is disabled this run");
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!("failed to initialize MCP server: {}", e);
+                None
+            }
+        }
+    } else {
+        log::info!("MCP endpoint disabled in config");
+        None
+    };
 
     log::info!("press Ctrl-C to shut down");
     tokio::signal::ctrl_c().await?;
     log::info!("shutdown requested");
+
+    if let Some(mcp) = mcp {
+        if let Err(e) = mcp.stop().await {
+            log::warn!("MCP shutdown error: {}", e);
+        }
+    }
 
     server
         .stop()
