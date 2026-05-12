@@ -101,7 +101,19 @@
 
 - [ ] Draggable items in property panel don't move at at all (ie. ERD entity attributes; among others).
 
-## Phase 20: Open-Source Beta ([Pre-]Release 1.5.0-beta.1)
+## Phase 20: 2.0 Beta — Relay Extraction + Polish
+
+This phase ships as **2.0.0-beta.1**. The headline change is extracting
+collaboration, MCP, identity, and document storage out of the Tauri host
+into a standalone **Relay** binary. Tauri becomes a pure client. The
+local store stays origin-blind. "Protected Local" is removed; existing
+team docs get downgraded to local docs on first launch. See
+`Relay Architecture` below.
+
+**Business framing:** self-hosted Relay stays free and one-command
+trivial to deploy. Revenue comes from a managed Relay tier. This means
+the self-hosted design priority is *boring, easy to run* — horizontal
+scalability is a managed-tier concern, not a phase 20 concern.
 
 ### 20.1 - Documentation Enhancements
 
@@ -109,18 +121,143 @@
 - [X] Optimize the docs site to use high-quality styling, and easy-to-navigate pages
 - [ ] Review shapes in docs and identify implementation discrepancies
 
-### 20.2 Style Profile Refinements
+### 20.2 - Style Profile Refinements
 
 - The style profiles are an **excellent** foundation but that are just that; some features are needed to bring them to fruition:
   - [ ] StyleProfileShapeAdapters
-  - [ ] 
   - Note: we do have in the backlog, a task for Dynamic Style Profiles, if the complexity isn't massive, consider moving that task to this phase
 
-### 20.9 - 1.5 Release
+### 20.3 - Relay Extraction (the headline change)
 
+The Relay is a standalone Rust binary in a new root-level `/relay/`
+crate (not a workspace member of `src-tauri/`). It owns collaboration,
+MCP, auth, and document storage. The Tauri desktop becomes a pure
+client that holds local documents and connects to a Relay for
+collaborative ones.
+
+**Pre-extraction (foundation, in order):**
+
+- [ ] Freeze and version the wire protocol. Add a protocol-version
+  negotiation header on connect. Add cross-language fixture tests in
+  `/relay/tests/protocol-fixtures/` so `protocol.ts` and the relay's
+  `protocol.rs` can't drift silently.
+- [ ] Decide protocol stewardship: codegen from a single source vs.
+  strict cross-language fixtures. Recommendation: fixtures (simpler,
+  no build-time codegen).
+- [ ] Naming pass on the renderer. Rename "host" / "team document" /
+  "Protected Local" → "relay" / "relay document" / *(no replacement —
+  Protected Local is removed)*. Affects `teamStore`,
+  `teamDocumentStore`, `TeamDocumentCache`, `persistenceStore`,
+  `UnifiedSyncProvider`, `documentRegistry`.
+
+**Relay crate (`/relay/`):**
+
+- [ ] Create `/relay/` directory with its own `Cargo.toml` (fully
+  independent crate). Layout: `src/{main,api,sync,mcp,auth,storage,
+  protocol}.rs` + `tests/protocol-fixtures/`.
+- [ ] Lift `src-tauri/src/server/` → `/relay/src/sync/` + `/relay/src/api/`.
+  Lift `src-tauri/src/mcp/` → `/relay/src/mcp/`. Behavior unchanged in
+  this step — pure move + import-path fixup.
+- [ ] HTTP API (Axum): `/auth/{register,login,me}`, `/docs` CRUD,
+  `/blobs` (content-addressed SHA-256), `/backup`, `/mcp` (JWT-auth'd).
+- [ ] WebSocket: `/sync/:doc_id` carries SYNC + AWARENESS only. CRUD
+  moves to REST (current code multiplexes CRUD over WS — cleanup).
+- [ ] `Storage` trait with one filesystem implementation. Methods:
+  `list_docs`, `get_doc`, `put_doc`, `delete_doc`, `append_update`,
+  `put_blob`, `get_blob`. Postgres/S3 are not in scope.
+- [ ] Auth: local users only. Email + argon2 password hash. JWT
+  signed with HS256 using a per-deploy secret in the config file.
+  Design the user record so `org_id` can be added later without
+  migration pain (single "default" org for now).
+- [ ] Config: single TOML at `./relay.toml` (`--config` flag override).
+  Includes listen address, storage backend, storage path, JWT secret,
+  optional TLS cert paths. Provide a `relay init` subcommand that
+  generates one with a fresh JWT secret.
+
+**Tauri changes (becomes a pure client):**
+
+- [ ] Delete `src-tauri/src/server/` and `src-tauri/src/mcp/` after lift.
+- [ ] Delete `LocalDocumentMirror` and its callers in `persistenceStore`.
+  MCP no longer sees local docs by design — document the regression.
+- [ ] Renderer config UI: "Relay URL + credentials" replaces host
+  discovery. Settings gains a "Relay" tab; "Protected Local" tab
+  is removed.
+- [ ] `UnifiedSyncProvider` connects to `/sync/:doc_id`; CRUD moves
+  to a new REST client.
+- [ ] Remove LAN discovery code (was only meaningful for Protected Local).
+
+**Migration (team docs → local docs):**
+
+- [ ] On first launch of v2, scan the Tauri data dir for
+  `team_documents/`. For each, write a local-document record into the
+  renderer's local store, then move source files into
+  `_archived_team_documents/` (idempotent + reversible).
+- [ ] One-time notification on first launch: "N team documents were
+  converted to local documents. To collaborate on them again, upload
+  them to a relay from Settings → Documents."
+- [ ] Test with a fixture set of beta team documents. Verify blob
+  hashes line up across the move.
+
+**Deploy story (must be boring):**
+
+- [ ] Default config = filesystem storage in `./data/`, listen on
+  `:9876`. No TLS, no Postgres, no Redis out of the box.
+- [ ] Dockerfile in `/relay/` + one-command run line in README
+  (`docker run -v ./data:/data -p 9876:9876 diagrammer/relay`).
+- [ ] systemd unit file template for bare-metal installs.
+- [ ] Smoke test: `relay init && relay serve` works on a fresh
+  machine with only the Rust toolchain installed.
+
+**Load-bearing invariants (tested, not hoped):**
+
+- [ ] `DocumentStore` is origin-blind. Add a test that fails if
+  `documentStore.ts` imports anything from `relayStore` /
+  `relayDocumentStore` / sync provider.
+- [ ] Local docs never touch the relay (no mirror, no MCP visibility).
+- [ ] Protocol fixtures round-trip in both `bun run test` and
+  `cargo test --manifest-path relay/Cargo.toml`. Drift = CI red.
+
+### 20.4 - Live CRDT writes via `yrs` on the Relay (carry-over from 19.6)
+
+Belongs on the Relay, not in Tauri. Defer until 20.3 is in place.
+
+- [ ] Add `yrs` to `/relay/src/sync/`. Authoritative `Y.Doc` per
+  active doc, hydrated from JSON snapshot, applies incoming SYNC,
+  broadcasts updates.
+- [ ] MCP write tools generate Yjs updates rather than rewriting JSON
+  directly. Unblocks closed-doc edits and removes last-write-wins.
+- [ ] Persistence: flatten Y.Doc → JSON on snapshot interval and on
+  shutdown. JSON stays the durable wire format for backup/restore.
+
+### 20.9 - 2.0 Release
+
+- [ ] 2.0.0-beta.1 release notes (lead with Relay migration; explicit
+  about Protected Local removal and MCP-only-sees-relay-docs)
+- [ ] Migration guide in docs site
+- [ ] Article: "Why we extracted the server"
 - [-] 1.5.0 (beta) Released
 - [x] Upload article my site
 - [ ] Upload dev.to article
+
+### Relay Architecture (reference)
+
+```
+Tauri Desktop (pure client)              Relay (/relay/, separate binary)
+├ OS shell                                ├ HTTP API: /auth/* /docs /blobs
+├ Renderer (Vite/React)                   ├ WebSocket: /sync/:doc_id
+│  ├ Canvas, stores (origin-blind)        │  ├ SYNC (Yjs)
+│  ├ Local store (IDB/localStorage)       │  └ AWARENESS
+│  └ Relay client (URL + JWT)             ├ MCP endpoint: /mcp (Bearer JWT)
+└ Local docs: never touch the network     ├ Auth: email + password → JWT
+                                          ├ Storage trait
+                                          │  └ default: filesystem
+                                          │     (per-doc JSON + update log)
+                                          └ Single binary, single config file
+```
+
+**Non-goals for phase 20:** horizontal scalability, SSO/SAML/SCIM,
+encryption at rest, webhooks/audit/hooks dispatcher, Postgres/S3
+storage backends. All deferred to enterprise tier or future phases.
 
 ---
 
