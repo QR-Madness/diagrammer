@@ -22,7 +22,7 @@ use axum::{
     body::Body,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        Path, State,
+        Path, Query, State,
     },
     http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
@@ -657,11 +657,32 @@ async fn blob_exists_handler(
     }
 }
 
+/// Query parameters accepted on the WebSocket upgrade URL.
+#[derive(Debug, Clone, serde::Deserialize, Default)]
+struct WsUpgradeParams {
+    /// Client's wire-protocol version. Optional for the v1 transition so
+    /// older clients aren't hard-blocked; once /relay/ ships in v2 this
+    /// becomes required and the `None` branch is removed.
+    #[serde(rename = "protocolVersion")]
+    protocol_version: Option<u32>,
+}
+
 /// WebSocket upgrade handler
 async fn ws_handler(
     ws: WebSocketUpgrade,
+    Query(params): Query<WsUpgradeParams>,
     State(state): State<Arc<ServerState>>,
 ) -> impl IntoResponse {
+    if let Some(client_version) = params.protocol_version {
+        if client_version != PROTOCOL_VERSION {
+            let body = format!(
+                "{}: client protocol v{} does not match server v{}",
+                ERR_PROTOCOL_VERSION_MISMATCH, client_version, PROTOCOL_VERSION
+            );
+            log::warn!("Rejecting WS upgrade: {}", body);
+            return (StatusCode::UPGRADE_REQUIRED, body).into_response();
+        }
+    }
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 

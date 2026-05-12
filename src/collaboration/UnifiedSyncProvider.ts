@@ -20,6 +20,8 @@ import * as decoding from 'lib0/decoding';
 
 import type { DocumentMetadata, DiagramDocument } from '../types/Document';
 import {
+  PROTOCOL_VERSION,
+  PROTOCOL_VERSION_PARAM,
   MESSAGE_SYNC,
   MESSAGE_AWARENESS,
   MESSAGE_AUTH,
@@ -257,9 +259,10 @@ export class UnifiedSyncProvider {
     this.setStatus('connecting');
 
     try {
-      // Build URL with document ID
+      // Build URL with document ID and protocol version negotiation
       const url = new URL(this.options.url);
       url.searchParams.set('doc', this.options.documentId);
+      url.searchParams.set(PROTOCOL_VERSION_PARAM, String(PROTOCOL_VERSION));
 
       this.ws = new WebSocket(url.toString());
       this.ws.binaryType = 'arraybuffer';

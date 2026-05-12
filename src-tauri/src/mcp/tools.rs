@@ -223,6 +223,15 @@ pub struct ToolOutcome {
     /// If `Some`, the transport should also broadcast a doc-changed event
     /// for this document id so the running app reloads.
     pub changed_doc_id: Option<String>,
+    /// Structured description of what changed, for the in-process Tauri
+    /// event bridge that lets the running app apply the delta directly
+    /// (avoiding a full reload). `None` when the tool didn't mutate.
+    ///
+    /// Payload schema (matches `McpDocChangedEvent.change` in TS):
+    ///   { "kind": "shape-added",   "pageId": ..., "shape":   {...BaseShape...} }
+    ///   { "kind": "shapes-added",  "pageId": ..., "shapes":  [ {...}, ... ] }
+    ///   { "kind": "shape-updated", "pageId": ..., "shapeId": "...", "shape": {...} }
+    pub change_detail: Option<Value>,
 }
 
 /// Dispatch a `tools/call` request. `name` is the tool name as advertised
@@ -293,6 +302,7 @@ fn list_documents(ctx: &ToolContext) -> Result<ToolOutcome, String> {
     Ok(ToolOutcome {
         result: json!({"documents": payload, "localAccessEnabled": ctx.local_enabled}),
         changed_doc_id: None,
+        change_detail: None,
     })
 }
 
@@ -341,6 +351,7 @@ fn get_document(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> 
             "source": source,
         }),
         changed_doc_id: None,
+        change_detail: None,
     })
 }
 
@@ -390,6 +401,7 @@ fn get_page(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
     Ok(ToolOutcome {
         result: json!({"shapes": shapes, "source": source}),
         changed_doc_id: None,
+        change_detail: None,
     })
 }
 
@@ -483,6 +495,7 @@ fn add_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
     Ok(ToolOutcome {
         result: json!({"id": id, "warning": warning}),
         changed_doc_id: Some(parsed.doc_id),
+        change_detail: None,
     })
 }
 
@@ -531,6 +544,7 @@ fn add_shapes(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
     Ok(ToolOutcome {
         result: json!({"ids": ids, "warning": warning}),
         changed_doc_id: Some(parsed.doc_id),
+        change_detail: None,
     })
 }
 
@@ -601,6 +615,7 @@ fn connect(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> {
     Ok(ToolOutcome {
         result: json!({"id": id, "warning": warning}),
         changed_doc_id: Some(parsed.doc_id),
+        change_detail: None,
     })
 }
 
@@ -649,6 +664,7 @@ fn update_shape(ctx: &ToolContext, args: &Value) -> Result<ToolOutcome, String> 
     Ok(ToolOutcome {
         result: json!({"id": parsed.id, "changed": changed, "warning": warning}),
         changed_doc_id: Some(parsed.doc_id),
+        change_detail: None,
     })
 }
 

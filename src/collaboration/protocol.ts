@@ -7,6 +7,24 @@
 
 import type { DocumentMetadata, DiagramDocument } from '../types/Document';
 
+// ============ Protocol Version ============
+
+/**
+ * Wire-protocol version. Must match `PROTOCOL_VERSION` in
+ * src-tauri/src/server/protocol.rs (and the future /relay/ crate).
+ *
+ * Sent as `?protocolVersion=<N>` on the WebSocket upgrade URL. The
+ * server refuses connections with a different version. Bump on any
+ * breaking change to message types, payload shapes, or framing.
+ */
+export const PROTOCOL_VERSION = 1;
+
+/** Query-parameter name carrying the client's protocol version. */
+export const PROTOCOL_VERSION_PARAM = 'protocolVersion';
+
+/** Error code returned when client/server protocol versions disagree. */
+export const ERR_PROTOCOL_VERSION_MISMATCH = 'ERR_PROTOCOL_VERSION_MISMATCH';
+
 // ============ Message Type Constants ============
 // Must match MESSAGE_* constants in Rust
 

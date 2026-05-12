@@ -1,0 +1,9 @@
+{
+  "messageType": 5,
+  "messageName": "DOC_SAVE",
+  "kind": "response",
+  "payload": {
+    "requestId": "req-docsave-001",
+    "success": true
+  }
+}
