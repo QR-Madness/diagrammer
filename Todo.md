@@ -173,18 +173,35 @@ collaborative ones.
   lift of `server/`, `auth/`, `mcp/`. `relay/src/main.rs` now runs a
   working `relay serve` (Slice C.4). The Tauri-side copies stay until
   Slice E.)_
-- [ ] HTTP API (Axum): `/auth/{register,login,me}`, `/docs` CRUD,
+- [x] HTTP API (Axum): `/auth/{register,login,me}`, `/docs` CRUD,
   `/blobs` (content-addressed SHA-256), `/backup`, `/mcp` (JWT-auth'd).
+  _(Slice D.2 + D.3 — `/api/auth/{register,login,me}` and
+  `/api/docs/*` live next to the existing `/api/blobs/*`. `/mcp` is
+  a bearer-auth'd HTTP listener on its own port per the lifted
+  Tauri shape. `/backup` not yet implemented — deferred.)_
 - [ ] WebSocket: `/sync/:doc_id` carries SYNC + AWARENESS only. CRUD
   moves to REST (current code multiplexes CRUD over WS — cleanup).
+  _(Server-side REST is in place since D.3. The cleanup — removing
+  WS DOC_LIST/GET/SAVE/DELETE — is bundled into Slice E after the
+  renderer switches off the multiplex.)_
 - [ ] `Storage` trait with one filesystem implementation. Methods:
   `list_docs`, `get_doc`, `put_doc`, `delete_doc`, `append_update`,
-  `put_blob`, `get_blob`. Postgres/S3 are not in scope.
-- [ ] Auth: local users only. Email + argon2 password hash. JWT
+  `put_blob`, `get_blob`. Postgres/S3 are not in scope. _(Deferred:
+  premature abstraction without a second backend. Existing
+  `DocumentStore` + `BlobStore` already encapsulate the same surface
+  area; introduce the trait when a second backend lands.)_
+- [-] Auth: local users only. Email + argon2 password hash. JWT
   signed with HS256 using a per-deploy secret in the config file.
   Design the user record so `org_id` can be added later without
-  migration pain (single "default" org for now).
-- [ ] Config: single TOML at `./relay.toml` (`--config` flag override).
+  migration pain (single "default" org for now). _(Partial — Slice
+  D.1 lands the per-deploy HS256 secret generator in `relay init`.
+  Still on bcrypt rather than argon2; `org_id` field not yet on
+  `User`. Both deferred to Slice E or a follow-up D.4.)_
+- [x] Config: single TOML at `./relay.toml` (`--config` flag override).
+  _(Slice D.1 — `relay/src/config.rs` with `[server]`, `[storage]`,
+  `[auth]`, `[mcp]` sections; `relay init` rolls a fresh 32-byte
+  hex JWT secret; `relay serve --port` and `--data-dir` override
+  the file. `deny_unknown_fields` everywhere so typos fail loudly.)_
   Includes listen address, storage backend, storage path, JWT secret,
   optional TLS cert paths. Provide a `relay init` subcommand that
   generates one with a fresh JWT secret.
