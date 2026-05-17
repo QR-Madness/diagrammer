@@ -25,7 +25,18 @@ import {
 import { useDocumentRegistry } from '../store/documentRegistry';
 import { useConnectionStore, type ConnectionStatus } from '../store/connectionStore';
 import type { DiagramDocument } from '../types/Document';
-import type { UnifiedSyncProvider } from './UnifiedSyncProvider';
+
+/**
+ * Minimal provider surface this manager needs. Any object implementing
+ * save+delete works — historically `UnifiedSyncProvider`, now (20.3
+ * Slice E.2) the REST adapter.
+ */
+export interface SyncStateProvider {
+  saveDocument(document: DiagramDocument, expectedVersion?: number): Promise<unknown>;
+  deleteDocument(docId: string): Promise<unknown>;
+  /** True when the provider can dispatch requests right now. */
+  isReady(): boolean;
+}
 
 // ============ Types ============
 
@@ -87,7 +98,7 @@ export interface SyncManagerState {
 export class SyncStateManager {
   private queue: OfflineQueue;
   private storage: SyncQueueStorage;
-  private provider: UnifiedSyncProvider | null = null;
+  private provider: SyncStateProvider | null = null;
   private options: Required<SyncStateManagerOptions>;
   private state: SyncManagerState;
 
@@ -181,14 +192,14 @@ export class SyncStateManager {
   /**
    * Set the sync provider for processing operations.
    */
-  setProvider(provider: UnifiedSyncProvider | null): void {
+  setProvider(provider: SyncStateProvider | null): void {
     this.provider = provider;
   }
 
   /**
    * Get the current provider.
    */
-  getProvider(): UnifiedSyncProvider | null {
+  getProvider(): SyncStateProvider | null {
     return this.provider;
   }
 

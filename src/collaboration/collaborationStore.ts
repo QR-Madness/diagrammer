@@ -24,6 +24,8 @@ import { useConnectionStore, type ConnectionStatus } from '../store/connectionSt
 import { usePresenceStore } from '../store/presenceStore';
 import { RelayClient } from '../api/relayClient';
 import { RestDocumentProvider } from '../api/restDocumentProvider';
+import { clearJwt, saveConnection } from '../api/relayConnection';
+import { useNotificationStore } from '../store/notificationStore';
 import type { Shape } from '../shapes/Shape';
 import type { DocEvent } from './protocol';
 
@@ -235,18 +237,34 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
        // routes CRUD through HTTP rather than the WS multiplexer. The
        // WS provider still owns CRDT sync, awareness, and auth — see
        // Slice E.2 plan for the split.
+      const restBaseUrl = wsUrlToHttpOrigin(config.serverUrl);
       relayClient = new RelayClient({
-        baseUrl: wsUrlToHttpOrigin(config.serverUrl),
+        baseUrl: restBaseUrl,
         ...(config.token !== undefined ? { token: config.token } : {}),
+        onUnauthorized: () => {
+          // Drop the stale JWT everywhere it lives. Per the Slice E.2
+          // plan, we do *not* silently retry — surface a toast and let
+          // the user re-enter credentials.
+          useConnectionStore.getState().setToken(null, null);
+          useConnectionStore.getState().setUser(null);
+          clearJwt();
+          useNotificationStore
+            .getState()
+            .error('Session expired — please log in again.', { category: 'permanent' });
+        },
       });
       // Mirror JWT updates from the connection store (set by the WS
-      // auth path) into the REST client so the next REST call carries
-      // the freshest bearer.
+      // auth path) into the REST client + on-disk cache so the next
+      // REST call carries the freshest bearer and a browser refresh
+      // can pre-fill the login form.
       connectionUnsubscribe = useConnectionStore.subscribe((state) => {
         relayClient?.setToken(state.token ?? undefined);
+        saveConnection(restBaseUrl, state.token);
       });
       // Seed with whatever the connection store already has.
-      relayClient.setToken(useConnectionStore.getState().token ?? undefined);
+      const seedToken = useConnectionStore.getState().token;
+      relayClient.setToken(seedToken ?? undefined);
+      saveConnection(restBaseUrl, seedToken);
 
       useRelayDocumentStore
         .getState()

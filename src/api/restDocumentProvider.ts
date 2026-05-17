@@ -61,6 +61,11 @@ export class RestDocumentProvider {
     await this.client.updateDocumentShares(docId, shares);
   }
 
+  /** True when there's a JWT to send. Used by `SyncStateManager` to gate queue flushes. */
+  isReady(): boolean {
+    return this.client.getToken() !== undefined;
+  }
+
   async transferDocumentOwnership(
     docId: string,
     newOwnerId: string,

@@ -331,6 +331,48 @@ describe('RelayClient', () => {
     });
   });
 
+  describe('401 interceptor', () => {
+    it('fires onUnauthorized when an authed request returns 401', async () => {
+      let fired = 0;
+      const client = new RelayClient({
+        baseUrl: 'http://r',
+        token: 'T',
+        fetchImpl: script.fetch,
+        onUnauthorized: () => fired++,
+      });
+      script.pushError(401, 'token expired');
+      await expect(client.listDocuments()).rejects.toBeInstanceOf(RelayError);
+      expect(fired).toBe(1);
+    });
+
+    it('does NOT fire onUnauthorized when login itself returns 401', async () => {
+      let fired = 0;
+      const client = new RelayClient({
+        baseUrl: 'http://r',
+        fetchImpl: script.fetch,
+        onUnauthorized: () => fired++,
+      });
+      script.pushError(401, 'invalid credentials');
+      await expect(
+        client.login({ username: 'a', password: 'b' }),
+      ).rejects.toBeInstanceOf(RelayError);
+      expect(fired).toBe(0);
+    });
+
+    it('does NOT fire onUnauthorized on non-401 errors', async () => {
+      let fired = 0;
+      const client = new RelayClient({
+        baseUrl: 'http://r',
+        token: 'T',
+        fetchImpl: script.fetch,
+        onUnauthorized: () => fired++,
+      });
+      script.pushError(500, 'boom');
+      await expect(client.listDocuments()).rejects.toBeInstanceOf(RelayError);
+      expect(fired).toBe(0);
+    });
+  });
+
   describe('error handling', () => {
     it('falls back to statusText when no JSON body is present', async () => {
       const client = new RelayClient({ baseUrl: 'http://r', fetchImpl: script.fetch });

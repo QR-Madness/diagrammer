@@ -108,12 +108,19 @@ export interface RelayClientOptions {
    * `fetch` isn't appropriate. Defaults to `globalThis.fetch`.
    */
   fetchImpl?: typeof fetch;
+  /**
+   * Invoked when an authenticated request returns 401. Use to drop the
+   * cached JWT and surface the login UI. Not called for unauthenticated
+   * 401s (e.g. a failed `login()` — that already throws RelayError).
+   */
+  onUnauthorized?: () => void;
 }
 
 export class RelayClient {
   private baseUrl: string;
   private token: string | undefined;
   private fetchImpl: typeof fetch;
+  private onUnauthorized: (() => void) | undefined;
 
   constructor(opts: RelayClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, '');
@@ -121,6 +128,7 @@ export class RelayClient {
       this.token = opts.token;
     }
     this.fetchImpl = opts.fetchImpl ?? globalThis.fetch.bind(globalThis);
+    this.onUnauthorized = opts.onUnauthorized;
   }
 
   /** Update the bearer token after a fresh login. Pass undefined to log out. */
@@ -131,6 +139,11 @@ export class RelayClient {
   /** Current bearer token (or undefined if unauthenticated). */
   getToken(): string | undefined {
     return this.token;
+  }
+
+  /** Register/replace the 401 handler; pass undefined to remove. */
+  setOnUnauthorized(handler: (() => void) | undefined): void {
+    this.onUnauthorized = handler;
   }
 
   // ============ Auth ============
@@ -253,8 +266,12 @@ export class RelayClient {
     if (opts.body !== undefined) {
       init.body = JSON.stringify(opts.body);
     }
+    const wasAuthed = opts.auth !== false && this.token !== undefined;
     const res = await this.fetchImpl(url, init);
     if (!res.ok) {
+      if (res.status === 401 && wasAuthed) {
+        this.onUnauthorized?.();
+      }
       throw await buildRelayError(res, url);
     }
     // 204 No Content -> return empty object cast to T.
@@ -282,8 +299,12 @@ export class RelayClient {
     if (opts.body !== undefined) {
       init.body = opts.body;
     }
+    const wasAuthed = this.token !== undefined;
     const res = await this.fetchImpl(url, init);
     if (!res.ok) {
+      if (res.status === 401 && wasAuthed) {
+        this.onUnauthorized?.();
+      }
       throw await buildRelayError(res, url);
     }
     return res;
