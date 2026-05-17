@@ -64,6 +64,7 @@ The next agent should treat them as load-bearing.
 | E.4 | shipped | `rm -rf src-tauri/src/{server,mcp,auth}/`; `lib.rs` slimmed from 897→160 LOC (only `open_docs` remains); Cargo deps trimmed (only `axum`+`tower-http` kept, narrowly scoped to the docs server); renderer-side: deleted `McpSettings` tab, mcp wrappers, `mcpMirror` calls; `userStore` became a 60-line facade over `useConnectionStore.user`; `src/tauri/commands.ts` trimmed 273→33 LOC. |
 | E.3 | shipped | WS protocol slimmed to SYNC/AWARENESS/AUTH/AUTH_RESPONSE/JOIN_DOC/DOC_EVENT/ERROR. Deleted `MESSAGE_DOC_*` constants + `AUTH_LOGIN`, the corresponding Rust handlers (`handle_doc_*`, `handle_auth_login`), TS request/response interfaces (`DocList*`/`DocGet*`/`DocSave*`/`DocDelete*`/`DocShare*`/`DocTransfer*`), 13 fixture files, and the routing helpers (`getMessageChannel`, `isAuthMessage`, `isDocumentMessage`, `isRequestMessage`). Byte slots 3–6 + 11–13 reserved. Relay smoke (6) + TS protocol fixtures (12) + Rust fixture round-trip still pass. |
 | F | shipped | First-launch team-doc migration: Tauri-only boot scan of `<app-data-dir>/team_documents/`, strips relay-only fields, writes into local persistence, moves source to `_archived_team_documents/`, fires a one-time toast, gated by `diagrammer-team-doc-migration-done` localStorage flag. 9 unit tests with an in-memory fs adapter. |
+| H | shipped | Load-bearing invariant tests: `documentStore.imports.test.ts` (static origin-blindness — `documentStore.ts` must not import relay/sync/auth/Tauri; 14 tests including self-tests for the matcher). `localDocumentIsolation.test.ts` (runtime — stubs `globalThis.fetch` as a recorder, exercises newDocument/saveDocument/loadDocument/deleteDocument/importJSON + a 5-edit session, asserts zero fetch calls; 7 tests). |
 | G | shipped | Dockerfile, systemd unit, README, 3-test smoke suite. |
 
 What's *known broken or vestigial*:
@@ -231,18 +232,22 @@ What's *known broken or vestigial*:
 
 ### H — Load-bearing invariant tests
 
-- [ ] **`src/store/documentStore.imports.test.ts`**: static assertion
-      that `documentStore.ts` does not import from `relayStore`,
-      `relayDocumentStore`, `UnifiedSyncProvider`, or
-      `src/api/relayClient.ts`. Catches regressions to
-      origin-blindness.
-- [ ] **"Local docs never touch the relay" integration test**: spin
-      up a fake-relay HTTP recorder (e.g. `msw`/`nock`-style in
-      jsdom), exercise local-only workflows (create local doc, edit,
-      save), assert zero requests reach the recorder.
-- [ ] **Protocol fixture round-trip** is already in place from Slice
-      A — no work needed here, just confirm it still passes after the
-      Slice E.3 pruning.
+- [x] **`src/store/documentStore.imports.test.ts`** — static
+      origin-blindness check. Parses `documentStore.ts` and asserts
+      no import (static or dynamic) targets any module in the
+      relay/auth/sync/Tauri surface. Anchored-basename matcher so
+      both relative (`./connectionStore`) and parent
+      (`../api/relayClient`) forms are caught; includes self-tests
+      to prove the matcher would catch real regressions. 14 tests.
+- [x] **`src/store/localDocumentIsolation.test.ts`** — runtime
+      invariant. Replaces `globalThis.fetch` with a recorder that
+      throws on any call, then exercises a sequence of local-only
+      workflows (newDocument / mutations via documentStore /
+      saveDocument / loadDocument / deleteDocument / importJSON /
+      5-edit session). Asserts zero fetches. 7 tests.
+- [x] **Protocol fixture round-trip** still passes post-E.3
+      (verified during E.3 — 12 TS fixture tests + 2 Rust fixture
+      tests; no new code needed here).
 
 ---
 
