@@ -22,8 +22,18 @@ import { useRelayDocumentStore } from '../store/relayDocumentStore';
 import { reattachAwaitingTeamDocument } from '../store/persistenceStore';
 import { useConnectionStore, type ConnectionStatus } from '../store/connectionStore';
 import { usePresenceStore } from '../store/presenceStore';
+import { RelayClient } from '../api/relayClient';
+import { RestDocumentProvider } from '../api/restDocumentProvider';
 import type { Shape } from '../shapes/Shape';
 import type { DocEvent } from './protocol';
+
+/** Convert a WS server URL to the matching REST origin for the same relay. */
+function wsUrlToHttpOrigin(wsUrl: string): string {
+  return wsUrl
+    .replace(/^ws:\/\//, 'http://')
+    .replace(/^wss:\/\//, 'https://')
+    .replace(/\/ws\/?$/, '');
+}
 
 /**
  * Collaboration session configuration
@@ -124,6 +134,8 @@ interface CollaborationActions {
  */
 let yjsDoc: YjsDocument | null = null;
 let syncProvider: UnifiedSyncProvider | null = null;
+let relayClient: RelayClient | null = null;
+let connectionUnsubscribe: (() => void) | null = null;
 let awarenessUnsubscribe: (() => void) | null = null;
 
 /**
@@ -219,8 +231,26 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         color: config.user.color,
       });
 
-      // Register provider with relay document store
-      useRelayDocumentStore.getState().setProvider(syncProvider);
+      // Build the REST client + adapter so the relay document store
+       // routes CRUD through HTTP rather than the WS multiplexer. The
+       // WS provider still owns CRDT sync, awareness, and auth — see
+       // Slice E.2 plan for the split.
+      relayClient = new RelayClient({
+        baseUrl: wsUrlToHttpOrigin(config.serverUrl),
+        ...(config.token !== undefined ? { token: config.token } : {}),
+      });
+      // Mirror JWT updates from the connection store (set by the WS
+      // auth path) into the REST client so the next REST call carries
+      // the freshest bearer.
+      connectionUnsubscribe = useConnectionStore.subscribe((state) => {
+        relayClient?.setToken(state.token ?? undefined);
+      });
+      // Seed with whatever the connection store already has.
+      relayClient.setToken(useConnectionStore.getState().token ?? undefined);
+
+      useRelayDocumentStore
+        .getState()
+        .setProvider(new RestDocumentProvider(relayClient));
 
       // Connect
       syncProvider.connect();
@@ -239,6 +269,12 @@ export const useCollaborationStore = create<CollaborationState & CollaborationAc
         awarenessUnsubscribe();
         awarenessUnsubscribe = null;
       }
+
+      if (connectionUnsubscribe) {
+        connectionUnsubscribe();
+        connectionUnsubscribe = null;
+      }
+      relayClient = null;
 
       if (syncProvider) {
         syncProvider.destroy();

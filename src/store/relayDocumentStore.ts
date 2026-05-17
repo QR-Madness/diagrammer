@@ -15,7 +15,6 @@
 import { create } from 'zustand';
 import type { DocumentMetadata, DiagramDocument } from '../types/Document';
 import type { DocEvent } from '../collaboration/protocol';
-import type { UnifiedSyncProvider } from '../collaboration/UnifiedSyncProvider';
 import { useDocumentRegistry } from './documentRegistry';
 import { useConnectionStore } from './connectionStore';
 import { useUserStore } from './userStore';
@@ -88,10 +87,12 @@ interface RelayDocumentState {
 }
 
 /**
- * Provider interface that both UnifiedSyncProvider and DocumentSyncProvider implement.
- * This allows the store to work with either provider type.
+ * Provider interface that the store calls for CRUD. As of 20.3 Slice E.2
+ * this is satisfied by `RestDocumentProvider` wrapping `RelayClient`;
+ * the legacy WS-multiplexed implementation on `UnifiedSyncProvider`
+ * stays in place but is no longer wired in here.
  */
-interface DocumentProvider {
+export interface DocumentProvider {
   listDocuments(): Promise<DocumentMetadata[]>;
   getDocument(docId: string): Promise<DiagramDocument | { document: DiagramDocument; serverVersion?: number }>;
   saveDocument(doc: DiagramDocument, expectedVersion?: number): Promise<void | { newVersion?: number }>;
@@ -109,8 +110,8 @@ interface DocumentProvider {
 
 /** Team document store actions */
 interface RelayDocumentActions {
-  /** Set provider from UnifiedSyncProvider */
-  setProvider: (provider: UnifiedSyncProvider | null) => void;
+  /** Set the document provider used for all CRUD operations. */
+  setProvider: (provider: DocumentProvider | null) => void;
 
   /** Fetch document list from host */
   fetchDocumentList: () => Promise<void>;

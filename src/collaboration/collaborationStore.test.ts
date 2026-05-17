@@ -56,7 +56,9 @@ vi.mock('../store/connectionStore', () => ({
     getState: vi.fn(() => ({
       setHost: vi.fn(),
       reset: vi.fn(),
+      token: null,
     })),
+    subscribe: vi.fn(() => vi.fn()),
   },
 }));
 
