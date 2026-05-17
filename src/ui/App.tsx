@@ -148,6 +148,19 @@ function App() {
     // Warmup relay document cache from IndexedDB (async, non-blocking)
     useRelayDocumentStore.getState().warmupCache().catch(console.error);
 
+    // Rescue any pre-v2 team documents into the local document store
+    // (Tauri-only, one-shot, gated by a localStorage flag).
+    void (async () => {
+      try {
+        const { runTeamDocumentMigration } = await import(
+          '../migrations/teamDocumentMigration'
+        );
+        await runTeamDocumentMigration();
+      } catch (err) {
+        console.error('[App] Team-doc migration failed:', err);
+      }
+    })();
+
     // Check if we have any saved documents
     const documents = usePersistenceStore.getState().documents;
     const hasDocuments = Object.keys(documents).length > 0;

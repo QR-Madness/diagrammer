@@ -63,6 +63,7 @@ The next agent should treat them as load-bearing.
 | E.5 | shipped | Relay tab in Settings; deleted `useRelayStore`, `AuthGuard`, `LoginPage`, `CollaborationSettings`, `ClientConnectionPanel`, `RelayMembersManager`; `DocumentPermissionsDialog` rewired to free-text user input. Two commits: `c135456`, `c9f853f`. |
 | E.4 | shipped | `rm -rf src-tauri/src/{server,mcp,auth}/`; `lib.rs` slimmed from 897→160 LOC (only `open_docs` remains); Cargo deps trimmed (only `axum`+`tower-http` kept, narrowly scoped to the docs server); renderer-side: deleted `McpSettings` tab, mcp wrappers, `mcpMirror` calls; `userStore` became a 60-line facade over `useConnectionStore.user`; `src/tauri/commands.ts` trimmed 273→33 LOC. |
 | E.3 | shipped | WS protocol slimmed to SYNC/AWARENESS/AUTH/AUTH_RESPONSE/JOIN_DOC/DOC_EVENT/ERROR. Deleted `MESSAGE_DOC_*` constants + `AUTH_LOGIN`, the corresponding Rust handlers (`handle_doc_*`, `handle_auth_login`), TS request/response interfaces (`DocList*`/`DocGet*`/`DocSave*`/`DocDelete*`/`DocShare*`/`DocTransfer*`), 13 fixture files, and the routing helpers (`getMessageChannel`, `isAuthMessage`, `isDocumentMessage`, `isRequestMessage`). Byte slots 3–6 + 11–13 reserved. Relay smoke (6) + TS protocol fixtures (12) + Rust fixture round-trip still pass. |
+| F | shipped | First-launch team-doc migration: Tauri-only boot scan of `<app-data-dir>/team_documents/`, strips relay-only fields, writes into local persistence, moves source to `_archived_team_documents/`, fires a one-time toast, gated by `diagrammer-team-doc-migration-done` localStorage flag. 9 unit tests with an in-memory fs adapter. |
 | G | shipped | Dockerfile, systemd unit, README, 3-test smoke suite. |
 
 What's *known broken or vestigial*:
@@ -207,19 +208,26 @@ What's *known broken or vestigial*:
 
 ### F — First-launch team-doc migration
 
-- [ ] **Tauri boot scan** of `<app-data-dir>/team_documents/`. For
-      each file: parse, write as a local document into the renderer's
-      local store via the existing local-save path, then move the
-      source into `<app-data-dir>/_archived_team_documents/`
-      (idempotent + reversible — never delete).
-- [ ] **One-time toast notification** the first time the migration
-      runs: *"N team documents were converted to local documents. To
-      collaborate on them again, upload them to a relay from Settings
-      → Documents."* Persist a flag in localStorage so the toast
-      only fires once.
-- [ ] **Test fixture set** of beta-era team documents in
-      `src-tauri/tests/migration/`. Verify blob hashes line up across
-      the move (no orphaned blobs).
+- [x] **Tauri boot scan** of `<app-data-dir>/team_documents/`.
+      Implemented in `src/migrations/teamDocumentMigration.ts` using
+      `@tauri-apps/plugin-fs` + `@tauri-apps/api/path/appDataDir`
+      (no new Rust code — the src-tauri team_documents reader was
+      already deleted in E.4). Wired into `App.tsx` boot. Source
+      files moved to `_archived_team_documents/`, never deleted.
+- [x] **One-time toast notification** — `useNotificationStore.info`
+      with `category: 'permanent'`. Format:
+      `"N team document(s) were converted to local documents. To
+      collaborate on them again, upload them to a relay from
+      Settings → Documents."` Gated by the
+      `diagrammer-team-doc-migration-done` localStorage flag (set
+      even on no-op runs so we don't re-scan every boot).
+- [x] **Test coverage** — 9 unit tests in
+      `teamDocumentMigration.test.ts` with an in-memory `MigrationFs`
+      adapter: empty dir, no dir, full migration, field stripping,
+      notification firing, malformed files skipped (not archived),
+      idempotency, non-json entries ignored. Blob-hash coverage is
+      not in scope here — `BlobStorage` already reference-counts
+      independently of doc storage.
 
 ### H — Load-bearing invariant tests
 
