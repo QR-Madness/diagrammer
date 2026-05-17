@@ -12,7 +12,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{delete, get, post, put},
@@ -24,6 +24,8 @@ use serde_json::{json, Value};
 use crate::auth::{
     create_token, hash_password, validate_token, Claims, User, UserInfo, UserRole,
 };
+use crate::server::documents::SaveOutcome;
+use crate::server::protocol::ShareEntry;
 use crate::server::permissions::{
     check_delete_permission, check_read_permission, check_write_permission, to_error_string,
 };
@@ -41,6 +43,8 @@ pub fn routes() -> Router<Arc<ServerState>> {
         .route("/api/docs/:id", get(get_doc_handler))
         .route("/api/docs/:id", put(save_doc_handler))
         .route("/api/docs/:id", delete(delete_doc_handler))
+        .route("/api/docs/:id/share", post(share_doc_handler))
+        .route("/api/docs/:id/transfer", post(transfer_doc_handler))
 }
 
 // ============ Request / Response shapes ============
@@ -78,6 +82,41 @@ struct LoginResponse {
 #[serde(rename_all = "camelCase")]
 struct WriteAck {
     success: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveAck {
+    success: bool,
+    new_version: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VersionConflictBody {
+    error_code: &'static str,
+    current_version: u64,
+}
+
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct SaveQuery {
+    /// Caller's expected `serverVersion`. When present, the relay
+    /// refuses the write (HTTP 409) if the stored version differs.
+    expected_version: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ShareRequest {
+    shares: Vec<ShareEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TransferRequest {
+    new_owner_id: String,
+    new_owner_name: String,
 }
 
 #[derive(Serialize)]
@@ -317,6 +356,7 @@ async fn save_doc_handler(
     State(state): State<Arc<ServerState>>,
     headers: HeaderMap,
     Path(id): Path<String>,
+    Query(query): Query<SaveQuery>,
     Json(document): Json<Value>,
 ) -> impl IntoResponse {
     let claims = match require_auth(&state, &headers) {
@@ -336,11 +376,6 @@ async fn save_doc_handler(
     }
 
     let doc_exists = state.doc_store().get_metadata(&id).is_some();
-    let event_type = if doc_exists {
-        DocEventType::Updated
-    } else {
-        DocEventType::Created
-    };
 
     if doc_exists {
         if let Err(e) = check_write_permission(
@@ -353,13 +388,40 @@ async fn save_doc_handler(
         }
     }
 
-    if let Err(e) = state.doc_store().save_document(document) {
-        return (StatusCode::INTERNAL_SERVER_ERROR, ApiError::body(e)).into_response();
+    let outcome = match state
+        .doc_store()
+        .save_document_with_expected_version(document, query.expected_version)
+    {
+        Ok(o) => o,
+        Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, ApiError::body(e)).into_response(),
+    };
+
+    match outcome {
+        SaveOutcome::VersionConflict { current } => (
+            StatusCode::CONFLICT,
+            Json(VersionConflictBody {
+                error_code: "VERSION_CONFLICT",
+                current_version: current,
+            }),
+        )
+            .into_response(),
+        SaveOutcome::Created { version } | SaveOutcome::Updated { version } => {
+            let event_type = if matches!(outcome, SaveOutcome::Created { .. }) {
+                DocEventType::Created
+            } else {
+                DocEventType::Updated
+            };
+            state.emit_doc_event(&id, event_type, Some(claims.sub.clone()));
+            (
+                StatusCode::OK,
+                Json(SaveAck {
+                    success: true,
+                    new_version: version,
+                }),
+            )
+                .into_response()
+        }
     }
-
-    state.emit_doc_event(&id, event_type, Some(claims.sub.clone()));
-
-    (StatusCode::OK, Json(WriteAck { success: true })).into_response()
 }
 
 async fn delete_doc_handler(
@@ -393,6 +455,74 @@ async fn delete_doc_handler(
             .into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, ApiError::body(e)).into_response(),
     }
+}
+
+async fn share_doc_handler(
+    State(state): State<Arc<ServerState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<ShareRequest>,
+) -> impl IntoResponse {
+    let claims = match require_auth(&state, &headers) {
+        Ok(c) => c,
+        Err(resp) => return resp,
+    };
+
+    // Owner-only — matches WS handler at server::mod::handle_doc_share.
+    if let Err(e) = check_delete_permission(
+        state.doc_store(),
+        &id,
+        Some(&claims.sub),
+        Some(&claims.role),
+    ) {
+        return (StatusCode::FORBIDDEN, ApiError::body(to_error_string(&e))).into_response();
+    }
+
+    if let Err(e) = state.doc_store().update_document_shares(&id, &body.shares) {
+        return (StatusCode::INTERNAL_SERVER_ERROR, ApiError::body(e)).into_response();
+    }
+
+    state.emit_doc_event(&id, DocEventType::Updated, Some(claims.sub.clone()));
+
+    (StatusCode::OK, Json(WriteAck { success: true })).into_response()
+}
+
+async fn transfer_doc_handler(
+    State(state): State<Arc<ServerState>>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(body): Json<TransferRequest>,
+) -> impl IntoResponse {
+    let claims = match require_auth(&state, &headers) {
+        Ok(c) => c,
+        Err(resp) => return resp,
+    };
+
+    if let Err(e) = check_delete_permission(
+        state.doc_store(),
+        &id,
+        Some(&claims.sub),
+        Some(&claims.role),
+    ) {
+        return (
+            StatusCode::FORBIDDEN,
+            ApiError::body(format!("Only owner can transfer: {}", to_error_string(&e))),
+        )
+            .into_response();
+    }
+
+    if let Err(e) = state.doc_store().transfer_ownership(
+        &id,
+        &body.new_owner_id,
+        &body.new_owner_name,
+        &claims.sub,
+    ) {
+        return (StatusCode::INTERNAL_SERVER_ERROR, ApiError::body(e)).into_response();
+    }
+
+    state.emit_doc_event(&id, DocEventType::Updated, Some(claims.sub.clone()));
+
+    (StatusCode::OK, Json(WriteAck { success: true })).into_response()
 }
 
 // ============ Helpers ============

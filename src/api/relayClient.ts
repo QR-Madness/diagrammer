@@ -70,6 +70,32 @@ export class RelayError extends Error {
   }
 }
 
+/**
+ * Thrown by `saveDocument` when the caller's `expectedVersion` no
+ * longer matches the server-side version. Carries `currentVersion` so
+ * the caller can refetch, rebase, and retry.
+ */
+export class VersionConflictError extends RelayError {
+  constructor(
+    url: string,
+    public readonly currentVersion: number,
+  ) {
+    super(409, url, `Version conflict: server has v${currentVersion}`);
+    this.name = 'VersionConflictError';
+  }
+}
+
+/**
+ * Share entry as carried on the wire by `POST /api/docs/:id/share`.
+ * Mirrors the relay's `ShareEntry` struct (`relay/src/server/protocol.rs`).
+ */
+export interface RelayShareEntry {
+  userId: string;
+  userName: string;
+  /** `"viewer" | "editor" | "none"` — `"none"` revokes access. */
+  permission: string;
+}
+
 // ============ Client ============
 
 export interface RelayClientOptions {
@@ -136,8 +162,16 @@ export class RelayClient {
     return this.requestJson('GET', `/api/docs/${encodeURIComponent(docId)}`, { auth: true });
   }
 
-  async saveDocument(docId: string, document: DiagramDocument): Promise<{ success: boolean }> {
-    return this.requestJson('PUT', `/api/docs/${encodeURIComponent(docId)}`, {
+  async saveDocument(
+    docId: string,
+    document: DiagramDocument,
+    expectedVersion?: number,
+  ): Promise<{ success: boolean; newVersion: number }> {
+    const path =
+      expectedVersion !== undefined
+        ? `/api/docs/${encodeURIComponent(docId)}?expectedVersion=${expectedVersion}`
+        : `/api/docs/${encodeURIComponent(docId)}`;
+    return this.requestJson('PUT', path, {
       auth: true,
       body: document,
     });
@@ -145,6 +179,27 @@ export class RelayClient {
 
   async deleteDocument(docId: string): Promise<{ success: boolean }> {
     return this.requestJson('DELETE', `/api/docs/${encodeURIComponent(docId)}`, { auth: true });
+  }
+
+  async updateDocumentShares(
+    docId: string,
+    shares: RelayShareEntry[],
+  ): Promise<{ success: boolean }> {
+    return this.requestJson('POST', `/api/docs/${encodeURIComponent(docId)}/share`, {
+      auth: true,
+      body: { shares },
+    });
+  }
+
+  async transferDocumentOwnership(
+    docId: string,
+    newOwnerId: string,
+    newOwnerName: string,
+  ): Promise<{ success: boolean }> {
+    return this.requestJson('POST', `/api/docs/${encodeURIComponent(docId)}/transfer`, {
+      auth: true,
+      body: { newOwnerId, newOwnerName },
+    });
   }
 
   // ============ Blobs ============
@@ -237,14 +292,19 @@ export class RelayClient {
 
 /**
  * Extract a `RelayError` from a non-2xx response. Tries to read a
- * JSON `{ error: string }` body first; falls back to status text.
+ * JSON `{ error: string }` body first; falls back to status text. A
+ * 409 with `{ errorCode: "VERSION_CONFLICT", currentVersion }` is
+ * surfaced as a typed `VersionConflictError` so callers can branch on
+ * `instanceof` without sniffing strings.
  */
 async function buildRelayError(res: Response, url: string): Promise<RelayError> {
   let message = res.statusText;
+  let parsed: unknown;
   try {
     const contentType = res.headers.get('content-type') ?? '';
     if (contentType.includes('application/json')) {
-      const body = (await res.json()) as { error?: string };
+      parsed = await res.json();
+      const body = parsed as { error?: string };
       if (typeof body.error === 'string' && body.error.length > 0) {
         message = body.error;
       }
@@ -255,5 +315,18 @@ async function buildRelayError(res: Response, url: string): Promise<RelayError> 
   } catch {
     // Ignore parse errors; fall back to statusText.
   }
+
+  if (
+    res.status === 409 &&
+    parsed !== null &&
+    typeof parsed === 'object' &&
+    (parsed as { errorCode?: unknown }).errorCode === 'VERSION_CONFLICT'
+  ) {
+    const current = (parsed as { currentVersion?: unknown }).currentVersion;
+    if (typeof current === 'number') {
+      return new VersionConflictError(url, current);
+    }
+  }
+
   return new RelayError(res.status, url, message);
 }

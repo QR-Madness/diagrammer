@@ -31,6 +31,8 @@ pub struct DocumentMetadata {
     // Relay document fields
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_relay_document: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_version: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -186,6 +188,7 @@ impl DocumentStore {
                 .get("isRelayDocument")
                 .or_else(|| doc.get("isTeamDocument"))
                 .and_then(|v| v.as_bool()),
+            server_version: doc.get("serverVersion").and_then(|v| v.as_u64()),
             locked_by: doc.get("lockedBy").and_then(|v| v.as_str()).map(String::from),
             locked_by_name: doc.get("lockedByName").and_then(|v| v.as_str()).map(String::from),
             locked_at: doc.get("lockedAt").and_then(|v| v.as_u64()),

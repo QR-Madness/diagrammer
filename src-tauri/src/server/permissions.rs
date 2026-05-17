@@ -247,6 +247,7 @@ mod tests {
             modified_at: 0,
             created_at: 0,
             is_relay_document: Some(true),
+            server_version: None,
             locked_by: None,
             locked_by_name: None,
             locked_at: None,

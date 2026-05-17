@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { RelayClient, RelayError } from './relayClient';
+import { RelayClient, RelayError, VersionConflictError } from './relayClient';
 
 /** Minimal scriptable fetch mock. Each test queues responses in order. */
 class FetchScript {
@@ -43,6 +43,18 @@ class FetchScript {
           status,
           headers: { 'Content-Type': 'application/octet-stream' },
         }),
+    );
+    return this;
+  }
+
+  /** Push a 409 with the VERSION_CONFLICT error-code body. */
+  queue409VersionConflict(currentVersion: number): this {
+    this.queue.push(
+      () =>
+        new Response(
+          JSON.stringify({ errorCode: 'VERSION_CONFLICT', currentVersion }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } },
+        ),
     );
     return this;
   }
@@ -190,9 +202,9 @@ describe('RelayClient', () => {
       expect(script.calls[0]?.url).toBe('http://r/api/docs/a%20b%2Fc');
     });
 
-    it('saveDocument PUTs JSON body', async () => {
+    it('saveDocument PUTs JSON body and returns newVersion', async () => {
       const client = new RelayClient({ baseUrl: 'http://r', token: 'T', fetchImpl: script.fetch });
-      script.pushJson({ success: true });
+      script.pushJson({ success: true, newVersion: 4 });
       const doc = {
         id: 'doc-1',
         name: 'Test',
@@ -200,13 +212,61 @@ describe('RelayClient', () => {
         pages: [],
         createdAt: 1,
         modifiedAt: 1,
-        // The TS type has more fields; we only care that the body round-trips.
       } as unknown as Parameters<typeof client.saveDocument>[1];
-      await client.saveDocument('doc-1', doc);
+      const result = await client.saveDocument('doc-1', doc);
       const call = script.calls[0]!;
       expect(call.method).toBe('PUT');
       expect(call.url).toBe('http://r/api/docs/doc-1');
       expect(JSON.parse(call.body!).id).toBe('doc-1');
+      expect(result).toEqual({ success: true, newVersion: 4 });
+    });
+
+    it('saveDocument threads expectedVersion as query param', async () => {
+      const client = new RelayClient({ baseUrl: 'http://r', token: 'T', fetchImpl: script.fetch });
+      script.pushJson({ success: true, newVersion: 7 });
+      const doc = { id: 'doc-1' } as unknown as Parameters<typeof client.saveDocument>[1];
+      await client.saveDocument('doc-1', doc, 6);
+      expect(script.calls[0]?.url).toBe('http://r/api/docs/doc-1?expectedVersion=6');
+    });
+
+    it('saveDocument throws VersionConflictError on 409', async () => {
+      const client = new RelayClient({ baseUrl: 'http://r', token: 'T', fetchImpl: script.fetch });
+      script.queue409VersionConflict(11);
+      const doc = { id: 'doc-1' } as unknown as Parameters<typeof client.saveDocument>[1];
+      try {
+        await client.saveDocument('doc-1', doc, 5);
+        throw new Error('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(VersionConflictError);
+        expect(err).toBeInstanceOf(RelayError);
+        const ve = err as VersionConflictError;
+        expect(ve.status).toBe(409);
+        expect(ve.currentVersion).toBe(11);
+      }
+    });
+
+    it('updateDocumentShares POSTs shares array to /share', async () => {
+      const client = new RelayClient({ baseUrl: 'http://r', token: 'T', fetchImpl: script.fetch });
+      script.pushJson({ success: true });
+      await client.updateDocumentShares('doc-1', [
+        { userId: 'u-2', userName: 'Bob', permission: 'editor' },
+      ]);
+      const call = script.calls[0]!;
+      expect(call.method).toBe('POST');
+      expect(call.url).toBe('http://r/api/docs/doc-1/share');
+      expect(JSON.parse(call.body!)).toEqual({
+        shares: [{ userId: 'u-2', userName: 'Bob', permission: 'editor' }],
+      });
+    });
+
+    it('transferDocumentOwnership POSTs newOwner fields to /transfer', async () => {
+      const client = new RelayClient({ baseUrl: 'http://r', token: 'T', fetchImpl: script.fetch });
+      script.pushJson({ success: true });
+      await client.transferDocumentOwnership('doc-1', 'u-2', 'Bob');
+      const call = script.calls[0]!;
+      expect(call.method).toBe('POST');
+      expect(call.url).toBe('http://r/api/docs/doc-1/transfer');
+      expect(JSON.parse(call.body!)).toEqual({ newOwnerId: 'u-2', newOwnerName: 'Bob' });
     });
 
     it('deleteDocument returns success ack', async () => {

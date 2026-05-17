@@ -31,6 +31,11 @@ pub struct DocumentMetadata {
     // Relay document fields
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_relay_document: Option<bool>,
+    /// Monotonically increasing server-side version used by REST
+    /// `PUT /api/docs/:id` for optimistic concurrency. Bumped on every
+    /// successful save. None for documents predating v2.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server_version: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locked_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -47,6 +52,20 @@ pub struct DocumentMetadata {
     pub last_modified_by: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_modified_by_name: Option<String>,
+}
+
+/// Outcome of a save attempt with optimistic-concurrency support.
+/// IO and validation errors continue to surface via the `Result::Err`
+/// channel; this enum carries only application-level outcomes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SaveOutcome {
+    /// New document created with the given version (always 1).
+    Created { version: u64 },
+    /// Existing document updated to the given version.
+    Updated { version: u64 },
+    /// Caller's `expected_version` did not match the stored version.
+    /// `current` is the server's view; clients should refetch + retry.
+    VersionConflict { current: u64 },
 }
 
 /// Team document store with file-based persistence
@@ -144,13 +163,70 @@ impl DocumentStore {
         Ok(doc)
     }
 
-    /// Save a document (creates or updates)
+    /// Save a document (creates or updates). Convenience wrapper for
+    /// callers that don't need optimistic-concurrency semantics — used
+    /// by the WS save handler, which never carried version fields on
+    /// the wire. The REST handler uses
+    /// `save_document_with_expected_version` directly.
     pub fn save_document(&self, doc: serde_json::Value) -> Result<(), String> {
-        // Extract required fields from document
+        match self.save_document_with_expected_version(doc, None)? {
+            SaveOutcome::Created { .. } | SaveOutcome::Updated { .. } => Ok(()),
+            // `expected = None` cannot produce a conflict — collapse to
+            // a string error to preserve the existing signature.
+            SaveOutcome::VersionConflict { current } => Err(format!(
+                "unexpected version conflict (current={})",
+                current
+            )),
+        }
+    }
+
+    /// Save a document with optimistic-concurrency check.
+    ///
+    /// When `expected` is `Some(N)`, refuses the write if the stored
+    /// `server_version` for this doc is not `N`, returning
+    /// `SaveOutcome::VersionConflict { current }`. When `expected` is
+    /// `None`, the write proceeds unconditionally (last-writer-wins —
+    /// matches pre-v2 behavior for callers that don't opt in).
+    ///
+    /// On success, the stored `server_version` is bumped (or set to 1
+    /// for first creation) and returned. The version is also injected
+    /// into the doc body under `serverVersion` so clients can read it
+    /// back via `GET /api/docs/:id` without consulting metadata.
+    pub fn save_document_with_expected_version(
+        &self,
+        mut doc: serde_json::Value,
+        expected: Option<u64>,
+    ) -> Result<SaveOutcome, String> {
         let id = doc.get("id")
             .and_then(|v| v.as_str())
             .ok_or("Document missing 'id' field")?
             .to_string();
+
+        // Read current stored version (if any) for the concurrency
+        // check. Holding the read lock briefly is fine; the rest of
+        // the save runs outside the lock.
+        let (prior_version, doc_existed) = {
+            let index = self.index.read().map_err(|e| e.to_string())?;
+            match index.get(&id) {
+                Some(meta) => (meta.server_version.unwrap_or(0), true),
+                None => (0, false),
+            }
+        };
+
+        if let Some(expected_version) = expected {
+            if expected_version != prior_version {
+                return Ok(SaveOutcome::VersionConflict {
+                    current: prior_version,
+                });
+            }
+        }
+
+        let new_version = prior_version + 1;
+
+        // Mirror the new version into the doc body so reads pick it up.
+        if let Some(obj) = doc.as_object_mut() {
+            obj.insert("serverVersion".to_string(), serde_json::json!(new_version));
+        }
 
         let name = doc.get("name")
             .and_then(|v| v.as_str())
@@ -175,7 +251,6 @@ impl DocumentStore {
             .and_then(|v| v.as_u64())
             .unwrap_or(modified_at);
 
-        // Build metadata
         let metadata = DocumentMetadata {
             id: id.clone(),
             name,
@@ -186,6 +261,7 @@ impl DocumentStore {
                 .get("isRelayDocument")
                 .or_else(|| doc.get("isTeamDocument"))
                 .and_then(|v| v.as_bool()),
+            server_version: Some(new_version),
             locked_by: doc.get("lockedBy").and_then(|v| v.as_str()).map(String::from),
             locked_by_name: doc.get("lockedByName").and_then(|v| v.as_str()).map(String::from),
             locked_at: doc.get("lockedAt").and_then(|v| v.as_u64()),
@@ -198,23 +274,25 @@ impl DocumentStore {
             last_modified_by_name: doc.get("lastModifiedByName").and_then(|v| v.as_str()).map(String::from),
         };
 
-        // Save document to file
         let doc_json = serde_json::to_string_pretty(&doc)
             .map_err(|e| format!("Serialize error: {}", e))?;
         std::fs::write(self.doc_path(&id), doc_json)
             .map_err(|e| format!("Write error: {}", e))?;
 
-        // Update index
         {
             let mut index = self.index.write().map_err(|e| e.to_string())?;
             index.insert(id.clone(), metadata);
         }
 
-        // Save index
         self.save_index()?;
 
-        log::info!("Saved team document: {}", id);
-        Ok(())
+        log::info!("Saved relay document: {} (v{})", id, new_version);
+
+        Ok(if doc_existed {
+            SaveOutcome::Updated { version: new_version }
+        } else {
+            SaveOutcome::Created { version: new_version }
+        })
     }
 
     /// Delete a document

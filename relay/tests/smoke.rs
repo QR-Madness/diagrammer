@@ -181,6 +181,8 @@ async fn relay_register_login_docs_roundtrip() {
     assert_eq!(res.status().as_u16(), 200);
     let body: serde_json::Value = res.json().await.expect("save body");
     assert_eq!(body["success"], true);
+    // First save => serverVersion 1.
+    assert_eq!(body["newVersion"], 1);
 
     // ---- save with mismatched body id rejected ----
     let res = client
@@ -267,6 +269,206 @@ async fn relay_rejects_short_passwords() {
         .await
         .expect("register POST");
     assert_eq!(res.status().as_u16(), 400);
+
+    harness.stop().await;
+}
+
+/// Helper: register + login a fresh user, return the bearer header.
+async fn login_user(
+    client: &reqwest::Client,
+    base: &str,
+    username: &str,
+    password: &str,
+) -> String {
+    client
+        .post(format!("{}/api/auth/register", base))
+        .json(&json!({"username": username, "password": password}))
+        .send()
+        .await
+        .expect("register");
+    let res = client
+        .post(format!("{}/api/auth/login", base))
+        .json(&json!({"username": username, "password": password}))
+        .send()
+        .await
+        .expect("login");
+    let body: serde_json::Value = res.json().await.expect("login body");
+    format!(
+        "Bearer {}",
+        body["token"].as_str().expect("token in login response")
+    )
+}
+
+#[tokio::test]
+async fn relay_save_version_conflict_returns_409() {
+    let harness = RelayHarness::start().await;
+    let client = reqwest::Client::new();
+    let bearer = login_user(&client, &harness.base, "alice", "correct-horse").await;
+
+    // First save => v1.
+    let res = client
+        .put(format!("{}/api/docs/doc-v", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &bearer)
+        .json(&json!({"id": "doc-v", "name": "V", "pages": []}))
+        .send()
+        .await
+        .expect("save v1");
+    assert_eq!(res.status().as_u16(), 200);
+    let body: serde_json::Value = res.json().await.expect("v1 body");
+    assert_eq!(body["newVersion"], 1);
+
+    // Save with expectedVersion=1 succeeds => v2.
+    let res = client
+        .put(format!(
+            "{}/api/docs/doc-v?expectedVersion=1",
+            harness.base
+        ))
+        .header(reqwest::header::AUTHORIZATION, &bearer)
+        .json(&json!({"id": "doc-v", "name": "V edited", "pages": []}))
+        .send()
+        .await
+        .expect("save v2");
+    assert_eq!(res.status().as_u16(), 200);
+    let body: serde_json::Value = res.json().await.expect("v2 body");
+    assert_eq!(body["newVersion"], 2);
+
+    // Save with stale expectedVersion=1 => 409.
+    let res = client
+        .put(format!(
+            "{}/api/docs/doc-v?expectedVersion=1",
+            harness.base
+        ))
+        .header(reqwest::header::AUTHORIZATION, &bearer)
+        .json(&json!({"id": "doc-v", "name": "V stale", "pages": []}))
+        .send()
+        .await
+        .expect("save stale");
+    assert_eq!(res.status().as_u16(), 409);
+    let body: serde_json::Value = res.json().await.expect("conflict body");
+    assert_eq!(body["errorCode"], "VERSION_CONFLICT");
+    assert_eq!(body["currentVersion"], 2);
+
+    // GET should still reflect v2 with serverVersion in the doc body.
+    let res = client
+        .get(format!("{}/api/docs/doc-v", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &bearer)
+        .send()
+        .await
+        .expect("get doc");
+    let body: serde_json::Value = res.json().await.expect("get body");
+    assert_eq!(body["serverVersion"], 2);
+    assert_eq!(body["name"], "V edited");
+
+    harness.stop().await;
+}
+
+#[tokio::test]
+async fn relay_share_endpoint_grants_access() {
+    let harness = RelayHarness::start().await;
+    let client = reqwest::Client::new();
+    let owner = login_user(&client, &harness.base, "alice", "correct-horse").await;
+
+    // Owner creates a doc.
+    client
+        .put(format!("{}/api/docs/share-doc", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .json(&json!({
+            "id": "share-doc",
+            "name": "Shared",
+            "ownerId": "alice-id",
+            "pages": []
+        }))
+        .send()
+        .await
+        .expect("create");
+
+    // Share with bob as editor.
+    let res = client
+        .post(format!("{}/api/docs/share-doc/share", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .json(&json!({
+            "shares": [
+                {"userId": "bob-id", "userName": "Bob", "permission": "editor"}
+            ]
+        }))
+        .send()
+        .await
+        .expect("share POST");
+    assert_eq!(res.status().as_u16(), 200);
+    let body: serde_json::Value = res.json().await.expect("share body");
+    assert_eq!(body["success"], true);
+
+    // GET reflects the new share entry.
+    let res = client
+        .get(format!("{}/api/docs/share-doc", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .send()
+        .await
+        .expect("get");
+    let body: serde_json::Value = res.json().await.expect("get body");
+    let shares = body["sharedWith"].as_array().expect("sharedWith array");
+    assert_eq!(shares.len(), 1);
+    assert_eq!(shares[0]["userId"], "bob-id");
+    assert_eq!(shares[0]["permission"], "editor");
+
+    harness.stop().await;
+}
+
+#[tokio::test]
+async fn relay_transfer_endpoint_moves_ownership() {
+    let harness = RelayHarness::start().await;
+    let client = reqwest::Client::new();
+    let owner = login_user(&client, &harness.base, "alice", "correct-horse").await;
+
+    // Owner's user id, pulled from /api/auth/me — needed because doc
+    // ownerId must match the claims sub for transfer-permission check.
+    let res = client
+        .get(format!("{}/api/auth/me", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .send()
+        .await
+        .expect("me");
+    let body: serde_json::Value = res.json().await.expect("me body");
+    let alice_id = body["user"]["id"].as_str().expect("alice id").to_string();
+
+    // Create doc owned by alice.
+    client
+        .put(format!("{}/api/docs/xfer-doc", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .json(&json!({
+            "id": "xfer-doc",
+            "name": "Transferable",
+            "ownerId": alice_id,
+            "ownerName": "Alice",
+            "pages": []
+        }))
+        .send()
+        .await
+        .expect("create");
+
+    // Transfer to carol.
+    let res = client
+        .post(format!("{}/api/docs/xfer-doc/transfer", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .json(&json!({
+            "newOwnerId": "carol-id",
+            "newOwnerName": "Carol"
+        }))
+        .send()
+        .await
+        .expect("transfer POST");
+    assert_eq!(res.status().as_u16(), 200);
+
+    // GET reflects new owner.
+    let res = client
+        .get(format!("{}/api/docs/xfer-doc", harness.base))
+        .header(reqwest::header::AUTHORIZATION, &owner)
+        .send()
+        .await
+        .expect("get");
+    let body: serde_json::Value = res.json().await.expect("get body");
+    assert_eq!(body["ownerId"], "carol-id");
+    assert_eq!(body["ownerName"], "Carol");
 
     harness.stop().await;
 }
