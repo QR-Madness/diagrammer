@@ -302,9 +302,14 @@ impl WebSocketServer {
         *self.app_data_dir.write().await = Some(dir);
     }
 
-    /// Set the JWT secret (called during Tauri setup)
+    /// Set the JWT secret. Kept in sync with `token_config.secret` so
+    /// REST-issued tokens validate against the WS auth path; the two
+    /// fields previously drifted (REST signed with the built-in default,
+    /// WS validated with the per-deploy secret → `InvalidSignature` on
+    /// every connect).
     pub async fn set_jwt_secret(&self, secret: String) {
-        *self.jwt_secret.write().await = secret;
+        *self.jwt_secret.write().await = secret.clone();
+        self.token_config.write().await.secret = secret;
     }
 
     /// Set the user store for authentication (called during Tauri setup)
@@ -1041,5 +1046,25 @@ mod tests {
         assert_eq!(status.port, 0);
         assert_eq!(status.connected_clients, 0);
         assert!(status.address.is_empty());
+    }
+
+    /// Regression: set_jwt_secret must update both the WS-validation
+    /// field and token_config.secret (used by REST to *issue* tokens).
+    /// Drift here meant REST signed with the built-in default while WS
+    /// validated with the per-deploy secret → InvalidSignature on every
+    /// client connect.
+    #[tokio::test]
+    async fn set_jwt_secret_keeps_token_config_in_sync() {
+        let server = WebSocketServer::new();
+        server.set_jwt_secret("per-deploy-secret-abc".to_string()).await;
+
+        let ws_secret = server.jwt_secret.read().await.clone();
+        let rest_secret = server.token_config.read().await.secret.clone();
+
+        assert_eq!(ws_secret, "per-deploy-secret-abc");
+        assert_eq!(
+            rest_secret, ws_secret,
+            "REST-issuance secret and WS-validation secret must match"
+        );
     }
 }
